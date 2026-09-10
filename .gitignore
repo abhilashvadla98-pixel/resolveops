@@ -28,3 +28,4 @@ htmlcov/
 # OS files
 .DS_Store
 Thumbs.db
+*.egg-info/
