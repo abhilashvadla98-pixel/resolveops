@@ -1,0 +1,15 @@
+[project]
+name = "resolveops"
+version = "0.1.0"
+description = "Enterprise service and operations resolution platform."
+requires-python = ">=3.12,<3.13"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
