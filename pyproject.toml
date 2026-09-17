@@ -3,6 +3,16 @@ name = "resolveops"
 version = "0.1.0"
 description = "Enterprise service and operations resolution platform."
 requires-python = ">=3.12,<3.13"
+dependencies = [
+    "fastapi",
+    "uvicorn",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "httpx",
+]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
