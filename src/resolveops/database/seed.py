@@ -294,10 +294,18 @@ def seed_simulator_resources(session: Session) -> bool:
 
 
 def seed_all(session: Session) -> bool:
+    from resolveops.database.demo_scenarios import seed_demo_scenarios
+
     customer_data_created = seed_customer_operations(session)
     simulator_data_created = seed_simulator_resources(session)
     employee_it_created = seed_employee_it(session)
-    return customer_data_created or simulator_data_created or employee_it_created
+    demo_scenarios_created = seed_demo_scenarios(session)
+    return (
+        customer_data_created
+        or simulator_data_created
+        or employee_it_created
+        or demo_scenarios_created
+    )
 
 
 def seed_employee_it(session: Session) -> bool:

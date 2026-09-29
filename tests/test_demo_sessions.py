@@ -63,6 +63,7 @@ def test_demo_session_is_signed_and_restricted_to_synthetic_tenant() -> None:
     assert session.access_token.startswith("demo.")
     assert principal.tenant_id == "TENANT-DEMO"
     assert principal.subject_id.startswith("DEMO-")
+    assert principal.authentication_method == "demo_session"
 
 
 def test_demo_session_rejects_tampering() -> None:
@@ -103,3 +104,16 @@ def test_demo_endpoint_opens_only_the_synthetic_tenant(demo_api: TestClient) -> 
     )
     assert case.status_code == 200
     assert case.json()["customer_id"] == "CUST-1001"
+    scenarios = demo_api.get(
+        "/api/v1/demo/scenarios",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert scenarios.status_code == 200
+    assert [item["scenario_id"] for item in scenarios.json()] == list("ABCDEFGH")
+
+    reset = demo_api.post(
+        "/api/v1/demo/reset",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert reset.status_code == 200
+    assert len(reset.json()) == 8

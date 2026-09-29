@@ -84,4 +84,5 @@ class DemoSessionAuthenticator:
             subject_id=claims.session_id,
             tenant_id=self.tenant_id,
             role=ActorRole.APPROVER,
+            authentication_method="demo_session",
         )

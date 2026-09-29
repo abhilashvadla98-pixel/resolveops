@@ -21,6 +21,7 @@ EXPECTED_TABLES = {
     "case_issues",
     "cases",
     "customers",
+    "demo_scenarios",
     "directory_group_memberships",
     "directory_groups",
     "employee_team_memberships",

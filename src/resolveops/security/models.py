@@ -10,6 +10,7 @@ class SecurityPrincipal(DomainModel):
     subject_id: Identifier
     tenant_id: Identifier
     role: ActorRole
+    authentication_method: str = "api_key"
 
     def actor(self) -> Actor:
         return Actor(actor_id=self.subject_id, role=self.role)

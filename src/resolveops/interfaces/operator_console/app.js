@@ -1,6 +1,6 @@
 "use strict";
 
-const state = { token: "", mode: "", cases: [], selectedCase: null, timeline: [], approvals: [], traceId: "" };
+const state = { token: "", mode: "", cases: [], scenarios: [], selectedCase: null, timeline: [], approvals: [], traceId: "" };
 const byId = (id) => document.getElementById(id);
 const all = (selector) => Array.from(document.querySelectorAll(selector));
 const escapeHtml = (value) => String(value ?? "—").replace(/[&<>'"]/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" })[char]);
@@ -43,12 +43,13 @@ function setConnected(mode) {
   byId("connection-notice").querySelector("strong").textContent = "Synthetic workspace connected";
   byId("connection-notice").querySelector("p").textContent = "Cases, approvals, IT state, and telemetry are loaded from authenticated APIs.";
   byId("notice-demo").hidden = true; setText("last-updated", `Updated ${formatDate(new Date().toISOString())}`);
+  byId("reset-demo").hidden = mode !== "demo";
 }
 
 function disconnect() {
   state.token = ""; state.mode = ""; state.cases = []; state.selectedCase = null; state.timeline = []; state.approvals = [];
   setText("sidebar-connection", "Not connected"); setText("session-label", "No active session"); byId("sidebar-pulse").classList.remove("connected"); byId("disconnect-button").hidden = true; byId("notice-demo").hidden = false;
-  byId("connection-notice").classList.remove("connected"); renderCases(); renderApprovals(); showToast("Session disconnected.");
+  byId("connection-notice").classList.remove("connected"); byId("reset-demo").hidden = true; renderCases(); renderApprovals(); showToast("Session disconnected.");
 }
 
 async function openDemo() {
@@ -61,6 +62,18 @@ async function openDemo() {
 async function loadCases() {
   state.cases = await apiFetch("/api/v1/cases"); setText("case-count", state.cases.length); setStatus("case-list-status", "active"); renderCases();
   if (!state.selectedCase && state.cases.length) await selectCase(state.cases[0].case_id);
+}
+
+async function loadScenarios() {
+  if (state.mode !== "demo") return;
+  state.scenarios = await apiFetch("/api/v1/demo/scenarios");
+  byId("scenario-select").innerHTML = `<option value="">Demo scenarios A–H</option>${state.scenarios.map((item) => `<option value="${escapeHtml(item.case_id)}">${escapeHtml(item.scenario_id)} · ${escapeHtml(item.title)}</option>`).join("")}`;
+}
+
+async function resetDemo() {
+  byId("reset-demo").disabled = true;
+  try { state.scenarios = await apiFetch("/api/v1/demo/reset", { method: "POST" }); state.selectedCase = null; await loadAll(); showToast("Demo scenarios reset."); }
+  catch (error) { showToast(error.message, true); } finally { byId("reset-demo").disabled = false; }
 }
 
 function filteredCases() {
@@ -130,7 +143,7 @@ async function loadIT() { try { const data = await apiFetch("/simulator/v1/it/ca
 
 function metricValue(text, name) { return text.split("\n").filter((line) => line.startsWith(name) && !line.startsWith("#")).reduce((sum, line) => sum + (Number(line.trim().split(/\s+/).at(-1)) || 0), 0); }
 async function loadMetrics() { try { const text = await apiFetch("/metrics", { text: true }); setText("metric-requests", metricValue(text, "resolveops_http_requests_total")); setText("metric-rejections", metricValue(text, "resolveops_http_rejections_total")); setStatus("metrics-status", "active"); setText("reliability-trace", state.traceId || "—"); } catch (_) { setStatus("metrics-status", "not_loaded"); } }
-async function loadAll() { try { await Promise.all([loadCases(), loadApprovals(), loadIT(), loadMetrics()]); setText("last-updated", `Updated ${formatDate(new Date().toISOString())}`); } catch (error) { if (error.status === 401) disconnect(); showToast(error.message, true); } }
+async function loadAll() { try { await Promise.all([loadCases(), loadApprovals(), loadIT(), loadMetrics(), loadScenarios()]); setText("last-updated", `Updated ${formatDate(new Date().toISOString())}`); } catch (error) { if (error.status === 401) disconnect(); showToast(error.message, true); } }
 
 function openDialog() { byId("connect-dialog").hidden = false; document.body.classList.add("dialog-open"); byId("api-key").focus(); }
 function closeDialog() { byId("connect-dialog").hidden = true; document.body.classList.remove("dialog-open"); byId("connect-error").hidden = true; }
@@ -138,6 +151,6 @@ async function secureSignIn(event) { event.preventDefault(); const token = byId(
 
 all(".nav-item").forEach((button) => button.addEventListener("click", () => { all(".nav-item").forEach((item) => item.classList.toggle("active", item === button)); all(".view").forEach((view) => view.classList.toggle("active", view.dataset.viewPanel === button.dataset.view)); byId("mobile-menu").closest(".workspace").previousElementSibling.classList.remove("open"); }));
 all(".refresh-button").forEach((button) => button.addEventListener("click", () => state.token ? loadAll() : showToast("Open the demo or sign in first.", true)));
-byId("try-demo").addEventListener("click", openDemo); byId("notice-demo").addEventListener("click", openDemo); byId("open-connect").addEventListener("click", openDialog); byId("close-connect").addEventListener("click", closeDialog); byId("connect-form").addEventListener("submit", secureSignIn); byId("disconnect-button").addEventListener("click", disconnect); byId("complaint-form").addEventListener("submit", submitComplaint); byId("case-search").addEventListener("input", renderCases); byId("case-filter").addEventListener("change", renderCases); byId("mobile-menu").addEventListener("click", () => document.querySelector(".sidebar").classList.toggle("open")); byId("toggle-key").addEventListener("click", () => { const input = byId("api-key"); input.type = input.type === "password" ? "text" : "password"; byId("toggle-key").textContent = input.type === "password" ? "Show" : "Hide"; });
+byId("try-demo").addEventListener("click", openDemo); byId("notice-demo").addEventListener("click", openDemo); byId("reset-demo").addEventListener("click", resetDemo); byId("open-connect").addEventListener("click", openDialog); byId("close-connect").addEventListener("click", closeDialog); byId("connect-form").addEventListener("submit", secureSignIn); byId("disconnect-button").addEventListener("click", disconnect); byId("complaint-form").addEventListener("submit", submitComplaint); byId("case-search").addEventListener("input", renderCases); byId("case-filter").addEventListener("change", renderCases); byId("scenario-select").addEventListener("change", (event) => { const scenario = state.scenarios.find((item) => item.case_id === event.target.value); if (!scenario) return; if (scenario.domain === "employee_it") { document.querySelector('[data-view="it"]').click(); } else { selectCase(scenario.case_id); } }); byId("mobile-menu").addEventListener("click", () => document.querySelector(".sidebar").classList.toggle("open")); byId("toggle-key").addEventListener("click", () => { const input = byId("api-key"); input.type = input.type === "password" ? "text" : "password"; byId("toggle-key").textContent = input.type === "password" ? "Show" : "Hide"; });
 window.addEventListener("keydown", (event) => { if (event.key === "Escape") closeDialog(); });
 checkHealth();

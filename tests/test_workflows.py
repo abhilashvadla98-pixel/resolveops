@@ -433,7 +433,11 @@ def test_durable_workflow_pauses_and_resumes_after_service_restart(
         WorkflowLifecycleStatus.WAITING_APPROVAL
     )
     with factory() as session:
-        assert session.scalar(select(func.count()).select_from(RefundRecord)) == 1
+        assert session.scalar(
+            select(func.count()).select_from(RefundRecord).where(
+                RefundRecord.order_id == "ORD-48391"
+            )
+        ) == 1
         assert session.scalar(select(func.count()).select_from(WorkflowApprovalRecord)) == 1
 
     restarted_lifecycle = WorkflowLifecycleStore(
@@ -475,7 +479,11 @@ def test_durable_workflow_pauses_and_resumes_after_service_restart(
         WorkflowEventType.COMPLETED,
     ]
     with factory() as session:
-        assert session.scalar(select(func.count()).select_from(RefundRecord)) == 2
+        assert session.scalar(
+            select(func.count()).select_from(RefundRecord).where(
+                RefundRecord.order_id == "ORD-48391"
+            )
+        ) == 2
         assert session.scalar(select(func.count()).select_from(WorkflowApprovalRecord)) == 1
 
     assert restarted.resume(approval_decision) == result
