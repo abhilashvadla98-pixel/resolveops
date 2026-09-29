@@ -1,0 +1,255 @@
+{
+  "benchmark_id": "scale-20260929T214905Z",
+  "database": "PostgreSQL isolated benchmark database",
+  "limitations": [
+    "Runner memory excludes PostgreSQL server memory.",
+    "Direct query latency is not end-to-end HTTP latency.",
+    "Synthetic benchmark results do not establish production capacity."
+  ],
+  "measured_at": "2026-09-29T21:49:05.694738+00:00",
+  "platform": "Windows-11-10.0.26300-SP0",
+  "python": "3.12.10",
+  "results": [
+    {
+      "customer_cases": 100,
+      "database_bytes": 11951127,
+      "generated_records": 1523,
+      "generation_seconds": 0.317,
+      "it_requests": 25,
+      "knowledge_documents": 7,
+      "load_seconds": 0.581,
+      "loaded_records": 1523,
+      "manifest_files": {
+        "audit_events.jsonl": "e17779cac2620d0211ebab5497c01da0fdaa57cf7586c48d227f2326ec88802c",
+        "case_issue_actions.jsonl": "e91c192cb3014b6cf88a3841bf14c44d91aea757fc8b9952641b468a99ddeead",
+        "case_issue_evidence.jsonl": "628d90843563083cbde395fbbd0b103d04d4721e5d6e281a17690f4ec3aa87a0",
+        "case_issue_payments.jsonl": "b3e39a01e27aca19f796ced4c1df5ae2b37c9fe107d7adc48685d1eb2df535ab",
+        "case_issue_resolutions.jsonl": "ed480e830a9de8dc31da60a9fff9f1d1c1cf1a0544d9183645bc95c63204d071",
+        "case_issue_verifications.jsonl": "704b9a5ebeca794890ea9f105c83b1cc97f5cb91781617adab2afa8154ee868d",
+        "case_issues.jsonl": "843e284e5348f1b90929b52b549aff1653fce15ffb154bb4177e657942d539b8",
+        "cases.jsonl": "c93d166a5191853fc49bc8b3b84dd9a034ba747f3d8e5ea17fe365dc128cddc4",
+        "customers.jsonl": "8cb6968ba661742dddb47be8ab4337385619a439a6173ab1c58817bb6f531af3",
+        "directory_group_memberships.jsonl": "c50be45075535539b5ea1e74cd79b1fd6b0d888595ce07cf0fb6fbf059cf3a3c",
+        "directory_groups.jsonl": "49d24323616516172daeffc3af75e99c58edff5af0f895e4d51f12c093dc4fa2",
+        "employee_teams.jsonl": "6e16225e132fe7fcbc756960609e4d123616ee401b14eb84415f1fe6c366f37e",
+        "employees.jsonl": "e5d91a27dc3072e80420af299eac56ec784c63734757a78bc0b8ad78eccaeb21",
+        "enterprise_identities.jsonl": "7e39467fcde03a4c8eaacb06075fa7a0144ea8c227ecefddf580e1399fa87ea5",
+        "git_accounts.jsonl": "e3a992d96b1cb85294a3dcd27a8d53d4706481e13def1c8321836f0b5d1d36f4",
+        "git_repositories.jsonl": "9d33254513c5b176ea4e8174af5d660c6211c021b8fc8c62bfa14fd116d8f9b1",
+        "git_repository_access.jsonl": "a95ffa59c6976e188ee0b95b0e31e4e266e4989e2d3cb9f2f8f87b54292e74a8",
+        "it_access_cases.jsonl": "842ca683dad7d0877cde9e8b5764a65219cf231ccb1d0484f038dae308f147d4",
+        "it_access_requests.jsonl": "31361afae8a3703ab127fbcc0ee0d5201c3648d07d645143570bb9d750721e2a",
+        "it_notifications.jsonl": "96b230b2ebb48859c7cd758f849d143abded2ddc4e4b2b863ffc03e516fda877",
+        "it_tickets.jsonl": "7864d7ac81bc2af12a566e8fa1a72384b6e316b3d0e1a713668920056e8688fa",
+        "notifications.jsonl": "fcbd40bf396b2ee9fe4fb3d39240ad826c45f0eb8d8f055695813d4bba3b8031",
+        "operation_reliability_events.jsonl": "7bc9b1e2694216886a0023029d0e4b62cf46dd8b6386e8705e18c7c92073219e",
+        "operations.jsonl": "5a416e08ee938bbc81d4c3482341d83386419ab1fa88a8636ae54b0377875b28",
+        "order_items.jsonl": "4488faffe924eb1e9ecf800f543c2fa6c9cba347b083d86c4aeafb98e51ac9de",
+        "orders.jsonl": "e31a39379207529301bb9a3ce88bba2b4925c891301a7bd88b8e1e749fe64edc",
+        "payments.jsonl": "bf15eb70914c653576f8ea1e759bdbd75600b442f3d4a40ccb4e214e3ee54e73",
+        "policies.jsonl": "846531f7a4f4788b651e912a887f5f5490fae2e6f698d1953b987c682eb9d882",
+        "policy_issue_types.jsonl": "7dc1447613cf2d8c379eac94608b45ea3024e7ed1708cc57f946361c86161526",
+        "refunds.jsonl": "fb81d9c662c6f6bc1f924ac7536cd1184faa5d658d2cf7404b63b770aeb68f3e",
+        "return_items.jsonl": "ad6612b445c7cae568054dc0224eed4b5659862ffc2ab2314a5617a4ed6c2f7c",
+        "returns.jsonl": "34e3458c317515da33e21aebae4bfce58e1199a045951ab05c0d7afb997a6f65",
+        "workflow_approvals.jsonl": "6e87aef0745061c75aeaaabb4fcdb95f2f4fa4ab07e9a7875caa868a3ae50be2",
+        "workflow_events.jsonl": "1473541ca9de79f7c1023ac14863bd4949f01b7013506e0ba76e8c625bf7c890",
+        "workflow_runs.jsonl": "db7696bb6b7e9e47d183466bc44fdd5730847631013611ff6bc69ab1427d57b2"
+      },
+      "query_latency": {
+        "audit_timeline": {
+          "max_ms": 4.337,
+          "p50_ms": 3.419,
+          "p95_ms": 4.031
+        },
+        "case_detail": {
+          "max_ms": 9.346,
+          "p50_ms": 7.685,
+          "p95_ms": 9.337
+        },
+        "case_list": {
+          "max_ms": 4.334,
+          "p50_ms": 3.361,
+          "p95_ms": 3.98
+        },
+        "hybrid_retrieval": {
+          "max_ms": 14.482,
+          "p50_ms": 11.746,
+          "p95_ms": 12.981
+        },
+        "payment_lookup": {
+          "max_ms": 3.958,
+          "p50_ms": 3.064,
+          "p95_ms": 3.628
+        },
+        "workflow_lookup": {
+          "max_ms": 4.83,
+          "p50_ms": 3.444,
+          "p95_ms": 4.077
+        }
+      }
+    },
+    {
+      "customer_cases": 1000,
+      "database_bytes": 16145431,
+      "generated_records": 15178,
+      "generation_seconds": 1.509,
+      "it_requests": 250,
+      "knowledge_documents": 7,
+      "load_seconds": 3.737,
+      "loaded_records": 15178,
+      "manifest_files": {
+        "audit_events.jsonl": "207254a1ebc67a06f57113d56cd308acda85a043158d13919295ec3a39a8f7df",
+        "case_issue_actions.jsonl": "0ffdca525504995a14e260e5891869a1555403f3b846e249a211919094b1d60c",
+        "case_issue_evidence.jsonl": "891e476cd1f38d4d0dcac0cf25ce8176705df9fbe062acf1cba75d8e856ccfd5",
+        "case_issue_payments.jsonl": "e066cf4a6fa74f83fcf77bc62af239024de29357c7518f1a3805484fc9a00c71",
+        "case_issue_resolutions.jsonl": "49b39dd62f26b0669b4708c0a6caac8579134f34bdf96a559cb90c2c05a2565b",
+        "case_issue_verifications.jsonl": "73d7e01634bbd2161d324aa4286d893d327d1ae91010f42cc025767387bcc68a",
+        "case_issues.jsonl": "0e3c8ec9d2ebe7f23ee34dd74931dce32a9d6176de871ca3e0fa539357fe307c",
+        "cases.jsonl": "96b269172a48a55e872d4a26a657ca964394f0c666993c234909014a9942f808",
+        "customers.jsonl": "94e4773e889ef8fd3072166f202d31e17962c3940c50c48ec300c591866a4edd",
+        "directory_group_memberships.jsonl": "94f1ac56f581b99b4c1e5fbb0c33efb37f71676cefe661a67eeaa49770c65e50",
+        "directory_groups.jsonl": "49d24323616516172daeffc3af75e99c58edff5af0f895e4d51f12c093dc4fa2",
+        "employee_teams.jsonl": "6e16225e132fe7fcbc756960609e4d123616ee401b14eb84415f1fe6c366f37e",
+        "employees.jsonl": "2e88b5f4cac24ca1fb45810743d7db8bd21fd9285f7d6378ed28eba4836b689f",
+        "enterprise_identities.jsonl": "e76c8303f0eb388b6c69f7e448974d1232d175b4fc236b9e5185e6e594111c91",
+        "git_accounts.jsonl": "966910b874314f697b2aae06496191725249506af752519a8cbbf18e124924b6",
+        "git_repositories.jsonl": "9d33254513c5b176ea4e8174af5d660c6211c021b8fc8c62bfa14fd116d8f9b1",
+        "git_repository_access.jsonl": "ab11d3b6d4751ec862fc13887bccaca68148fbbd7a9ae3e8f2eea32bb64cc86e",
+        "it_access_cases.jsonl": "9ddbe9f1b82d5b3a8eb5f4db1b88d76048bd86f26979cd313029fb72a59afc66",
+        "it_access_requests.jsonl": "802941ec855d9236df8de533b710c0a34b1ddde43d1fabbeaa9d5e5f2b1b1540",
+        "it_notifications.jsonl": "44c016e6556b3941fec78404442c5f50c9cf9c0210f9af2378599a0dd49fb6c7",
+        "it_tickets.jsonl": "52cff0b3d9f57daa6d95e30da7edc72210a965fdfe4d628dc7a4478d18510a22",
+        "notifications.jsonl": "ca3df074b29dfc05406f9c04ee44019db263527ee583c8c52451ddf9e68de0a9",
+        "operation_reliability_events.jsonl": "40b587fb908d250d5bc90146f7f6bdc5d8563257808fa45f2256a7c802c0489d",
+        "operations.jsonl": "ce7d907ff224f6822847c6a9f6b95066cab6769c18e35a571c8f5c13a6e3d52e",
+        "order_items.jsonl": "b7a0aced5f69c863f0fd6001bf62de221ae5b88a1209f68bf3705a81a7a00de2",
+        "orders.jsonl": "f3bb1cdb3280c78d31ea778be272ea8d310f2d096aec8510f4a4e1585e5f562d",
+        "payments.jsonl": "290a67cb8f9a0b8cb43098b8a3afb269344b2bcb6241898971469af2c814e237",
+        "policies.jsonl": "846531f7a4f4788b651e912a887f5f5490fae2e6f698d1953b987c682eb9d882",
+        "policy_issue_types.jsonl": "7dc1447613cf2d8c379eac94608b45ea3024e7ed1708cc57f946361c86161526",
+        "refunds.jsonl": "6c64277c3964a945d8137139f228cc157a73003cc8450b05d1eeabb5f6a49e2c",
+        "return_items.jsonl": "fb553183237568f42dc17176ebbf54418af5ef0978225a592b935b359710f6b2",
+        "returns.jsonl": "396d0d8f819a42bd6c6273efefb7d17fc17b516faaf482b3d2eccaedf488ecc1",
+        "workflow_approvals.jsonl": "f52543040b49937b603547d73f40f2f55ac812dcacb090ce39210f62aa824b4b",
+        "workflow_events.jsonl": "41b7f9aee1ad7c46355a85306ad2631d0139743e9fe5afaa345027e9fc2483b9",
+        "workflow_runs.jsonl": "18c107dd656ad61394c1a46ea043f861274806d21fb42da6bd932cf8e616e17b"
+      },
+      "query_latency": {
+        "audit_timeline": {
+          "max_ms": 6.219,
+          "p50_ms": 3.885,
+          "p95_ms": 5.445
+        },
+        "case_detail": {
+          "max_ms": 14.968,
+          "p50_ms": 9.733,
+          "p95_ms": 13.091
+        },
+        "case_list": {
+          "max_ms": 6.332,
+          "p50_ms": 4.993,
+          "p95_ms": 6.228
+        },
+        "hybrid_retrieval": {
+          "max_ms": 14.897,
+          "p50_ms": 11.265,
+          "p95_ms": 13.732
+        },
+        "payment_lookup": {
+          "max_ms": 8.994,
+          "p50_ms": 4.217,
+          "p95_ms": 6.988
+        },
+        "workflow_lookup": {
+          "max_ms": 5.635,
+          "p50_ms": 3.771,
+          "p95_ms": 5.371
+        }
+      }
+    },
+    {
+      "customer_cases": 10000,
+      "database_bytes": 48357903,
+      "generated_records": 151862,
+      "generation_seconds": 10.56,
+      "it_requests": 2500,
+      "knowledge_documents": 7,
+      "load_seconds": 34.988,
+      "loaded_records": 151862,
+      "manifest_files": {
+        "audit_events.jsonl": "c34a21ccc68faa58cd096bf65975ec5d8b965256a152560a850efee386c2a45c",
+        "case_issue_actions.jsonl": "2feaf2d7f81284a0789f01e87e82f0f11423387cafd5d5d6b58f1f74b7c5fb52",
+        "case_issue_evidence.jsonl": "45de998b9001059027742c3133178d621bfda3bf0793945e5771ef762d641a51",
+        "case_issue_payments.jsonl": "81ba947122c23e6ea4bd4f06b1336bcc4608be8d871fc3736245dfee03099a2b",
+        "case_issue_resolutions.jsonl": "bce6eb9324f2a74b6a2e149a90167047625d08548f8157ab79afe4ee3e6b713c",
+        "case_issue_verifications.jsonl": "30cad29946dcdf8a2d07e7cbaae8edc37a03402c18b11765270209181b8cc673",
+        "case_issues.jsonl": "ee496d6ba7c83dde8dbec2aeb6603cd51bedba554d77d6ea485529f86555098c",
+        "cases.jsonl": "a95c3c2d3fe33fc94e7a7884284fad7ca2d8ff2ceade38128e6a84a09bff6338",
+        "customers.jsonl": "fae12aaa41cb9af9bbc03bbe91adcdbd91452ecf7eed69bac8aacba89b2e8985",
+        "directory_group_memberships.jsonl": "d3731adb937e1293c9e4f3c52e3dff9570b9a9ac01267b79c63da0906cdfff99",
+        "directory_groups.jsonl": "49d24323616516172daeffc3af75e99c58edff5af0f895e4d51f12c093dc4fa2",
+        "employee_teams.jsonl": "6e16225e132fe7fcbc756960609e4d123616ee401b14eb84415f1fe6c366f37e",
+        "employees.jsonl": "ce803d568903067eb85861cf602a40304d27b96507e1447f1cef2284c3b9fce9",
+        "enterprise_identities.jsonl": "474b9ed8a7c79281be0b4351adb73c206485d4a989e2aad8926909d62234df39",
+        "git_accounts.jsonl": "a00f9710ff2e91b53fd20b6637200af0cf55eb7a92282c086177deafab74d301",
+        "git_repositories.jsonl": "9d33254513c5b176ea4e8174af5d660c6211c021b8fc8c62bfa14fd116d8f9b1",
+        "git_repository_access.jsonl": "80752e99e0c5691c7011e0a0c2c10b09179a693cc1384bb2e964fb2b5d0dde87",
+        "it_access_cases.jsonl": "536f0fd0a959f1f6e34314fe0f77d84a8f16e2663a558a535a8f788812f5a19a",
+        "it_access_requests.jsonl": "8cfaf54bc0030f275aa93def25a1ba6f5c7a20d7de3cc29389aa1866fcad814f",
+        "it_notifications.jsonl": "8c756ceb96e3936ad3d56fc80123fc12639ba92a5cc996d48367bd1779df0e8d",
+        "it_tickets.jsonl": "7202d7cc80dc8a610244bab0b391f4b5e0bd1d69b280ea50219892fd0b83f857",
+        "notifications.jsonl": "d46cb7eca2a9001e645b002e4f50c3b2407a4dcfa110110304c6154050cb6641",
+        "operation_reliability_events.jsonl": "a223ddd812878c69e677aa9a29f85edf3dac387383869b26b0141a88a37aa65c",
+        "operations.jsonl": "08eb7f40047d59f15af5be56acbbe8e009e8b08e571c82a77a58c0f3aed18731",
+        "order_items.jsonl": "25cb7310f60f9019213dce36d29a8ba63e3bcc2978f9488031b29fc1ff52cbd7",
+        "orders.jsonl": "e93d2c2c0e46572f8fab101fd0402e655aad44af56b64475aa79a3e24c20ef35",
+        "payments.jsonl": "ad6728f080bbf623392716e480e48364ea688d6b4161a72f032b2aa7bd796bc5",
+        "policies.jsonl": "846531f7a4f4788b651e912a887f5f5490fae2e6f698d1953b987c682eb9d882",
+        "policy_issue_types.jsonl": "7dc1447613cf2d8c379eac94608b45ea3024e7ed1708cc57f946361c86161526",
+        "refunds.jsonl": "33b9f6b86f5ae085fdc86ceaa09f6cc9db8221321e6ff516790a43806e46780e",
+        "return_items.jsonl": "1a01e04d5d6cf5c7bf9d2299a9dc606e90be9cc0c832f26c73e6fd6ef7578f50",
+        "returns.jsonl": "cb7f1768f12b24f4996c6e886f27716c857f5cd6076c44f87255c8370b070e31",
+        "workflow_approvals.jsonl": "6b43a527670faa8d0b75e9f438fa07c19564265ec73e2ea871b0582e8a963887",
+        "workflow_events.jsonl": "db96c18bb7268fb9067ccf9d9bf83f2757224dff951486e503881c24433a0d91",
+        "workflow_runs.jsonl": "93d74f97b17b2724e0dfad5a6d5cee0f1de850be7f4e73adf91704d051de5f06"
+      },
+      "query_latency": {
+        "audit_timeline": {
+          "max_ms": 6.594,
+          "p50_ms": 3.611,
+          "p95_ms": 5.441
+        },
+        "case_detail": {
+          "max_ms": 11.072,
+          "p50_ms": 8.95,
+          "p95_ms": 10.845
+        },
+        "case_list": {
+          "max_ms": 8.079,
+          "p50_ms": 5.899,
+          "p95_ms": 7.455
+        },
+        "hybrid_retrieval": {
+          "max_ms": 21.562,
+          "p50_ms": 12.209,
+          "p95_ms": 15.093
+        },
+        "payment_lookup": {
+          "max_ms": 5.8,
+          "p50_ms": 3.812,
+          "p95_ms": 5.282
+        },
+        "workflow_lookup": {
+          "max_ms": 5.532,
+          "p50_ms": 3.907,
+          "p95_ms": 5.369
+        }
+      }
+    }
+  ],
+  "runner_cpu_seconds": 37.891,
+  "runner_peak_traced_memory_bytes": 195365262,
+  "samples_per_query": 20,
+  "seed": 20260929
+}

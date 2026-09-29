@@ -46,6 +46,7 @@ EXPECTED_TABLES = {
     "orders",
     "operations",
     "operation_reliability_events",
+    "operator_feedback",
     "payments",
     "policies",
     "policy_issue_types",

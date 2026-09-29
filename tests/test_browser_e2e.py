@@ -97,6 +97,7 @@ def test_operator_completes_demo_approval_workflow(running_demo: str, tmp_path: 
         expect(page.locator("#sidebar-connection")).to_have_text("Connected")
         expect(page.locator("#case-table")).to_contain_text("CASE-1001")
 
+        page.locator("#new-case-button").click()
         page.locator("#complaint-text").fill(
             "I returned my headphones last week and still have not received my refund."
         )
@@ -136,12 +137,13 @@ def test_operator_completes_demo_approval_workflow(running_demo: str, tmp_path: 
             full_page=True,
         )
         page.locator('[data-view="it"]').click()
+        page.locator('[data-it-case="ITCASE-2001"]').click()
         expect(page.locator("#it-step-identity")).to_contain_text("MFA enrolled")
         expect(page.locator("#it-step-approval")).to_contain_text("Approved by")
         page.locator("#run-it-workflow").click()
-        expect(page.locator("#it-result-status")).to_have_text("Completed")
-        expect(page.locator("#it-result")).to_contain_text("Access Verified")
-        expect(page.locator("#it-result")).to_contain_text("independently verified")
+        expect(page.locator("#it-result-status")).to_have_text("Resolved")
+        expect(page.locator("#it-result")).to_contain_text("Fresh persisted state")
+        expect(page.locator("#it-result")).to_contain_text("active repository access")
         expect(page.locator("#it-step-grant")).to_contain_text("Active Write")
         page.screenshot(
             path=screenshot_directory / "resolveops-employee-it.png",

@@ -1,5 +1,19 @@
 # Customer-response evaluation
 
+## Human review workflow
+
+The checked-in truth remains **0/24 human reviewed**. Export an unlabeled review sheet with:
+
+```text
+python scripts/export_response_review.py
+```
+
+The owner fills `yes` or `no` for factual accuracy, groundedness, correct outcome, absence of an
+unsupported promise, clarity, and tone; then selects `approved` or `needs_revision`, identifies
+the reviewer, and writes a note. Importing validates completeness and writes a separate candidate
+file under `review-work/`; it never changes the versioned dataset or promotes feedback
+automatically.
+
 This set contains 24 grounded response candidates covering verified refund creation, an already
 existing refund that is still pending externally, and cases that must stop for review. The automated
 checks require verified identifiers and policy references, require outcome-specific language, and

@@ -33,3 +33,29 @@ Trace tests confirm that exception messages are not recorded. Current spans cont
 route templates, role/model/provider names, counts, statuses, and timing only. Any future telemetry
 attribute must be reviewed before addition; customer data, evidence, policy excerpts, prompts,
 outputs, credentials, and raw request bodies remain prohibited.
+
+## Failures found during the data and scale pass
+
+### Invalid authorization-hold refund histories
+
+A 100-case generated dataset failed two quality checks because authorization-hold payments entered
+the resolved refund path even though no charge had been captured. The defect was in the generator,
+not the validator. The generator now excludes authorization holds from that path, and the same
+twelve-check validation completes with zero failures. No invalid dataset was loaded.
+
+### Case queue sequential scan
+
+The 10,000-case PostgreSQL query plan showed a sequential scan and top-N sort for the operator
+queue. This was a reproducible data-size problem, so an `updated_at` index was added through an
+Alembic migration and model metadata. The inspected execution changed from 11.903 ms to 0.035 ms;
+repeated queue p95 changed from 7.455 ms to 4.090 ms. The extra index storage and write maintenance
+are documented rather than treated as free.
+
+### Rate-limit saturation
+
+The first unpaced API run generated far more traffic than the configured boundary: 15,355 requests
+in 30 seconds, with 15,177 rejected/failed requests. This did not measure ordinary application
+capacity. The runner was changed to support an explicit target rate, and a 1.5 requests/second
+follow-up completed all 90 requests successfully. Future capacity work must classify status codes,
+measure the server and database, and test controlled rate steps rather than equating rate limiting
+with backend failure.

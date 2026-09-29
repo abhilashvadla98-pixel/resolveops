@@ -4,6 +4,11 @@ ResolveOps evaluates retrieval and end-to-end workflow behavior separately. This
 final answer from hiding bad retrieval, and prevents a retrieval score from being mistaken for safe
 case resolution.
 
+Every evaluation set has a manifest under `evals/manifests/` with a stable dataset ID, semantic
+version, exact record count, SHA-256 hash, task type, split, creation method, and review status. The
+five manifests currently cover 115 records. Tests verify every hash so a changed dataset cannot be
+mistaken for the previous baseline.
+
 ## Retrieval evaluation
 
 The retrieval benchmark contains 50 hand-authored questions over six versioned policy documents.
@@ -72,6 +77,20 @@ manual-review recommendations, provider failure, unknown evidence references, an
 citations. Valid reasoning must point to evidence and policy chunks actually supplied to it. Natural
 language style is not scored because there is no calibrated human-labeled rubric yet. An LLM judge
 should be added only for a genuinely subjective requirement and calibrated against human labels.
+
+Response candidates can be exported with `scripts/export_response_review.py`. The owner rubric asks
+for factual accuracy, groundedness, correct outcome, absence of unsupported promises, clarity, and
+tone. `scripts/import_response_review.py` requires an explicit reviewer, decision, note, and yes/no
+answer for every rubric field. It writes a separate candidate artifact and never changes the
+versioned dataset automatically. Current human-review truth remains **0/24**.
+
+## Reproducible experiment records
+
+`scripts/run_experiment.py` records or compares lightweight JSON artifacts. Each artifact binds the
+result to the current Git revision, dataset identity/version/hash, provider and model, prompt and
+schema versions, embedding and retrieval settings, policy/index version, task metrics, latency,
+provider-reported tokens/cost, failure counts, and timestamp. Unknown usage or cost remains absent;
+it is never estimated and presented as provider data.
 
 ## Optional live reasoning evaluation
 

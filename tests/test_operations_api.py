@@ -95,6 +95,53 @@ def test_complaint_intake_case_list_and_timeline(
     ]
 
 
+def test_operator_queues_audit_and_feedback_use_persisted_records(
+    operations_api: tuple[TestClient, dict[str, ActorRole], Engine],
+) -> None:
+    client, role, _engine = operations_api
+
+    queue = client.get("/api/v1/case-queue", params={"query": "CASE-1001", "page_size": 10})
+    assert queue.status_code == 200
+    assert queue.json()["total"] == 1
+    assert queue.json()["items"][0]["case_id"] == "CASE-1001"
+
+    it_queue = client.get("/api/v1/it/cases", params={"page_size": 10})
+    assert it_queue.status_code == 200
+    assert it_queue.json()["total"] == 1
+    assert it_queue.json()["items"][0]["case_id"] == "ITCASE-2001"
+
+    submitted = client.post(
+        "/api/v1/feedback",
+        json={
+            "case_id": "CASE-1001",
+            "kind": "classification_correction",
+            "original_value": {"issue_type": "duplicate_charge"},
+            "corrected_value": {"issue_type": "authorization_hold"},
+            "reason": "The second payment was authorized but never captured.",
+            "model_provider": "offline",
+            "model_name": "scripted",
+            "prompt_version": "intake-v1",
+        },
+    )
+    assert submitted.status_code == 201
+    feedback = submitted.json()
+    assert feedback["review_status"] == "pending"
+    assert feedback["dataset_example_id"] is None
+
+    role["value"] = ActorRole.APPROVER
+    reviewed = client.post(
+        f"/api/v1/feedback/{feedback['feedback_id']}/review",
+        json={"status": "reviewed", "note": "Payment state supports the correction."},
+    )
+    assert reviewed.status_code == 200
+    assert reviewed.json()["review_status"] == "reviewed"
+    assert reviewed.json()["dataset_example_id"] is None
+
+    audit = client.get("/api/v1/audit/events", params={"case_id": "CASE-1001"})
+    assert audit.status_code == 200
+    assert all(item["case_id"] == "CASE-1001" for item in audit.json())
+
+
 def test_employee_access_api_executes_verifies_and_replays_safely(
     operations_api: tuple[TestClient, dict[str, ActorRole], Engine],
 ) -> None:

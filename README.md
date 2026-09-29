@@ -102,6 +102,11 @@ Open [http://127.0.0.1:8000](http://127.0.0.1:8000). ResolveOps opens the operat
 automatically; choose **Try demo**.
 No model key or paid service is required. The seed command builds a deterministic local policy index.
 
+For the persistent local Docker version, copy `compose.env.example` to an ignored `.env.compose`,
+replace its two local secrets, then run `docker compose --env-file .env.compose --profile demo up
+--build`. The development Compose stack enables only the restricted synthetic demo workspace by
+default; production startup continues to reject demo mode.
+
 ![ResolveOps Customer Operations workflow](docs/assets/resolveops-customer-workflow.png)
 
 | Reliability evidence | Verified Employee/IT access |
@@ -120,6 +125,11 @@ No model key or paid service is required. The seed command builds a deterministi
 7. Run it again to show that ResolveOps detects existing access and creates no duplicate grant.
 
 The same journey is exercised in Chromium by `tests/test_browser_e2e.py`.
+
+The console is deliberately an internal operations product rather than a marketing page. It uses
+compact queues, filters and pagination, a three-pane case workspace, evidence and policy context,
+durable approvals, operator corrections, real IT records, reliability traces, and a global audit
+table. The default theme is neutral and light, with an optional dark mode.
 
 ## Safety and recovery design
 
@@ -172,6 +182,36 @@ Detailed methodology and limitations live in [Evaluation](docs/EVALUATION.md),
 [retrieval results](evals/retrieval/README.md), and
 [response review](evals/responses/README.md).
 
+## Synthetic data and the feedback flywheel
+
+`scripts/generate_data.py` creates deterministic, connected operational histories for both product
+domains. Demo, small, medium, and large profiles are configurable by exact customer-case count, IT
+request count, seed, and anomaly rate. Each generated dataset includes a versioned manifest with
+row counts, labels, and file hashes. `scripts/validate_data.py` runs twelve fail-closed integrity and
+business checks before `scripts/load_data.py` will write anything.
+
+The small checked-in fixture contains 307 records and passes all twelve checks. Larger generated
+data stays out of Git. The completed PostgreSQL benchmark reached 151,862 records: 10,000 customer
+cases and 2,500 IT requests.
+
+The console can save structured operator corrections with case/workflow/trace context, original and
+corrected values, reason, operator, and model/prompt metadata. Corrections remain pending until a
+separate human review. They are never silently converted into evaluation ground truth.
+
+Versioned manifests currently cover all five evaluation sets—115 examples total. Lightweight
+experiment artifacts bind results to a Git revision, exact dataset hash, model/prompt/schema,
+retrieval/index configuration, latency, provider-reported usage/cost, and failure counts.
+
+```powershell
+uv run --locked python scripts/generate_data.py --profile demo --output generated-data/demo
+uv run --locked python scripts/validate_data.py generated-data/demo
+uv run --locked python scripts/load_data.py generated-data/demo
+uv run --locked python scripts/export_response_review.py
+```
+
+See [Synthetic data](data/README.md), [experiment artifacts](experiments/README.md), and the
+[complete engineering case study](docs/CASE_STUDY.md).
+
 ## Observability
 
 The console and authenticated APIs expose:
@@ -215,6 +255,19 @@ choice, credentials/OIDC setup, secrets, and explicit launch authorization. The 
 the complete recruiter walkthrough without paid infrastructure. See
 [Deployment](docs/DEPLOYMENT.md) for the exact order, rollback, and cost/resilience tradeoffs.
 
+## Measured scale and performance
+
+The isolated PostgreSQL scale run completed at 1,523, 15,178, and 151,862 records. At the largest
+point, the case queue exposed a sequential scan. A measured `updated_at` index changed the inspected
+plan from 11.903 ms to 0.035 ms and repeated queue p95 from 7.455 ms to 4.090 ms, with an explicit
+storage/write-maintenance tradeoff.
+
+A paced read-only API soak completed 90/90 requests successfully over 60.58 seconds at 1.486
+requests/second, with 16 ms p50 and 47 ms p95 client-observed latency. The earlier unpaced stress
+run hit the designed rate limit; it is preserved as protection/saturation evidence and not presented
+as backend capacity. See [Performance](docs/PERFORMANCE.md) and
+[the index decision](benchmarks/scale/CASE_QUEUE_INDEX.md).
+
 ## Repository map
 
 ```text
@@ -222,6 +275,9 @@ src/resolveops/          API, workflows, actions, security, retrieval, observabi
 domain_packs/            versioned policies and domain fixtures
 migrations/              Alembic schema history
 evals/                   retrieval, workflow, response, reasoning, and timing evidence
+data/                    synthetic data contracts, checked-in demo fixture, and manifests
+experiments/             reproducible experiment artifact format and measured run metadata
+benchmarks/              guarded scale/load runners and preserved measured results
 tests/                   unit, security, PostgreSQL, migration, and browser tests
 infra/terraform/         reviewed AWS reference deployment
 docs/adr/                architecture decision records
@@ -230,6 +286,7 @@ docs/adr/                architecture decision records
 Recommended reading:
 
 - [Operator console](docs/OPERATOR_CONSOLE.md)
+- [Engineering case study](docs/CASE_STUDY.md)
 - [Engineering notes](docs/ENGINEERING_NOTES.md)
 - [Code audit](docs/CODE_AUDIT.md)
 - [Non-goals](docs/NON_GOALS.md)

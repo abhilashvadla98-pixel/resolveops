@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://resolveops.example/schemas/synthetic-manifest-v1.json",
+  "title": "ResolveOps synthetic dataset manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["dataset_id", "version", "source", "profile", "seed", "counts", "files", "total_records"],
+  "properties": {
+    "dataset_id": {"const": "resolveops.synthetic.operations"},
+    "version": {"type": "string"},
+    "description": {"type": "string"},
+    "source": {"const": "synthetic"},
+    "creation_method": {"type": "string"},
+    "profile": {"enum": ["demo", "small", "medium", "large"]},
+    "seed": {"type": "integer"},
+    "anomaly_rate": {"type": "number", "minimum": 0, "maximum": 1},
+    "labels": {"type": "array", "items": {"type": "string"}, "uniqueItems": true},
+    "case_categories": {"type": "array", "items": {"type": "string"}, "uniqueItems": true},
+    "created_at": {"type": "string", "format": "date-time"},
+    "generator_version": {"type": "string"},
+    "counts": {"type": "object", "additionalProperties": {"type": "integer", "minimum": 0}},
+    "files": {"type": "object", "additionalProperties": {"type": "string", "pattern": "^[a-f0-9]{64}$"}},
+    "total_records": {"type": "integer", "minimum": 0}
+  }
+}

@@ -7,12 +7,14 @@ from sqlalchemy import Engine, create_engine
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 
+from resolveops.api import dependencies
 from resolveops.api.dependencies import (
     get_authenticator,
     get_demo_session_authenticator,
     get_tenant_registry,
 )
 from resolveops.api.main import app
+from resolveops.config import Settings
 from resolveops.database.base import Base
 from resolveops.database.seed import seed_all
 from resolveops.database.session import create_session_factory
@@ -21,6 +23,21 @@ from resolveops.security.tenancy import TenantSessionRegistry
 
 NOW = datetime(2026, 9, 29, 16, 0, tzinfo=UTC)
 SECRET = "demo-session-test-secret-0123456789abcdef"
+
+
+def test_empty_api_identity_list_allows_demo_only_authentication(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    local = Settings(
+        database_url="sqlite:///local.db",
+        api_key_identities_json="[]",
+    )
+    monkeypatch.setattr(dependencies, "get_settings", lambda: local)
+    dependencies.get_authenticator.cache_clear()
+    try:
+        assert dependencies.get_authenticator() is None
+    finally:
+        dependencies.get_authenticator.cache_clear()
 
 
 @pytest.fixture

@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://resolveops.example/schemas/synthetic-record-envelope-v1.json",
+  "title": "ResolveOps synthetic record envelope",
+  "type": "object",
+  "required": ["workspace_id"],
+  "properties": {
+    "workspace_id": {"type": "string", "minLength": 1},
+    "scenario_label": {"type": "string", "minLength": 1}
+  },
+  "additionalProperties": true
+}

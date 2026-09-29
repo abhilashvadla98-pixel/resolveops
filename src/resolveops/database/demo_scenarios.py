@@ -26,7 +26,11 @@ from resolveops.database.records import (
     ReturnItemRecord,
     ReturnRecord,
 )
-from resolveops.database.seed import seed_customer_operations, seed_simulator_resources
+from resolveops.database.seed import (
+    seed_additional_it_cases,
+    seed_customer_operations,
+    seed_simulator_resources,
+)
 from resolveops.database.simulator_records import NotificationRecord, TicketRecord
 from resolveops.database.store import CustomerOperationsStore
 from resolveops.database.workflow_records import (
@@ -230,6 +234,7 @@ def reset_demo_scenarios(session: Session) -> None:
     session.flush()
     seed_customer_operations(session)
     seed_simulator_resources(session)
+    seed_additional_it_cases(session)
     seed_demo_scenarios(session)
 
 

@@ -1,0 +1,64 @@
+{
+  "concurrency": 3,
+  "duration_seconds": 60.578,
+  "error_count": 0,
+  "error_rate": 0.0,
+  "limitations": [
+    "Mutation endpoints are excluded to protect shared demo state.",
+    "Client-side resource measurements do not include server CPU or memory."
+  ],
+  "measured": true,
+  "mode": "bounded_read_only_soak",
+  "p50_ms": 16.0,
+  "p95_ms": 47.0,
+  "requests": 90,
+  "requests_per_second": 1.486,
+  "routes": {
+    "/api/v1/approvals": {
+      "errors": 0,
+      "p50_ms": 15.0,
+      "p95_ms": 78.0,
+      "requests": 19
+    },
+    "/api/v1/audit/events?limit=50": {
+      "errors": 0,
+      "p50_ms": 16.0,
+      "p95_ms": 78.0,
+      "requests": 13
+    },
+    "/api/v1/case-queue?page_size=25": {
+      "errors": 0,
+      "p50_ms": 15.0,
+      "p95_ms": 47.0,
+      "requests": 8
+    },
+    "/api/v1/cases/CASE-1001": {
+      "errors": 0,
+      "p50_ms": 15.0,
+      "p95_ms": 47.0,
+      "requests": 16
+    },
+    "/api/v1/cases/CASE-1001/timeline": {
+      "errors": 0,
+      "p50_ms": 15.0,
+      "p95_ms": 32.0,
+      "requests": 10
+    },
+    "/api/v1/it/cases?page_size=25": {
+      "errors": 0,
+      "p50_ms": 16.0,
+      "p95_ms": 47.0,
+      "requests": 10
+    },
+    "/api/v1/reliability/summary": {
+      "errors": 0,
+      "p50_ms": 15.0,
+      "p95_ms": 78.0,
+      "requests": 14
+    }
+  },
+  "status_counts": {
+    "200": 90
+  },
+  "target_rps": 1.5
+}

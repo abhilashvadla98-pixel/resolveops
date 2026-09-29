@@ -1,0 +1,21 @@
+{
+  "checks_run": [
+    "manifest_integrity",
+    "unique_identifiers",
+    "foreign_keys_resolve",
+    "workspace_isolation",
+    "currency_consistency",
+    "refund_within_captured_amount",
+    "return_after_delivery",
+    "approval_precedes_action",
+    "verified_completion_is_fresh",
+    "valid_policy_versions",
+    "valid_timestamp_order",
+    "supported_states"
+  ],
+  "dataset_id": "resolveops.synthetic.operations",
+  "dataset_version": "1.0.0",
+  "failures": [],
+  "passed": true,
+  "records_checked": 307
+}

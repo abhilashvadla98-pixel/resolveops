@@ -49,8 +49,11 @@ def get_authenticator() -> APIKeyAuthenticator | None:
     configured = get_settings().api_key_identities_json
     if configured is None:
         return None
+    raw_configuration = configured.get_secret_value().strip()
+    if raw_configuration == "[]":
+        return None
     try:
-        return APIKeyAuthenticator.from_json(configured.get_secret_value())
+        return APIKeyAuthenticator.from_json(raw_configuration)
     except AuthenticationConfigurationError as exc:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,

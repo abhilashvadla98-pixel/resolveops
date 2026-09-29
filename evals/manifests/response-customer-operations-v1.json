@@ -1,0 +1,13 @@
+{
+  "dataset_id": "resolveops.response.customer_operations",
+  "version": "1.0.0",
+  "description": "Candidate customer responses with automated phrase and grounding assertions plus owner review fields.",
+  "source": "hand-authored synthetic response cases",
+  "creation_method": "Workflow outcomes paired with required and forbidden response claims; human labels remain pending.",
+  "path": "evals/responses/customer_responses.jsonl",
+  "labels": ["required_phrases", "forbidden_phrases", "human_review_status"],
+  "case_categories": ["action_verified", "needs_review", "waiting_external"],
+  "record_count": 24,
+  "sha256": "1a9dce597911f45fa794ac2d1cfe87c46ee9ebd81ca5a33989f9bddded9e3ee4",
+  "created_date": "2026-09-29"
+}

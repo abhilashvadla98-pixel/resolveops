@@ -5,14 +5,17 @@ from sqlalchemy.orm import Session
 
 from resolveops.config import get_settings
 from resolveops.database.employee_it_records import (
+    DirectoryGroupMembershipRecord,
     DirectoryGroupRecord,
     EmployeeRecord,
     EmployeeTeamMembershipRecord,
     EnterpriseIdentityRecord,
     GitAccountRecord,
+    GitRepositoryAccessRecord,
     GitRepositoryRecord,
     ITAccessCaseRecord,
     ITAccessRequestRecord,
+    ITNotificationRecord,
     ITTicketRecord,
     TeamRecord,
 )
@@ -25,6 +28,7 @@ from resolveops.employee_it.models import (
     GitAccountStatus,
     IdentityStatus,
     ITCaseStatus,
+    ITNotificationStatus,
     ITTicketStatus,
     MembershipStatus,
     RepositoryAccessLevel,
@@ -415,6 +419,133 @@ def seed_employee_it(session: Session) -> bool:
     )
     session.flush()
     return True
+
+
+def seed_additional_it_cases(session: Session) -> bool:
+    created = False
+    base = datetime(2026, 9, 22, 9, 0, tzinfo=UTC)
+    definitions = (
+        ("2002", "Elena Brooks", AccessRequestStatus.PENDING_APPROVAL, ITCaseStatus.OPEN, True),
+        ("2003", "Marcus Reed", AccessRequestStatus.FULFILLED, ITCaseStatus.RESOLVED, True),
+        ("2004", "Priya Shah", AccessRequestStatus.APPROVED, ITCaseStatus.INVESTIGATING, False),
+    )
+    for offset, (suffix, name, request_status, case_status, mfa_enrolled) in enumerate(definitions):
+        employee_id = f"EMP-{suffix}"
+        if session.get(EmployeeRecord, employee_id) is not None:
+            continue
+        requested_at = base + timedelta(hours=offset * 3)
+        identity_id = f"IDENTITY-{suffix}"
+        git_account_id = f"GIT-ACCOUNT-{suffix}"
+        case_id = f"ITCASE-{suffix}"
+        request_id = f"ACCESS-REQUEST-{suffix}"
+        employee = EmployeeRecord(
+            employee_id=employee_id,
+            name=name,
+            work_email=f"{name.lower().replace(' ', '.')}@example.com",
+            manager_employee_id="EMP-2000",
+            status=EmploymentStatus.ACTIVE,
+        )
+        session.add(employee)
+        session.flush()
+        session.add_all(
+            [
+                EmployeeTeamMembershipRecord(
+                    employee_id=employee_id,
+                    team_id="TEAM-ML-PLATFORM",
+                    status=MembershipStatus.ACTIVE,
+                    joined_at=requested_at - timedelta(days=1),
+                ),
+                EnterpriseIdentityRecord(
+                    identity_id=identity_id,
+                    employee_id=employee_id,
+                    username=name.lower().replace(" ", "."),
+                    status=IdentityStatus.ACTIVE,
+                    mfa_enrolled=mfa_enrolled,
+                ),
+            ]
+        )
+        session.flush()
+        session.add(
+            GitAccountRecord(
+                git_account_id=git_account_id,
+                identity_id=identity_id,
+                username=name.lower().replace(" ", "-"),
+                status=GitAccountStatus.ACTIVE,
+            )
+        )
+        session.flush()
+        access_case = ITAccessCaseRecord(
+            case_id=case_id,
+            employee_id=employee_id,
+            access_request_id=request_id,
+            status=case_status,
+            opened_at=requested_at,
+            updated_at=requested_at + timedelta(minutes=45),
+        )
+        session.add(access_case)
+        session.flush()
+        approved = request_status != AccessRequestStatus.PENDING_APPROVAL
+        session.add_all(
+            [
+                ITAccessRequestRecord(
+                    access_request_id=request_id,
+                    case_id=case_id,
+                    employee_id=employee_id,
+                    identity_id=identity_id,
+                    target_team_id="TEAM-ML-PLATFORM",
+                    repository_id="REPO-ML-PLATFORM",
+                    requested_level=RepositoryAccessLevel.WRITE,
+                    justification="Repository access required for an assigned platform project.",
+                    status=request_status,
+                    requested_at=requested_at,
+                    approved_by="EMP-2000" if approved else None,
+                    approved_at=requested_at + timedelta(minutes=20) if approved else None,
+                ),
+                ITTicketRecord(
+                    ticket_id=f"IT-TICKET-{suffix}",
+                    case_id=case_id,
+                    subject="ML Platform repository access",
+                    description="Validate manager approval, identity, MFA, group, and repository state.",
+                    status=ITTicketStatus.RESOLVED
+                    if request_status == AccessRequestStatus.FULFILLED
+                    else ITTicketStatus.IN_PROGRESS,
+                    created_at=requested_at,
+                    updated_at=requested_at + timedelta(minutes=45),
+                ),
+            ]
+        )
+        if request_status == AccessRequestStatus.FULFILLED:
+            session.add_all(
+                [
+                    DirectoryGroupMembershipRecord(
+                        membership_id=f"GROUP-MEMBERSHIP-{suffix}",
+                        group_id="GROUP-ML-PLATFORM-DEVELOPERS",
+                        identity_id=identity_id,
+                        status=MembershipStatus.ACTIVE,
+                        granted_at=requested_at + timedelta(minutes=30),
+                    ),
+                    GitRepositoryAccessRecord(
+                        access_id=f"REPOSITORY-ACCESS-{suffix}",
+                        repository_id="REPO-ML-PLATFORM",
+                        git_account_id=git_account_id,
+                        level=RepositoryAccessLevel.WRITE,
+                        status=MembershipStatus.ACTIVE,
+                        granted_at=requested_at + timedelta(minutes=32),
+                    ),
+                    ITNotificationRecord(
+                        notification_id=f"IT-NOTIFICATION-{suffix}",
+                        case_id=case_id,
+                        employee_id=employee_id,
+                        recipient=employee.work_email,
+                        message="Repository access is active and verified.",
+                        status=ITNotificationStatus.SENT,
+                        sent_at=requested_at + timedelta(minutes=45),
+                    ),
+                ]
+            )
+        session.flush()
+        created = True
+    return created
 
 
 def main() -> None:

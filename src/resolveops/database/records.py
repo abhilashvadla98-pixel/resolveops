@@ -8,6 +8,7 @@ from sqlalchemy import (
     Enum,
     ForeignKey,
     ForeignKeyConstraint,
+    Index,
     Integer,
     Numeric,
     String,
@@ -225,6 +226,7 @@ class CaseRecord(Base):
         ),
         CheckConstraint("updated_at >= opened_at", name="ck_cases_timestamp_order"),
         UniqueConstraint("case_id", "order_id", name="uq_cases_order"),
+        Index("ix_cases_updated_at_desc", "updated_at"),
     )
 
     case_id: Mapped[str] = mapped_column(String(100), primary_key=True)

@@ -19,12 +19,14 @@ def test_operator_console_serves_secure_shell_and_local_assets() -> None:
     assert ">IT Requests<" in page.text
     assert ">Audit<" in page.text
     assert ">Try demo<" in page.text
-    assert 'src="/console/app.js?v=20260930"' in page.text
+    assert 'src="/console/app.js?v=20260931"' in page.text
     assert 'role="dialog"' in page.text
     assert 'aria-modal="true"' in page.text
     assert styles.status_code == 200
     assert styles.headers["content-type"].startswith("text/css")
-    assert "--teal: #3fe0bd" in styles.text
+    assert "--accent:#2457a7" in styles.text
+    assert "--bg:#f6f7f9" in styles.text
+    assert "glow" not in styles.text
     assert script.status_code == 200
     assert script.headers["cache-control"] == "no-store"
     assert "localStorage" not in script.text
@@ -32,7 +34,7 @@ def test_operator_console_serves_secure_shell_and_local_assets() -> None:
     assert "state.token = token" in script.text
     assert "Authorization" in script.text
     assert 'apiFetch("/api/v1/demo/session"' in script.text
-    assert 'apiFetch("/api/v1/cases"' in script.text
+    assert "apiFetch(`/api/v1/case-queue?" in script.text
     assert 'apiFetch("/api/v1/approvals"' in script.text
     assert 'apiFetch("/api/v1/reliability/summary"' in script.text
     assert "CSS.escape" in script.text

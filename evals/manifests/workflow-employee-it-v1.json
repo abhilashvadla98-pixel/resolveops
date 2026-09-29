@@ -1,0 +1,13 @@
+{
+  "dataset_id": "resolveops.workflow.employee_it",
+  "version": "1.0.0",
+  "description": "Deterministic employee repository-access workflow regression cases.",
+  "source": "hand-authored synthetic workflow fixtures",
+  "creation_method": "IT access cases labelled with expected approval, action and verification outcomes.",
+  "path": "evals/workflows/employee_it.jsonl",
+  "labels": ["expected_status", "expected_outcome", "expected_error"],
+  "case_categories": ["access_conflict", "approval", "identity", "repository_access", "verification"],
+  "record_count": 14,
+  "sha256": "3144d8f60bb1489dd5fe371ef24c7257ecab1a783f2311b1286080caadce3211",
+  "created_date": "2026-09-29"
+}

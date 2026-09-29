@@ -4,6 +4,13 @@ The ResolveOps console is served by FastAPI at `/console`. It is a compact opera
 Cases, Approvals, IT Requests, Reliability, and Audit. Business records and timelines come from the
 same authenticated APIs and persistence used by programmatic clients.
 
+The default light theme uses a compact sidebar, dense tables, thin borders, small radii, and one
+restrained blue accent. Dark mode is optional. The layout intentionally avoids a marketing hero,
+neon/glow styling, gradients, oversized cards, and invented fields such as owner, priority, or SLA.
+Cases use server-side query/status filters and pagination. A selected case opens a three-pane
+workspace for operational context, complaint/activity/timeline/final response, and evidence/AI
+assessment/operator correction. Audit works globally and can be narrowed to a case.
+
 ## Demo flow
 
 1. Run migrations and `python -m resolveops.database.seed`. The seed command also creates the
@@ -22,6 +29,11 @@ same authenticated APIs and persistence used by programmatic clients.
    group, ticket, and notification state for verification. Replaying it performs no duplicate grant.
    Use scenario H for verification recovery.
 9. Choose **Reset demo** to rebuild only the synthetic demo records.
+
+The reset also creates several IT requests in different states so the queue is a real multi-record
+working surface rather than a single flagship card. Submitting an operator correction persists
+structured feedback in a pending review state; it does not change the case outcome or evaluation
+truth automatically.
 
 The Reliability view calculates operation outcomes and p50/p95 lifecycle duration from persisted
 operation records. It also counts real retry, wait, recovery, failure, and manual-review events. The

@@ -8,6 +8,7 @@ from resolveops.database import (
     action_records,  # noqa: F401
     employee_it_records,  # noqa: F401
     event_records,  # noqa: F401
+    feedback_records,  # noqa: F401
     knowledge_records,  # noqa: F401
     records,  # noqa: F401
     simulator_records,  # noqa: F401

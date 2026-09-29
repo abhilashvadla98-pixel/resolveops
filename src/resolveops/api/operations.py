@@ -7,10 +7,11 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from langgraph.checkpoint.base import BaseCheckpointSaver
 from langgraph.checkpoint.memory import InMemorySaver
 from pydantic import Field
-from sqlalchemy import Engine
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy import Engine, func, or_, select
+from sqlalchemy.orm import Session, selectinload, sessionmaker
 
 from resolveops.api.dependencies import get_principal, get_tenant_session
+from resolveops.database.records import CaseRecord, CustomerRecord
 from resolveops.database.session import create_session_factory
 from resolveops.database.store import CustomerOperationsStore
 from resolveops.intake import CaseIntakeService, IntakeRequest
@@ -71,6 +72,24 @@ class CaseTimelineEvent(DomainModel):
     occurred_at: AwareDatetime
     entity_id: Identifier
     details: dict[str, Any]
+
+
+class CaseQueueItem(DomainModel):
+    case_id: Identifier
+    customer_id: Identifier
+    customer_name: NonEmptyText
+    order_id: Identifier
+    status: str
+    issue_types: list[str]
+    intake_summary: str | None
+    updated_at: AwareDatetime
+
+
+class CaseQueuePage(DomainModel):
+    items: list[CaseQueueItem]
+    page: int = Field(ge=1)
+    page_size: int = Field(ge=1)
+    total: int = Field(ge=0)
 
 
 def _require_operations_access(principal: SecurityPrincipal) -> None:
@@ -154,6 +173,68 @@ def submit_complaint(
 def list_cases(session: DatabaseSession, principal: Principal) -> list[Case]:
     _require_operations_access(principal)
     return CustomerOperationsStore(session).list_cases()
+
+
+@router.get("/case-queue", response_model=CaseQueuePage)
+def case_queue(
+    session: DatabaseSession,
+    principal: Principal,
+    query: Annotated[str | None, Query(max_length=200)] = None,
+    case_status: Annotated[str | None, Query(alias="status")] = None,
+    page: Annotated[int, Query(ge=1)] = 1,
+    page_size: Annotated[int, Query(ge=1, le=100)] = 25,
+) -> CaseQueuePage:
+    _require_operations_access(principal)
+    may_read_pii = has_permission(principal.actor(), Permission.READ_PII)
+    filters = []
+    if case_status:
+        filters.append(CaseRecord.status == case_status)
+    if query:
+        pattern = f"%{query.strip()}%"
+        searchable = [
+            CaseRecord.case_id.ilike(pattern),
+            CaseRecord.customer_id.ilike(pattern),
+            CaseRecord.order_id.ilike(pattern),
+            CaseRecord.complaint_text.ilike(pattern),
+        ]
+        if may_read_pii:
+            searchable.append(CustomerRecord.name.ilike(pattern))
+        filters.append(or_(*searchable))
+    base = select(CaseRecord, CustomerRecord.name).join(
+        CustomerRecord, CustomerRecord.customer_id == CaseRecord.customer_id
+    )
+    count_statement = (
+        select(func.count())
+        .select_from(CaseRecord)
+        .join(CustomerRecord, CustomerRecord.customer_id == CaseRecord.customer_id)
+    )
+    if filters:
+        base = base.where(*filters)
+        count_statement = count_statement.where(*filters)
+    rows = session.execute(
+        base.options(selectinload(CaseRecord.issues))
+        .order_by(CaseRecord.updated_at.desc(), CaseRecord.case_id)
+        .offset((page - 1) * page_size)
+        .limit(page_size)
+    ).all()
+    return CaseQueuePage(
+        items=[
+            CaseQueueItem(
+                case_id=record.case_id,
+                customer_id=record.customer_id,
+                customer_name=customer_name if may_read_pii else "Restricted customer",
+                order_id=record.order_id,
+                status=record.status.value,
+                issue_types=[issue.issue_type.value for issue in record.issues],
+                intake_summary=record.intake_summary,
+                updated_at=record.updated_at,
+            )
+            for record, customer_name in rows
+        ],
+        page=page,
+        page_size=page_size,
+        total=session.scalar(count_statement) or 0,
+    )
 
 
 @router.get("/cases/{case_id}", response_model=Case)

@@ -1,0 +1,13 @@
+{
+  "dataset_id": "resolveops.retrieval.customer_operations",
+  "version": "1.0.0",
+  "description": "Policy-retrieval questions covering direct, negative, similar-policy and multi-section cases.",
+  "source": "hand-authored synthetic evaluation cases",
+  "creation_method": "Reviewed policy questions labelled with relevant document identifiers.",
+  "path": "evals/retrieval/customer_operations.jsonl",
+  "labels": ["relevant_document_ids"],
+  "case_categories": ["confusing_terminology", "direct_lookup", "hard_negative", "multi_section", "similar_policy", "wrong_issue_type"],
+  "record_count": 50,
+  "sha256": "9274c72f275e1369e931a225a5023ba0afbd32e16a4822a3947bd0e3b33e5242",
+  "created_date": "2026-09-29"
+}

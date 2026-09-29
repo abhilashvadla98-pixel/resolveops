@@ -1,0 +1,2 @@
+{"issue_type": "duplicate_charge", "policy_id": "POLICY-PAYMENT", "workspace_id": "demo-west"}
+{"issue_type": "missing_return_refund", "policy_id": "POLICY-RETURN", "workspace_id": "demo-west"}

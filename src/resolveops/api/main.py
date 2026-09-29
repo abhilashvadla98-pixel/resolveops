@@ -4,12 +4,14 @@ from typing import Annotated
 from fastapi import Depends, FastAPI, Request, Response, status
 from fastapi.responses import JSONResponse
 
+from resolveops.api.audit import router as audit_router
 from resolveops.api.console import router as console_router
 from resolveops.api.demo import router as demo_router
 from resolveops.api.dependencies import get_tenant_registry
 from resolveops.api.employee_it import action_router as employee_it_action_router
 from resolveops.api.employee_it import router as employee_it_router
 from resolveops.api.events import router as events_router
+from resolveops.api.feedback import router as feedback_router
 from resolveops.api.metrics import router as metrics_router
 from resolveops.api.operations import router as operations_router
 from resolveops.api.reliability import router as reliability_router
@@ -35,10 +37,12 @@ app = FastAPI(
     ),
 )
 app.include_router(simulator_router)
+app.include_router(audit_router)
 app.include_router(demo_router)
 app.include_router(employee_it_router)
 app.include_router(employee_it_action_router)
 app.include_router(events_router)
+app.include_router(feedback_router)
 app.include_router(metrics_router)
 app.include_router(operations_router)
 app.include_router(reliability_router)

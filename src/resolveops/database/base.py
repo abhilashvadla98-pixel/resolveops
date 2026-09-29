@@ -7,3 +7,4 @@ class Base(DeclarativeBase):
 
 # Keep metadata complete even when a focused test imports Base before the seed module.
 from resolveops.database import demo_records as _demo_records  # noqa: F401
+from resolveops.database import feedback_records as _feedback_records  # noqa: F401

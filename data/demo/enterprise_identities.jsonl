@@ -1,0 +1,8 @@
+{"employee_id": "EMP-000001", "identity_id": "IDENT-000001", "mfa_enrolled": true, "status": "active", "username": "employee1", "workspace_id": "demo-west"}
+{"employee_id": "EMP-000002", "identity_id": "IDENT-000002", "mfa_enrolled": true, "status": "active", "username": "employee2", "workspace_id": "demo-west"}
+{"employee_id": "EMP-000003", "identity_id": "IDENT-000003", "mfa_enrolled": false, "status": "active", "username": "employee3", "workspace_id": "demo-west"}
+{"employee_id": "EMP-000004", "identity_id": "IDENT-000004", "mfa_enrolled": true, "status": "active", "username": "employee4", "workspace_id": "demo-west"}
+{"employee_id": "EMP-000005", "identity_id": "IDENT-000005", "mfa_enrolled": true, "status": "active", "username": "employee5", "workspace_id": "demo-west"}
+{"employee_id": "EMP-000006", "identity_id": "IDENT-000006", "mfa_enrolled": false, "status": "active", "username": "employee6", "workspace_id": "demo-west"}
+{"employee_id": "EMP-000007", "identity_id": "IDENT-000007", "mfa_enrolled": true, "status": "active", "username": "employee7", "workspace_id": "demo-west"}
+{"employee_id": "EMP-000008", "identity_id": "IDENT-000008", "mfa_enrolled": true, "status": "active", "username": "employee8", "workspace_id": "demo-west"}
