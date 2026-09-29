@@ -164,6 +164,25 @@ class WorkflowEvent(DomainModel):
     occurred_at: AwareDatetime
 
 
+class CustomerResponse(DomainModel):
+    message: NonEmptyText
+    outcome: WorkflowOutcome
+    verified_fact_ids: list[Identifier] = Field(min_length=1)
+    policy_citation_ids: list[Identifier]
+    generated_at: AwareDatetime
+
+    @model_validator(mode="after")
+    def reject_unsupported_completion_claims(self) -> "CustomerResponse":
+        normalized = self.message.lower()
+        if "refund completed" in normalized or "refund is complete" in normalized:
+            raise ValueError("customer response cannot claim final refund completion")
+        if self.outcome != WorkflowOutcome.ACTION_VERIFIED and (
+            "refund was created" in normalized or "refund has been issued" in normalized
+        ):
+            raise ValueError("unverified workflow cannot claim that a refund was issued")
+        return self
+
+
 class WorkflowResult(DomainModel):
     workflow_id: Identifier
     case_id: Identifier
@@ -179,6 +198,7 @@ class WorkflowResult(DomainModel):
     operation: OperationResult | None = None
     verified_resource_id: Identifier | None = None
     resolution_summary: NonEmptyText
+    final_response: CustomerResponse
     error_code: Identifier | None = None
     error_message: NonEmptyText | None = None
     node_history: list[Identifier] = Field(min_length=1)

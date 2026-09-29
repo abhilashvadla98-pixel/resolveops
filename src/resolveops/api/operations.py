@@ -30,6 +30,7 @@ from resolveops.workflows.lifecycle import (
 from resolveops.workflows.models import (
     ApprovalDecisionType,
     ApprovalStatus,
+    CustomerResponse,
     WorkflowApproval,
     WorkflowApprovalDecision,
     WorkflowEvent,
@@ -190,6 +191,19 @@ def get_workflow_events(
         return _lifecycle(session).list_events(workflow_id)
     except WorkflowLifecycleError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=exc.message) from exc
+
+
+@router.get("/workflows/{workflow_id}/response", response_model=CustomerResponse)
+def get_final_response(
+    workflow_id: str, session: DatabaseSession, principal: Principal
+) -> CustomerResponse:
+    execution = get_workflow(workflow_id, session, principal)
+    if isinstance(execution, WorkflowPause):
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="workflow is waiting for approval and has no final response",
+        )
+    return execution.final_response
 
 
 @router.get("/approvals", response_model=list[WorkflowApproval])

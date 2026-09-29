@@ -40,6 +40,7 @@ from resolveops.reasoning.agent import CaseReasoner
 from resolveops.reasoning.errors import ReasoningError
 from resolveops.reasoning.models import ReasoningDisposition, ReasoningPolicyExcerpt
 from resolveops.reasoning.providers import ReasoningProvider
+from resolveops.responses.customer import CustomerResponseComposer
 from resolveops.workflows.lifecycle import WorkflowLifecycleStore
 from resolveops.workflows.models import (
     ApprovalStatus,
@@ -109,6 +110,7 @@ class CustomerIssueWorkflow:
         self.checkpointer = checkpointer
         self.lifecycle_store = lifecycle_store
         self.clock = clock or (lambda: datetime.now(UTC))
+        self.response_composer = CustomerResponseComposer()
         self.graph = self._build_graph()
 
     def run(self, request: WorkflowRequest) -> WorkflowResult:
@@ -200,8 +202,17 @@ class CustomerIssueWorkflow:
             "approval": None,
         }
 
-    @staticmethod
-    def _result_from_state(final: WorkflowState) -> WorkflowResult:
+    def _result_from_state(self, final: WorkflowState) -> WorkflowResult:
+        final_response = self.response_composer.compose(
+            status=final["status"],
+            outcome=final["outcome"],
+            issue_id=final["issue_id"],
+            verified_resource_id=final.get("verified_resource_id"),
+            existing_refund_id=final.get("existing_refund_id"),
+            error_code=final.get("error_code"),
+            policy_citations=final["policy_citations"],
+            generated_at=self.clock(),
+        )
         return WorkflowResult(
             workflow_id=final["workflow_id"],
             case_id=final["case_id"],
@@ -217,6 +228,7 @@ class CustomerIssueWorkflow:
             operation=final.get("operation"),
             verified_resource_id=final.get("verified_resource_id"),
             resolution_summary=final["resolution_summary"],
+            final_response=final_response,
             error_code=final.get("error_code"),
             error_message=final.get("error_message"),
             node_history=final["node_history"],

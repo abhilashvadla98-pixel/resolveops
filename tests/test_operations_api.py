@@ -135,6 +135,10 @@ def test_workflow_approval_can_be_listed_and_resumed(
 
     assert decided.status_code == 200
     assert decided.json()["outcome"] == "action_verified"
+    final_response = client.get("/api/v1/workflows/WORKFLOW-API-1001/response")
+    assert final_response.status_code == 200
+    assert "independently verified" in final_response.json()["message"]
+    assert "complete" not in final_response.json()["message"].lower()
     events = client.get("/api/v1/workflows/WORKFLOW-API-1001/events")
     assert events.status_code == 200
     assert [event["event_type"] for event in events.json()] == [
