@@ -61,6 +61,15 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
+    workflow_events = sa.table(
+        "workflow_events",
+        sa.column("event_type", sa.String(length=32)),
+    )
+    op.execute(
+        workflow_events.update()
+        .where(workflow_events.c.event_type.in_(ACTION_EVENT_TYPES))
+        .values(event_type="completed")
+    )
     with op.batch_alter_table("workflow_events", recreate="always") as batch:
         batch.alter_column(
             "event_type",
