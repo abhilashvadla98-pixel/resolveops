@@ -12,7 +12,10 @@ from resolveops.api.events import router as events_router
 from resolveops.api.metrics import router as metrics_router
 from resolveops.api.operations import router as operations_router
 from resolveops.api.simulator import router as simulator_router
-from resolveops.config import get_traffic_protection_settings
+from resolveops.config import (
+    get_traffic_protection_settings,
+    validate_startup_environment,
+)
 from resolveops.database.health import DatabaseReadinessError, verify_database_readiness
 from resolveops.observability.metrics import finish_http_request, start_http_request
 from resolveops.observability.models import TraceComponent
@@ -20,6 +23,8 @@ from resolveops.observability.sinks import DEFAULT_TRACE_SINK
 from resolveops.observability.tracing import observed_span, trace_context
 from resolveops.security.tenancy import TenantSessionRegistry
 from resolveops.security.traffic import TokenBucketRateLimiter, TrafficProtectionMiddleware
+
+validate_startup_environment()
 
 app = FastAPI(
     title="ResolveOps API",

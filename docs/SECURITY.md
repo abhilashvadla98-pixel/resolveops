@@ -83,6 +83,14 @@ ignored by Git and `.env.example` contains placeholders only. Do not place plain
 keys, database passwords, or provider tokens in source, policy files, logs, exception messages, or
 test fixtures committed to the repository.
 
+`RESOLVEOPS_ENVIRONMENT` separates `development`, `demo`, and `production`. Development permits the
+documented local defaults. Demo and production fail during application startup when they detect a
+SQLite/local/example database, `TENANT-LOCAL`, placeholder webhook secrets, or malformed tenant
+database configuration. Demo must enable signed demo sessions and route only to its synthetic
+tenant. Production rejects demo mode and requires at least one enabled, non-example API identity.
+These checks prevent an example file from silently becoming a deployable configuration; they do not
+replace a secret manager or deployment review.
+
 For production, inject values from the deployment platform's secret manager. To rotate an API key,
 add a new digest, deploy it, move clients to the new key, then disable and remove the old identity.
 To rotate a webhook secret without interruption, deploy a planned dual-key verifier before changing

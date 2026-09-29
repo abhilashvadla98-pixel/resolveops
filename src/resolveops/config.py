@@ -1,11 +1,35 @@
+import json
+from enum import Enum
 from functools import lru_cache
 
 from pydantic import Field, SecretStr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from sqlalchemy import URL
+from sqlalchemy.engine import make_url
+
+
+class RuntimeEnvironment(str, Enum):
+    DEVELOPMENT = "development"
+    DEMO = "demo"
+    PRODUCTION = "production"
+
+
+class RuntimeSafetyError(ValueError):
+    pass
+
+
+class RuntimeModeSettings(BaseSettings):
+    environment: RuntimeEnvironment = RuntimeEnvironment.DEVELOPMENT
+
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_prefix="RESOLVEOPS_",
+        extra="ignore",
+    )
 
 
 class Settings(BaseSettings):
+    environment: RuntimeEnvironment = RuntimeEnvironment.DEVELOPMENT
     database_url: SecretStr | None = None
     database_host: str | None = None
     database_port: int = Field(default=5432, gt=0, le=65535)
@@ -103,6 +127,80 @@ class DemoSettings(BaseSettings):
         ) < 32:
             raise ValueError("demo_session_secret must contain at least 32 characters")
         return self
+
+
+def validate_runtime_safety(settings: Settings, demo_settings: DemoSettings) -> None:
+    """Reject known local/example configuration outside development."""
+    environment = settings.environment
+    if environment == RuntimeEnvironment.DEVELOPMENT:
+        return
+    if environment == RuntimeEnvironment.DEMO and not demo_settings.demo_enabled:
+        raise RuntimeSafetyError("demo environment requires restricted demo sessions")
+    if environment == RuntimeEnvironment.PRODUCTION and demo_settings.demo_enabled:
+        raise RuntimeSafetyError("production environment cannot enable the public demo workspace")
+
+    database_urls = [settings.resolved_database_url()]
+    if settings.tenant_database_urls_json is not None:
+        try:
+            tenant_urls = json.loads(settings.tenant_database_urls_json.get_secret_value())
+        except json.JSONDecodeError as exc:
+            raise RuntimeSafetyError("tenant database configuration must be valid JSON") from exc
+        if not isinstance(tenant_urls, dict) or not tenant_urls:
+            raise RuntimeSafetyError("non-development tenant database mapping cannot be empty")
+        database_urls.extend(str(value) for value in tenant_urls.values())
+    for database_url in database_urls:
+        parsed = make_url(database_url)
+        unsafe_database = (
+            parsed.get_backend_name() == "sqlite"
+            or parsed.host in {None, "localhost", "127.0.0.1", "database"}
+            or _contains_placeholder(database_url)
+        )
+        if unsafe_database:
+            raise RuntimeSafetyError("non-development database configuration is unsafe")
+
+    if settings.default_tenant_id == "TENANT-LOCAL":
+        raise RuntimeSafetyError("non-development environment cannot use TENANT-LOCAL")
+    if environment == RuntimeEnvironment.DEMO and settings.default_tenant_id != demo_settings.demo_tenant_id:
+        raise RuntimeSafetyError("demo environment must route only to the synthetic demo tenant")
+
+    webhook_values = []
+    if settings.webhook_secret is not None:
+        webhook_values.append(settings.webhook_secret.get_secret_value())
+    if settings.webhook_secrets_json is not None:
+        webhook_values.append(settings.webhook_secrets_json.get_secret_value())
+    if not webhook_values or any(_contains_placeholder(value) for value in webhook_values):
+        raise RuntimeSafetyError("non-development webhook secrets must be configured")
+
+    if environment == RuntimeEnvironment.PRODUCTION:
+        if settings.api_key_identities_json is None:
+            raise RuntimeSafetyError("production requires at least one enabled API identity")
+        try:
+            identities = json.loads(settings.api_key_identities_json.get_secret_value())
+        except json.JSONDecodeError as exc:
+            raise RuntimeSafetyError("API identity configuration must be valid JSON") from exc
+        if not isinstance(identities, list) or not any(
+            isinstance(identity, dict)
+            and identity.get("enabled") is True
+            and identity.get("key_sha256") != "0" * 64
+            for identity in identities
+        ):
+            raise RuntimeSafetyError("production requires at least one non-example enabled API identity")
+
+
+def _contains_placeholder(value: str) -> bool:
+    normalized = value.lower()
+    return any(
+        marker in normalized
+        for marker in ("replace-me", "replace-with", "change-me", "example.", "example/")
+    )
+
+
+def validate_startup_environment() -> None:
+    """Keep configuration-free health/test imports in development only."""
+    mode = RuntimeModeSettings().environment
+    if mode == RuntimeEnvironment.DEVELOPMENT:
+        return
+    validate_runtime_safety(get_settings(), get_demo_settings())
 
 
 @lru_cache

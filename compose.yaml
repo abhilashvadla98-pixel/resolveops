@@ -27,6 +27,7 @@ services:
     image: resolveops:${RESOLVEOPS_IMAGE_TAG:-local}
     command: ["alembic", "upgrade", "head"]
     environment: &app-environment
+      RESOLVEOPS_ENVIRONMENT: development
       RESOLVEOPS_DATABASE_URL: postgresql+psycopg://resolveops:${RESOLVEOPS_POSTGRES_PASSWORD}@database:5432/resolveops
       RESOLVEOPS_DEFAULT_TENANT_ID: TENANT-LOCAL
       RESOLVEOPS_API_KEY_IDENTITIES_JSON: ${RESOLVEOPS_API_KEY_IDENTITIES_JSON:-[]}
