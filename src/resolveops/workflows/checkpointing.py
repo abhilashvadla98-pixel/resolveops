@@ -30,6 +30,13 @@ ALLOWED_CHECKPOINT_TYPES = [
 ]
 
 
+def checkpoint_serializer() -> JsonPlusSerializer:
+    return JsonPlusSerializer(
+        pickle_fallback=False,
+        allowed_msgpack_modules=ALLOWED_CHECKPOINT_TYPES,
+    )
+
+
 def postgres_checkpoint_url(database_url: str) -> str:
     url = make_url(database_url)
     if url.get_backend_name() != "postgresql":
@@ -40,10 +47,7 @@ def postgres_checkpoint_url(database_url: str) -> str:
 @contextmanager
 def open_postgres_checkpointer(database_url: str, *, setup: bool = True) -> Iterator[PostgresSaver]:
     """Open a strict, production PostgreSQL LangGraph checkpointer."""
-    serializer = JsonPlusSerializer(
-        pickle_fallback=False,
-        allowed_msgpack_modules=ALLOWED_CHECKPOINT_TYPES,
-    )
+    serializer = checkpoint_serializer()
     connection_url = postgres_checkpoint_url(database_url)
     with psycopg.connect(
         connection_url,

@@ -239,6 +239,12 @@ class CustomerOperationsStore:
             updated_at=record.updated_at,
         )
 
+    def list_cases(self) -> list[Case]:
+        case_ids = self.session.scalars(
+            select(CaseRecord.case_id).order_by(CaseRecord.updated_at.desc(), CaseRecord.case_id)
+        )
+        return [customer_case for case_id in case_ids if (customer_case := self.get_case(case_id))]
+
     def add_refund(self, refund: Refund) -> None:
         self.session.add(
             RefundRecord(

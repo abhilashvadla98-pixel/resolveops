@@ -103,6 +103,16 @@ class WorkflowLifecycleStore:
         with self.session_factory() as session:
             return self._run_from_record(self._required_run(session, workflow_id))
 
+    def list_runs(self, *, case_id: str | None = None) -> list[WorkflowRun]:
+        with self.session_factory() as session:
+            statement = select(WorkflowRunRecord)
+            if case_id is not None:
+                statement = statement.where(WorkflowRunRecord.case_id == case_id)
+            records = session.scalars(
+                statement.order_by(WorkflowRunRecord.created_at.desc(), WorkflowRunRecord.workflow_id)
+            )
+            return [self._run_from_record(record) for record in records]
+
     def request_refund_approval(
         self,
         *,
@@ -174,6 +184,21 @@ class WorkflowLifecycleStore:
                     "approval_not_found", f"approval {approval_id} does not exist"
                 )
             return self._approval_from_record(record)
+
+    def list_approvals(
+        self, *, approval_status: ApprovalStatus | None = None
+    ) -> list[WorkflowApproval]:
+        with self.session_factory() as session:
+            statement = select(WorkflowApprovalRecord)
+            if approval_status is not None:
+                statement = statement.where(WorkflowApprovalRecord.status == approval_status)
+            records = session.scalars(
+                statement.order_by(
+                    WorkflowApprovalRecord.requested_at.desc(),
+                    WorkflowApprovalRecord.approval_id,
+                )
+            )
+            return [self._approval_from_record(record) for record in records]
 
     def decide_approval(self, decision: WorkflowApprovalDecision) -> WorkflowApproval:
         with self.session_factory.begin() as session:
