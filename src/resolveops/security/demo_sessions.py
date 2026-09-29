@@ -69,9 +69,7 @@ class DemoSessionAuthenticator:
             expected_signature = _encode(
                 hmac.new(self.secret, payload.encode("ascii"), hashlib.sha256).digest()
             )
-            if prefix != "demo" or not hmac.compare_digest(
-                presented_signature, expected_signature
-            ):
+            if prefix != "demo" or not hmac.compare_digest(presented_signature, expected_signature):
                 raise DemoSessionError("invalid demo session")
             claims = TypeAdapter(DemoTokenClaims).validate_json(_decode(payload))
         except (ValueError, UnicodeDecodeError, ValidationError) as exc:

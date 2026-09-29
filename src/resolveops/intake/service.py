@@ -57,9 +57,7 @@ class CaseIntakeService:
                 order_id=request.order_id,
                 issue_type=issue_type,
                 status=CaseIssueStatus.REPORTED,
-                payment_ids=(
-                    payment_ids if issue_type == CaseIssueType.DUPLICATE_CHARGE else []
-                ),
+                payment_ids=(payment_ids if issue_type == CaseIssueType.DUPLICATE_CHARGE else []),
                 return_id=(
                     latest_return.return_id
                     if issue_type == CaseIssueType.MISSING_RETURN_REFUND
@@ -88,6 +86,9 @@ class CaseIntakeService:
         return case, classification
 
     def _latest_return(self, order_id: str) -> ReturnRecord | None:
-        return self.session.query(ReturnRecord).filter_by(order_id=order_id).order_by(
-            ReturnRecord.created_at.desc(), ReturnRecord.return_id.desc()
-        ).first()
+        return (
+            self.session.query(ReturnRecord)
+            .filter_by(order_id=order_id)
+            .order_by(ReturnRecord.created_at.desc(), ReturnRecord.return_id.desc())
+            .first()
+        )

@@ -30,9 +30,7 @@ def running_demo(tmp_path: Path) -> Iterator[str]:
             "RESOLVEOPS_ENVIRONMENT": "development",
             "RESOLVEOPS_DATABASE_URL": database_url,
             "RESOLVEOPS_DEFAULT_TENANT_ID": "TENANT-DEMO",
-            "RESOLVEOPS_TENANT_DATABASE_URLS_JSON": json.dumps(
-                {"TENANT-DEMO": database_url}
-            ),
+            "RESOLVEOPS_TENANT_DATABASE_URLS_JSON": json.dumps({"TENANT-DEMO": database_url}),
             "RESOLVEOPS_WEBHOOK_SECRET": "browser-e2e-webhook-secret-with-32-characters",
             "RESOLVEOPS_DEMO_ENABLED": "true",
             "RESOLVEOPS_DEMO_TENANT_ID": "TENANT-DEMO",

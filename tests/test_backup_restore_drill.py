@@ -1,6 +1,6 @@
 import pytest
 
-from scripts.backup_restore_drill import DrillTarget
+from resolveops.operations.backup_restore import DrillTarget
 
 
 def test_drill_refuses_an_unguarded_database_name() -> None:

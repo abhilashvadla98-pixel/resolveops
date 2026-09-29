@@ -109,7 +109,9 @@ class ReasoningTrace(DomainModel):
 
     @model_validator(mode="after")
     def validate_execution_record(self) -> "ReasoningTrace":
-        if not self.policy_versions or any(version < 1 for version in self.policy_versions.values()):
+        if not self.policy_versions or any(
+            version < 1 for version in self.policy_versions.values()
+        ):
             raise ValueError("reasoning trace requires positive policy versions")
         if len(self.retrieved_policy_chunk_ids) != len(set(self.retrieved_policy_chunk_ids)):
             raise ValueError("retrieved policy chunk IDs must be unique")

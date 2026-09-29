@@ -91,19 +91,29 @@ def test_simultaneous_refund_requests_create_one_side_effect(
             return "in_progress"
 
     with ThreadPoolExecutor(max_workers=2) as executor:
-        resource_ids = [future.result(timeout=15) for future in [executor.submit(submit) for _ in range(2)]]
+        resource_ids = [
+            future.result(timeout=15) for future in [executor.submit(submit) for _ in range(2)]
+        ]
 
     completed_ids = {resource_id for resource_id in resource_ids if resource_id != "in_progress"}
     assert len(completed_ids) == 1
     with factory() as session:
-        assert session.scalar(
-            select(func.count()).select_from(RefundRecord).where(RefundRecord.issue_id == "ISSUE-1001")
-        ) == 1
-        assert session.scalar(
-            select(func.count())
-            .select_from(OperationRecord)
-            .where(OperationRecord.idempotency_key == request.idempotency_key)
-        ) == 1
+        assert (
+            session.scalar(
+                select(func.count())
+                .select_from(RefundRecord)
+                .where(RefundRecord.issue_id == "ISSUE-1001")
+            )
+            == 1
+        )
+        assert (
+            session.scalar(
+                select(func.count())
+                .select_from(OperationRecord)
+                .where(OperationRecord.idempotency_key == request.idempotency_key)
+            )
+            == 1
+        )
 
 
 @pytest.mark.postgres
@@ -153,18 +163,23 @@ def test_duplicate_approval_submissions_create_one_decision_event(
         return WorkflowLifecycleStore(factory).decide_approval(decision).status
 
     with ThreadPoolExecutor(max_workers=2) as executor:
-        statuses = [future.result(timeout=15) for future in [executor.submit(submit) for _ in range(2)]]
+        statuses = [
+            future.result(timeout=15) for future in [executor.submit(submit) for _ in range(2)]
+        ]
 
     assert statuses == [ApprovalStatus.APPROVED, ApprovalStatus.APPROVED]
     with factory() as session:
-        assert session.scalar(
-            select(func.count())
-            .select_from(WorkflowEventRecord)
-            .where(
-                WorkflowEventRecord.workflow_id == "POSTGRES-APPROVAL-RACE",
-                WorkflowEventRecord.event_type == WorkflowEventType.APPROVAL_APPROVED,
+        assert (
+            session.scalar(
+                select(func.count())
+                .select_from(WorkflowEventRecord)
+                .where(
+                    WorkflowEventRecord.workflow_id == "POSTGRES-APPROVAL-RACE",
+                    WorkflowEventRecord.event_type == WorkflowEventType.APPROVAL_APPROVED,
+                )
             )
-        ) == 1
+            == 1
+        )
 
 
 @pytest.mark.postgres
@@ -189,19 +204,27 @@ def test_duplicate_webhook_delivery_creates_one_receipt_and_transition(
         return RefundEventProcessor(factory, clock=lambda: NOW).process(event).idempotent_replay
 
     with ThreadPoolExecutor(max_workers=2) as executor:
-        replay_flags = [future.result(timeout=15) for future in [executor.submit(submit) for _ in range(2)]]
+        replay_flags = [
+            future.result(timeout=15) for future in [executor.submit(submit) for _ in range(2)]
+        ]
 
     assert sorted(replay_flags) == [False, True]
     with factory() as session:
-        assert session.scalar(
-            select(func.count())
-            .select_from(InboundEventRecord)
-            .where(InboundEventRecord.event_id == event.event_id)
-        ) == 1
-        assert session.scalar(
-            select(func.count())
-            .select_from(ResourceEventCursorRecord)
-            .where(ResourceEventCursorRecord.last_event_id == event.event_id)
-        ) == 1
+        assert (
+            session.scalar(
+                select(func.count())
+                .select_from(InboundEventRecord)
+                .where(InboundEventRecord.event_id == event.event_id)
+            )
+            == 1
+        )
+        assert (
+            session.scalar(
+                select(func.count())
+                .select_from(ResourceEventCursorRecord)
+                .where(ResourceEventCursorRecord.last_event_id == event.event_id)
+            )
+            == 1
+        )
         refund = session.get(RefundRecord, "REF-2001")
         assert refund is not None and refund.status == RefundStatus.PROCESSING

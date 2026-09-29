@@ -5,9 +5,10 @@ Last verified: 2026-09-29
 ## Current state
 
 - Branch: `codex-build`.
-- Final-pass commits are local until the closing verification and push.
+- Final-pass commits are pushed to `origin/codex-build`; the latest GitHub CI run is the release
+  gate for any public presentation.
 - The complete local suite passes with 195 tests and 4 environment-dependent skips.
-- Ruff and MyPy pass across 129 source files.
+- Ruff formatting/linting and MyPy pass across 130 source files.
 - The real Chromium test completes complaint intake, refund approval, verified execution, reliability
   inspection, and the Employee/IT access workflow.
 - Real PostgreSQL concurrency tests passed for simultaneous refund execution, duplicate approval,
