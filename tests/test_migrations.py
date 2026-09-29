@@ -36,6 +36,8 @@ EXPECTED_TABLES = {
     "it_access_cases",
     "it_access_approval_decisions",
     "it_workflow_executions",
+    "agent_runs",
+    "agent_tool_calls",
     "it_access_requests",
     "it_notifications",
     "it_tickets",
