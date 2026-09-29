@@ -3,7 +3,7 @@ from enum import Enum
 from pydantic import Field, model_validator
 
 from resolveops.models.case import CaseIssueType
-from resolveops.models.common import DomainModel, Identifier, NonEmptyText
+from resolveops.models.common import AwareDatetime, DomainModel, Identifier, NonEmptyText
 
 
 class ReasoningConclusion(str, Enum):
@@ -98,4 +98,19 @@ class ReasoningAssessment(DomainModel):
 class ReasoningTrace(DomainModel):
     provider_name: NonEmptyText
     model_name: NonEmptyText
+    prompt_version: NonEmptyText
+    response_schema_version: NonEmptyText
+    retrieval_version: NonEmptyText
+    policy_versions: dict[Identifier, int]
+    retrieved_policy_chunk_ids: list[Identifier] = Field(min_length=1)
+    generated_at: AwareDatetime
+    trace_id: Identifier
     assessment: ReasoningAssessment
+
+    @model_validator(mode="after")
+    def validate_execution_record(self) -> "ReasoningTrace":
+        if not self.policy_versions or any(version < 1 for version in self.policy_versions.values()):
+            raise ValueError("reasoning trace requires positive policy versions")
+        if len(self.retrieved_policy_chunk_ids) != len(set(self.retrieved_policy_chunk_ids)):
+            raise ValueError("retrieved policy chunk IDs must be unique")
+        return self

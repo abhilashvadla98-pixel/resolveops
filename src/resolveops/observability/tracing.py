@@ -146,6 +146,12 @@ def observed_span(
     )
 
 
+def current_trace_id() -> str | None:
+    """Return the active trace ID without exposing mutable tracing context."""
+    context = _CURRENT_TRACE.get()
+    return context.trace_id if context is not None else None
+
+
 def record_trace_event(
     component: TraceComponent,
     operation: str,

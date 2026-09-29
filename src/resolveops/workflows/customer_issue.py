@@ -99,17 +99,18 @@ class CustomerIssueWorkflow:
         self.embedding_provider = embedding_provider
         self.action_tools = action_tools or ActionTools(session_factory)
         self.observability_sink = observability_sink or DEFAULT_TRACE_SINK
+        self.clock = clock or (lambda: datetime.now(UTC))
         self.reasoner = (
             CaseReasoner(
                 reasoning_provider,
                 observability_sink=self.observability_sink,
+                clock=self.clock,
             )
             if reasoning_provider
             else None
         )
         self.checkpointer = checkpointer
         self.lifecycle_store = lifecycle_store
-        self.clock = clock or (lambda: datetime.now(UTC))
         self.response_composer = CustomerResponseComposer()
         self.graph = self._build_graph()
 

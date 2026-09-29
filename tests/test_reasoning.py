@@ -87,6 +87,13 @@ def test_case_reasoner_builds_bounded_context_and_trace() -> None:
 
     assert trace.provider_name == "test"
     assert trace.model_name == "recording-model"
+    assert trace.prompt_version == "case-reasoning-v1"
+    assert trace.response_schema_version == "reasoning-assessment-v1"
+    assert trace.retrieval_version == "hybrid-policy-v1"
+    assert trace.policy_versions == {"POLICY-DUPLICATE-CHARGE": 1}
+    assert trace.retrieved_policy_chunk_ids == ["CHUNK-1"]
+    assert trace.trace_id
+    assert trace.generated_at.tzinfo is not None
     assert provider.context is not None
     assert [item.evidence_id for item in provider.context.evidence] == ["E1", "E2"]
     assert trace.assessment.recommended_disposition == ReasoningDisposition.REFUND_CANDIDATE

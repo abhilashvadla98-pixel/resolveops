@@ -1,7 +1,10 @@
+from collections.abc import Callable
+from datetime import UTC, datetime
+
 from resolveops.models.case import CaseIssueType
 from resolveops.observability.models import TraceComponent
 from resolveops.observability.sinks import DEFAULT_TRACE_SINK, TraceSink
-from resolveops.observability.tracing import observed_span
+from resolveops.observability.tracing import current_trace_id, observed_span
 from resolveops.reasoning.errors import ReasoningValidationError
 from resolveops.reasoning.models import (
     ReasoningContext,
@@ -10,6 +13,10 @@ from resolveops.reasoning.models import (
     ReasoningTrace,
 )
 from resolveops.reasoning.providers import ReasoningProvider, UsageReportingReasoningProvider
+
+PROMPT_VERSION = "case-reasoning-v1"
+RESPONSE_SCHEMA_VERSION = "reasoning-assessment-v1"
+RETRIEVAL_VERSION = "hybrid-policy-v1"
 
 
 class CaseReasoner:
@@ -20,9 +27,11 @@ class CaseReasoner:
         provider: ReasoningProvider,
         *,
         observability_sink: TraceSink | None = None,
+        clock: Callable[[], datetime] | None = None,
     ) -> None:
         self.provider = provider
         self.observability_sink = observability_sink or DEFAULT_TRACE_SINK
+        self.clock = clock or (lambda: datetime.now(UTC))
 
     def reason(
         self,
@@ -75,9 +84,19 @@ class CaseReasoner:
                 {item.chunk_id for item in context.policy_excerpts},
                 "policy chunk",
             )
+            trace_id = current_trace_id()
+            if trace_id is None:
+                raise RuntimeError("reasoning span did not create a trace ID")
         return ReasoningTrace(
             provider_name=self.provider.provider_name,
             model_name=self.provider.model_name,
+            prompt_version=PROMPT_VERSION,
+            response_schema_version=RESPONSE_SCHEMA_VERSION,
+            retrieval_version=RETRIEVAL_VERSION,
+            policy_versions={item.document_id: item.version for item in policy_excerpts},
+            retrieved_policy_chunk_ids=[item.chunk_id for item in policy_excerpts],
+            generated_at=self.clock(),
+            trace_id=trace_id,
             assessment=assessment,
         )
 
