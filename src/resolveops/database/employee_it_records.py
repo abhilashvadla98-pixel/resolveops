@@ -16,6 +16,7 @@ from resolveops.employee_it.models import (
     MembershipStatus,
     RepositoryAccessLevel,
 )
+from resolveops.workflows.models import ApprovalDecisionType
 
 
 class EmployeeRecord(Base):
@@ -168,6 +169,23 @@ class ITAccessRequestRecord(Base):
     requested_at: Mapped[datetime] = mapped_column(UTCDateTime())
     approved_by: Mapped[str | None] = mapped_column(ForeignKey("employees.employee_id"))
     approved_at: Mapped[datetime | None] = mapped_column(UTCDateTime())
+
+
+class ITAccessApprovalDecisionRecord(Base):
+    __tablename__ = "it_access_approval_decisions"
+
+    approval_id: Mapped[str] = mapped_column(String(100), primary_key=True)
+    case_id: Mapped[str] = mapped_column(ForeignKey("it_access_cases.case_id"), unique=True)
+    access_request_id: Mapped[str] = mapped_column(
+        ForeignKey("it_access_requests.access_request_id"), unique=True
+    )
+    decision: Mapped[ApprovalDecisionType] = mapped_column(
+        enum_type(ApprovalDecisionType, "it_access_approval_decision")
+    )
+    decided_by: Mapped[str] = mapped_column(String(100))
+    manager_employee_id: Mapped[str] = mapped_column(ForeignKey("employees.employee_id"))
+    note: Mapped[str] = mapped_column(Text)
+    decided_at: Mapped[datetime] = mapped_column(UTCDateTime())
 
 
 class ITTicketRecord(Base):

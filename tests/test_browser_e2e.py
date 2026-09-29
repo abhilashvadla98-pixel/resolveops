@@ -112,7 +112,7 @@ def test_operator_completes_demo_approval_workflow(running_demo: str, tmp_path: 
 
         page.locator('[data-view="approvals"]').click()
         expect(page.locator("#approval-list")).to_contain_text("650.00 USD")
-        page.get_by_label("Decision note").fill(
+        page.get_by_label("Decision note", exact=True).fill(
             "Evidence and policy support this controlled refund."
         )
         page.locator('.approval-decision[data-decision="approve"]').click()
@@ -145,6 +145,20 @@ def test_operator_completes_demo_approval_workflow(running_demo: str, tmp_path: 
         expect(page.locator("#it-result")).to_contain_text("Fresh persisted state")
         expect(page.locator("#it-result")).to_contain_text("active repository access")
         expect(page.locator("#it-step-grant")).to_contain_text("Active Write")
+        page.locator('[data-it-case="ITCASE-2002"]').click()
+        expect(page.locator("#run-it-workflow")).to_have_text("Approval required")
+        expect(page.locator("#run-it-workflow")).to_be_disabled()
+        page.locator("#review-it-approval").click()
+        expect(page.locator("#approval-list")).to_contain_text("ITCASE-2002")
+        page.get_by_label("IT decision note").fill(
+            "Manager confirmed the project assignment and least-privilege access."
+        )
+        page.get_by_role("button", name="Approve access").click()
+        expect(page.locator("#it-step-approval")).to_contain_text("Approved by EMP-2000")
+        expect(page.locator("#run-it-workflow")).to_be_enabled()
+        page.locator("#run-it-workflow").click()
+        expect(page.locator("#it-result-status")).to_have_text("Resolved")
+        expect(page.locator("#it-result")).to_contain_text("Fresh persisted state")
         page.screenshot(
             path=screenshot_directory / "resolveops-employee-it.png",
             full_page=True,

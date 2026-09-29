@@ -30,6 +30,12 @@ assessment/operator correction. Audit works globally and can be narrowed to a ca
    Use scenario H for verification recovery.
 9. Choose **Reset demo** to rebuild only the synthetic demo records.
 
+Pending IT requests show **Approval required** instead of attempting execution. Use **Review
+approval** to open the shared Approvals queue, enter a required decision reason, and approve or
+reject. ResolveOps stores the approver, target-team manager, note, decision, and timestamp. An
+approval returns the operator to the IT request with **Process request** enabled; rejection blocks
+execution.
+
 The reset also creates several IT requests in different states so the queue is a real multi-record
 working surface rather than a single flagship card. Submitting an operator correction persists
 structured feedback in a pending review state; it does not change the case outcome or evaluation

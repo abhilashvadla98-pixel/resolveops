@@ -131,6 +131,10 @@ compact queues, filters and pagination, a three-pane case workspace, evidence an
 durable approvals, operator corrections, real IT records, reliability traces, and a global audit
 table. The default theme is neutral and light, with an optional dark mode.
 
+The Approvals queue covers controlled refunds and employee repository-access requests. Pending IT
+work cannot be processed until an explicit approve/reject decision with a written reason has been
+persisted.
+
 ## Safety and recovery design
 
 Every action uses a typed request, server-derived actor, unique idempotency key, database transaction,

@@ -13,7 +13,7 @@ from resolveops.api.dependencies import get_principal, get_tenant_session
 from resolveops.api.main import app
 from resolveops.database.base import Base
 from resolveops.database.records import CaseIssueRecord
-from resolveops.database.seed import seed_all
+from resolveops.database.seed import seed_additional_it_cases, seed_all
 from resolveops.knowledge.embeddings import FeatureHashEmbeddingProvider
 from resolveops.knowledge.ingestion import ingest_directory
 from resolveops.models.case import CaseIssueStatus, IssueFinding
@@ -166,6 +166,42 @@ def test_employee_access_api_executes_verifies_and_replays_safely(
     assert replay.status_code == 200
     assert replay.json()["outcome"] == "already_satisfied"
     assert replay.json()["decision"] == "no_action"
+
+
+def test_pending_it_request_can_be_approved_then_processed(
+    operations_api: tuple[TestClient, dict[str, ActorRole], Engine],
+) -> None:
+    client, role, engine = operations_api
+    with Session(engine) as session:
+        assert seed_additional_it_cases(session) is True
+        session.commit()
+
+    approvals = client.get("/api/v1/it/approvals")
+    assert approvals.status_code == 200
+    assert [item["case_id"] for item in approvals.json()] == ["ITCASE-2002"]
+    assert approvals.json()[0]["status"] == "pending"
+
+    role["value"] = ActorRole.APPROVER
+    decision = client.post(
+        "/api/v1/it/approvals/ITCASE-2002/decision",
+        json={
+            "decision": "approve",
+            "note": "Manager confirmed the project assignment and least-privilege access.",
+        },
+    )
+    assert decision.status_code == 200
+    assert decision.json()["status"] == "approved"
+    assert decision.json()["manager_employee_id"] == "EMP-2000"
+
+    role["value"] = ActorRole.OPERATOR
+    processed = client.post("/api/v1/it/cases/ITCASE-2002/execute")
+    assert processed.status_code == 200
+    assert processed.json()["outcome"] == "access_verified"
+    assert processed.json()["verified_access_id"]
+
+    decided = client.get("/api/v1/it/approvals")
+    assert decided.status_code == 200
+    assert decided.json()[0]["decision_note"].startswith("Manager confirmed")
 
 
 def test_workflow_approval_can_be_listed_and_resumed(

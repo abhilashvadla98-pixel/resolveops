@@ -1,3 +1,4 @@
+from datetime import UTC, datetime
 from typing import Annotated, NoReturn
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -8,12 +9,20 @@ from sqlalchemy.orm import Session
 from resolveops.api.dependencies import get_principal, get_tenant_session
 from resolveops.database.employee_it_records import (
     EmployeeRecord,
+    GitRepositoryRecord,
+    ITAccessApprovalDecisionRecord,
     ITAccessCaseRecord,
     ITAccessRequestRecord,
     ITTicketRecord,
+    TeamRecord,
 )
 from resolveops.database.session import create_session_factory
-from resolveops.employee_it.models import Employee, EmployeeAccessSnapshot, ITCaseStatus
+from resolveops.employee_it.models import (
+    AccessRequestStatus,
+    Employee,
+    EmployeeAccessSnapshot,
+    ITCaseStatus,
+)
 from resolveops.employee_it.store import EmployeeITStore
 from resolveops.employee_it.workflow import EmployeeAccessWorkflow
 from resolveops.employee_it.workflow_models import (
@@ -27,6 +36,7 @@ from resolveops.operations.errors import ResourceNotFoundError
 from resolveops.operations.models import Actor, ActorRole, Permission
 from resolveops.security.models import SecurityPrincipal
 from resolveops.security.pii import redact_employee, redact_employee_access_snapshot
+from resolveops.workflows.models import ApprovalDecisionType, ApprovalStatus
 
 router = APIRouter(prefix="/simulator/v1/it", tags=["employee and IT simulator"])
 action_router = APIRouter(prefix="/api/v1/it", tags=["employee and IT operations"])
@@ -51,6 +61,27 @@ class ITRequestQueuePage(DomainModel):
     page: int = Field(ge=1)
     page_size: int = Field(ge=1)
     total: int = Field(ge=0)
+
+
+class ITApprovalDecision(DomainModel):
+    decision: ApprovalDecisionType
+    note: NonEmptyText
+
+
+class ITApprovalItem(DomainModel):
+    approval_id: Identifier
+    case_id: Identifier
+    access_request_id: Identifier
+    employee_id: Identifier
+    employee_name: NonEmptyText
+    repository_name: NonEmptyText
+    requested_level: str
+    manager_employee_id: Identifier
+    status: ApprovalStatus
+    requested_at: AwareDatetime
+    decided_by: Identifier | None = None
+    decision_note: str | None = None
+    decided_at: AwareDatetime | None = None
 
 
 def workflow_actor(principal: SecurityPrincipal) -> Actor:
@@ -138,6 +169,181 @@ def list_access_cases(
         page=page,
         page_size=page_size,
         total=session.scalar(count_statement) or 0,
+    )
+
+
+def _approval_item(
+    request: ITAccessRequestRecord,
+    employee: EmployeeRecord,
+    repository: GitRepositoryRecord,
+    team: TeamRecord,
+    *,
+    may_read_pii: bool,
+    decision: ITAccessApprovalDecisionRecord | None = None,
+) -> ITApprovalItem:
+    status_value = (
+        ApprovalStatus.PENDING
+        if decision is None
+        else ApprovalStatus.APPROVED
+        if decision.decision == ApprovalDecisionType.APPROVE
+        else ApprovalStatus.REJECTED
+    )
+    return ITApprovalItem(
+        approval_id=f"IT-APPROVAL-{request.case_id}",
+        case_id=request.case_id,
+        access_request_id=request.access_request_id,
+        employee_id=request.employee_id,
+        employee_name=employee.name if may_read_pii else "Restricted employee",
+        repository_name=repository.name,
+        requested_level=request.requested_level.value,
+        manager_employee_id=team.manager_employee_id,
+        status=status_value,
+        requested_at=request.requested_at,
+        decided_by=decision.decided_by if decision else None,
+        decision_note=decision.note if decision else None,
+        decided_at=decision.decided_at if decision else None,
+    )
+
+
+@action_router.get("/approvals", response_model=list[ITApprovalItem])
+def list_access_approvals(
+    session: DatabaseSession,
+    principal: Principal,
+    approval_status: Annotated[ApprovalStatus | None, Query(alias="status")] = None,
+) -> list[ITApprovalItem]:
+    if not has_permission(principal.actor(), Permission.READ_OPERATIONS):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="permission denied")
+    may_read_pii = has_permission(principal.actor(), Permission.READ_PII)
+    base = (
+        select(ITAccessRequestRecord, EmployeeRecord, GitRepositoryRecord, TeamRecord)
+        .join(EmployeeRecord, EmployeeRecord.employee_id == ITAccessRequestRecord.employee_id)
+        .join(
+            GitRepositoryRecord,
+            GitRepositoryRecord.repository_id == ITAccessRequestRecord.repository_id,
+        )
+        .join(TeamRecord, TeamRecord.team_id == ITAccessRequestRecord.target_team_id)
+    )
+    items: list[ITApprovalItem] = []
+    if approval_status in {None, ApprovalStatus.PENDING}:
+        pending = session.execute(
+            base.where(ITAccessRequestRecord.status == AccessRequestStatus.PENDING_APPROVAL)
+        ).all()
+        items.extend(
+            _approval_item(request, employee, repository, team, may_read_pii=may_read_pii)
+            for request, employee, repository, team in pending
+        )
+    if approval_status != ApprovalStatus.PENDING:
+        decision_statement = select(ITAccessApprovalDecisionRecord)
+        if approval_status is not None:
+            decision_statement = decision_statement.where(
+                ITAccessApprovalDecisionRecord.decision
+                == (
+                    ApprovalDecisionType.APPROVE
+                    if approval_status == ApprovalStatus.APPROVED
+                    else ApprovalDecisionType.REJECT
+                )
+            )
+        for decision in session.scalars(decision_statement):
+            request = session.get(ITAccessRequestRecord, decision.access_request_id)
+            if request is None:
+                continue
+            employee = session.get(EmployeeRecord, request.employee_id)
+            repository = session.get(GitRepositoryRecord, request.repository_id)
+            team = session.get(TeamRecord, request.target_team_id)
+            if employee is None or repository is None or team is None:
+                continue
+            items.append(
+                _approval_item(
+                    request,
+                    employee,
+                    repository,
+                    team,
+                    may_read_pii=may_read_pii,
+                    decision=decision,
+                )
+            )
+    return sorted(items, key=lambda item: (item.requested_at, item.approval_id), reverse=True)
+
+
+@action_router.post("/approvals/{case_id}/decision", response_model=ITApprovalItem)
+def decide_access_approval(
+    case_id: str,
+    body: ITApprovalDecision,
+    session: DatabaseSession,
+    principal: Principal,
+) -> ITApprovalItem:
+    is_demo = principal.authentication_method == "demo_session"
+    if not is_demo and principal.role not in {ActorRole.APPROVER, ActorRole.SYSTEM}:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="approver role required")
+    try:
+        snapshot = EmployeeITStore(session).get_snapshot(case_id)
+    except ResourceNotFoundError:
+        not_found("IT access case", case_id)
+    request = session.get(ITAccessRequestRecord, snapshot.access_request.access_request_id)
+    access_case = session.get(ITAccessCaseRecord, case_id)
+    employee = session.get(EmployeeRecord, snapshot.employee.employee_id)
+    repository = session.get(GitRepositoryRecord, snapshot.repository.repository_id)
+    team = session.get(TeamRecord, snapshot.team.team_id)
+    if any(item is None for item in (request, access_case, employee, repository, team)):
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT, detail="IT approval data is incomplete"
+        )
+    assert request is not None and access_case is not None
+    assert employee is not None and repository is not None and team is not None
+    existing = session.scalar(
+        select(ITAccessApprovalDecisionRecord).where(
+            ITAccessApprovalDecisionRecord.case_id == case_id
+        )
+    )
+    if existing is not None:
+        if existing.decision != body.decision:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="IT approval already has a different decision",
+            )
+        return _approval_item(
+            request,
+            employee,
+            repository,
+            team,
+            may_read_pii=has_permission(principal.actor(), Permission.READ_PII),
+            decision=existing,
+        )
+    if request.status != AccessRequestStatus.PENDING_APPROVAL:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="IT request is not waiting for approval",
+        )
+    now = datetime.now(UTC)
+    decided_by = "DEMO-APPROVER" if is_demo else principal.subject_id
+    decision = ITAccessApprovalDecisionRecord(
+        approval_id=f"IT-APPROVAL-{case_id}",
+        case_id=case_id,
+        access_request_id=request.access_request_id,
+        decision=body.decision,
+        decided_by=decided_by,
+        manager_employee_id=team.manager_employee_id,
+        note=body.note,
+        decided_at=now,
+    )
+    if body.decision == ApprovalDecisionType.APPROVE:
+        request.status = AccessRequestStatus.APPROVED
+        request.approved_by = team.manager_employee_id
+        request.approved_at = now
+        access_case.status = ITCaseStatus.ACTION_PENDING
+    else:
+        request.status = AccessRequestStatus.REJECTED
+        access_case.status = ITCaseStatus.ESCALATED
+    access_case.updated_at = now
+    session.add(decision)
+    session.commit()
+    return _approval_item(
+        request,
+        employee,
+        repository,
+        team,
+        may_read_pii=has_permission(principal.actor(), Permission.READ_PII),
+        decision=decision,
     )
 
 
