@@ -17,7 +17,10 @@ same authenticated APIs and persistence used by programmatic clients.
 6. Enter a decision note and approve or reject. Approval resumes the durable workflow.
 7. Inspect the ordered timeline and final response. A successful path states that the refund record
    was created and independently verified, not that an external provider completed settlement.
-8. Use scenario G for the simulated Employee/IT evidence and scenario H for verification recovery.
+8. Use scenario G to run the Employee/IT flow. It checks employment, identity, MFA, team ownership,
+   manager approval, Git identity, and active policy before granting access, then reloads repository,
+   group, ticket, and notification state for verification. Replaying it performs no duplicate grant.
+   Use scenario H for verification recovery.
 9. Choose **Reset demo** to rebuild only the synthetic demo records.
 
 The Reliability view calculates operation outcomes and p50/p95 lifecycle duration from persisted
@@ -47,9 +50,9 @@ role from their trusted API-key identity.
 
 `tests/test_browser_e2e.py` starts the actual application with a migrated and seeded disposable
 database, opens Chromium, creates a complaint, runs scenario D to an approval pause, approves it,
-resumes the workflow, and checks the persisted completion timeline and grounded final response. CI
-installs Chromium and runs this test in its own browser job. The test writes its screenshot only to a
-temporary test directory.
+checks the persisted completion timeline and grounded final response, inspects real reliability
+metrics, and completes the controlled Employee/IT access flow. CI installs Chromium and runs this
+test in its own browser job. The test writes its screenshot only to a temporary test directory.
 
 ## Current limits
 

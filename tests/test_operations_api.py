@@ -37,6 +37,12 @@ def operations_api() -> Iterator[tuple[TestClient, dict[str, ActorRole], Engine]
             FeatureHashEmbeddingProvider(dimensions=128),
             ingested_at=datetime(2026, 9, 29, 12, 0, tzinfo=UTC),
         )
+        ingest_directory(
+            session,
+            Path("domain_packs/employee_it/policies"),
+            FeatureHashEmbeddingProvider(dimensions=128),
+            ingested_at=datetime(2026, 9, 29, 12, 0, tzinfo=UTC),
+        )
         session.commit()
 
     def test_session() -> Iterator[Session]:
@@ -87,6 +93,32 @@ def test_complaint_intake_case_list_and_timeline(
         "issue_classified",
         "issue_classified",
     ]
+
+
+def test_employee_access_api_executes_verifies_and_replays_safely(
+    operations_api: tuple[TestClient, dict[str, ActorRole], Engine],
+) -> None:
+    client, _role, _engine = operations_api
+
+    first = client.post("/api/v1/it/cases/ITCASE-2001/execute")
+
+    assert first.status_code == 200
+    result = first.json()
+    assert result["outcome"] == "access_verified"
+    assert result["decision"] == "grant_access"
+    assert result["verified_access_id"]
+    assert result["operation"]["verified"] is True
+    assert result["node_history"][-3:] == ["grant_access", "verify_access", "complete"]
+    snapshot = client.get("/simulator/v1/it/cases/ITCASE-2001")
+    assert snapshot.status_code == 200
+    assert snapshot.json()["access_case"]["status"] == "resolved"
+    assert snapshot.json()["access_request"]["status"] == "fulfilled"
+    assert snapshot.json()["repository_access"]["status"] == "active"
+
+    replay = client.post("/api/v1/it/cases/ITCASE-2001/execute")
+    assert replay.status_code == 200
+    assert replay.json()["outcome"] == "already_satisfied"
+    assert replay.json()["decision"] == "no_action"
 
 
 def test_workflow_approval_can_be_listed_and_resumed(
