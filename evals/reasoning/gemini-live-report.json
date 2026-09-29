@@ -1,0 +1,101 @@
+{
+  "generated_at": "2026-09-28T18:48:07.341804Z",
+  "dataset": "evals/reasoning/live_reasoning.jsonl",
+  "provider": "gemini",
+  "model": "gemini-3.5-flash-lite",
+  "case_count": 3,
+  "passed_count": 3,
+  "failed_count": 0,
+  "results": [
+    {
+      "evaluation_id": "LIVE-REASON-001",
+      "title": "Confirmed duplicate charge",
+      "passed": true,
+      "latency_ms": 1494.5783000439405,
+      "usage": {
+        "input_tokens": 375,
+        "output_tokens": 173,
+        "total_tokens": 548
+      },
+      "assessment": {
+        "summary": "Two separate succeeded captures of 1499 USD occurred for the same order 61 seconds apart.",
+        "conclusion": "claim_supported",
+        "recommended_disposition": "refund_candidate",
+        "supporting_evidence_ids": [
+          "E1",
+          "E2"
+        ],
+        "cited_policy_chunk_ids": [
+          "POLICY-CHUNK-DUPLICATE"
+        ],
+        "missing_information": [],
+        "risk_notes": [
+          "Fresh verification and authorization checks are required before executing any refund."
+        ],
+        "rationale": "The evidence shows two distinct succeeded captures for the same order, matching the condition for a duplicate-charge refund candidate under the cited policy."
+      },
+      "failures": [],
+      "error_code": null
+    },
+    {
+      "evaluation_id": "LIVE-REASON-002",
+      "title": "Existing refund must be monitored",
+      "passed": true,
+      "latency_ms": 4741.498299990781,
+      "usage": {
+        "input_tokens": 338,
+        "output_tokens": 165,
+        "total_tokens": 503
+      },
+      "assessment": {
+        "summary": "An active provider refund REF-LIVE-002 already exists for the returned order with a pending status.",
+        "conclusion": "action_already_in_progress",
+        "recommended_disposition": "monitor_existing",
+        "supporting_evidence_ids": [
+          "E1"
+        ],
+        "cited_policy_chunk_ids": [
+          "POLICY-CHUNK-EXISTING"
+        ],
+        "missing_information": [],
+        "risk_notes": [
+          "Duplicate refund creation must be avoided when an active refund exists."
+        ],
+        "rationale": "Policy dictates that when an active refund already exists, we should monitor the provider status rather than creating another refund."
+      },
+      "failures": [],
+      "error_code": null
+    },
+    {
+      "evaluation_id": "LIVE-REASON-003",
+      "title": "Insufficient payment evidence requires review",
+      "passed": true,
+      "latency_ms": 6765.810600016266,
+      "usage": {
+        "input_tokens": 345,
+        "output_tokens": 193,
+        "total_tokens": 538
+      },
+      "assessment": {
+        "summary": "Customer claims a duplicate charge, but trusted payment records only show a single successful payment.",
+        "conclusion": "evidence_insufficient",
+        "recommended_disposition": "manual_review",
+        "supporting_evidence_ids": [
+          "E1"
+        ],
+        "cited_policy_chunk_ids": [
+          "POLICY-CHUNK-INSUFFICIENT"
+        ],
+        "missing_information": [
+          "External payment provider statement or transaction record confirming the second charge"
+        ],
+        "risk_notes": [
+          "Refunding without verification of a second charge in trusted payment records introduces financial risk."
+        ],
+        "rationale": "Trusted payment records show only one successful payment. Per policy, when a second captured payment cannot be verified, manual review or additional provider evidence is required before any refund recommendation."
+      },
+      "failures": [],
+      "error_code": null
+    }
+  ]
+}

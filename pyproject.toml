@@ -1,21 +1,60 @@
+[build-system]
+requires = ["setuptools>=75", "wheel"]
+build-backend = "setuptools.build_meta"
+
 [project]
 name = "resolveops"
 version = "0.1.0"
 description = "Enterprise service and operations resolution platform."
 requires-python = ">=3.12,<3.13"
 dependencies = [
+    "alembic>=1.14,<2.0",
     "fastapi",
+    "langgraph>=1.0,<2.0",
+    "pydantic[email]",
+    "pydantic-settings>=2.0,<3.0",
+    "prometheus-client>=0.21,<1.0",
+    "psycopg[binary]>=3.2,<4.0",
+    "sqlalchemy>=2.0,<3.0",
     "uvicorn",
 ]
 
+[project.scripts]
+resolveops-mcp = "resolveops.interfaces.mcp_server:main"
+resolveops-evaluate = "resolveops.evaluation.run:main"
+resolveops-observe = "resolveops.observability.benchmark:main"
+resolveops-evaluate-employee = "resolveops.evaluation.run_employee:main"
+resolveops-evaluate-live-reasoning = "resolveops.evaluation.live_reasoning:main"
+
 [project.optional-dependencies]
+embeddings = [
+    "fastembed>=0.7,<1.0",
+]
+llm = [
+    "google-genai>=2.0,<3.0",
+    "openai>=2.0,<3.0",
+]
+interfaces = [
+    "mcp>=2.0,<3.0",
+]
+workflow = [
+    "langgraph-checkpoint-postgres>=3.0,<4.0",
+]
 dev = [
-    "pytest",
+    "bandit>=1.9,<2.0",
+    "detect-secrets>=1.5,<2.0",
     "httpx",
+    "mypy>=1.14,<2.0",
+    "pip-audit>=2.10,<3.0",
+    "pytest",
+    "ruff>=0.9,<1.0",
 ]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+markers = [
+    "postgres: requires a dedicated PostgreSQL test database",
+]
 
 [tool.ruff]
 line-length = 100
@@ -23,3 +62,10 @@ line-length = 100
 [tool.mypy]
 python_version = "3.12"
 strict = true
+files = ["src"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+"resolveops.interfaces.operator_console" = ["*.html", "*.css", "*.js"]

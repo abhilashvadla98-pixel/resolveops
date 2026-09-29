@@ -8,6 +8,7 @@ __pycache__/
 # Environment variables / secrets
 .env
 .env.*
+!.env.example
 
 # Logs
 *.log
@@ -29,3 +30,12 @@ htmlcov/
 .DS_Store
 Thumbs.db
 *.egg-info/
+
+# Terraform local state and provider cache
+**/.terraform/*
+*.tfstate
+*.tfstate.*
+*.tfvars
+!*.tfvars.example
+crash.log
+crash.*.log

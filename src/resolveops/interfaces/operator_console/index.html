@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="ResolveOps evidence-first AI operations console">
+    <title>ResolveOps | Operations Console</title>
+    <link rel="stylesheet" href="/console/app.css?v=20260928">
+    <script src="/console/app.js?v=20260928" defer></script>
+  </head>
+  <body>
+    <a class="skip-link" href="#main-content">Skip to content</a>
+    <div class="app-shell">
+      <aside class="sidebar" aria-label="Primary navigation">
+        <div class="brand">
+          <span class="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 32 32"><path d="M7 8.5 16 3l9 5.5v10L16 29l-9-5.5v-15Z"/><path d="m11 16 3.2 3.2L21.5 12"/></svg>
+          </span>
+          <span><strong>ResolveOps</strong><small>AI Operations System</small></span>
+        </div>
+
+        <nav class="nav-list">
+          <button class="nav-item active" type="button" data-view="overview">
+            <span class="nav-icon">⌂</span><span>Overview</span>
+          </button>
+          <button class="nav-item" type="button" data-view="customer">
+            <span class="nav-icon">◎</span><span>Customer Ops</span>
+            <span class="nav-count" id="customer-nav-count">2</span>
+          </button>
+          <button class="nav-item" type="button" data-view="employee">
+            <span class="nav-icon">◇</span><span>Employee &amp; IT</span>
+            <span class="nav-count" id="it-nav-count">1</span>
+          </button>
+          <button class="nav-item" type="button" data-view="reliability">
+            <span class="nav-icon">⌁</span><span>Reliability</span>
+          </button>
+        </nav>
+
+        <div class="sidebar-section">
+          <p class="eyebrow">System boundary</p>
+          <div class="boundary-item"><span class="dot safe"></span>Advisory AI</div>
+          <div class="boundary-item"><span class="dot safe"></span>Human approval</div>
+          <div class="boundary-item"><span class="dot safe"></span>Verified actions</div>
+        </div>
+
+        <div class="sidebar-footer">
+          <div class="connection-mini">
+            <span class="connection-pulse" id="sidebar-pulse"></span>
+            <span><strong id="sidebar-connection">Not connected</strong><small>Local secure session</small></span>
+          </div>
+          <button class="text-button" id="disconnect-button" type="button" hidden>Disconnect</button>
+        </div>
+      </aside>
+
+      <div class="workspace">
+        <header class="topbar">
+          <button class="mobile-menu" id="mobile-menu" type="button" aria-label="Open navigation">☰</button>
+          <div class="environment"><span></span>Portfolio environment</div>
+          <div class="topbar-actions">
+            <div class="health-pill" title="API liveness"><span id="health-dot"></span><span id="health-label">Checking API</span></div>
+            <button class="secondary-button" id="open-connect" type="button">Connect securely</button>
+            <div class="avatar" aria-label="Operator profile">OP</div>
+          </div>
+        </header>
+
+        <main id="main-content">
+          <section class="view active" data-view-panel="overview">
+            <div class="page-heading">
+              <div><p class="eyebrow">Operations command center</p><h1>Evidence before action.</h1><p class="subtitle">Investigate cross-system cases, review policy-grounded decisions, and keep every sensitive action behind deterministic approval.</p></div>
+              <div class="heading-actions"><button class="secondary-button refresh-button" type="button">↻ Refresh data</button><span class="last-updated" id="last-updated">Waiting for connection</span></div>
+            </div>
+
+            <div class="notice" id="connection-notice">
+              <div class="notice-icon">i</div><div><strong>Connect to the secured demo API</strong><p>Paste a configured operator API key. It stays in browser memory only and disappears when this page closes.</p></div>
+              <button class="primary-button connect-trigger" type="button">Connect</button>
+            </div>
+
+            <div class="kpi-grid" aria-label="Operational summary">
+              <article class="kpi-card"><div class="kpi-top"><span>Customer issues</span><span class="kpi-icon blue">◎</span></div><strong id="kpi-issues">—</strong><small id="kpi-issues-note">Awaiting live case</small></article>
+              <article class="kpi-card"><div class="kpi-top"><span>Evidence records</span><span class="kpi-icon green">✓</span></div><strong id="kpi-evidence">—</strong><small>Grounded source references</small></article>
+              <article class="kpi-card"><div class="kpi-top"><span>IT access request</span><span class="kpi-icon amber">◇</span></div><strong class="word-value" id="kpi-access">—</strong><small id="kpi-access-note">Awaiting live request</small></article>
+              <article class="kpi-card"><div class="kpi-top"><span>API requests</span><span class="kpi-icon violet">⌁</span></div><strong id="kpi-requests">—</strong><small id="kpi-rejections">Protected by rate limits</small></article>
+            </div>
+
+            <div class="dashboard-grid">
+              <article class="panel span-8">
+                <div class="panel-header"><div><p class="eyebrow">Flagship investigation</p><h2>Customer case <span id="overview-case-id">CASE-1001</span></h2></div><span class="status-badge neutral" id="overview-case-status">Not loaded</span></div>
+                <div class="case-banner"><div><span class="label">Customer</span><strong id="overview-customer">—</strong></div><div><span class="label">Order</span><strong id="overview-order">—</strong></div><div><span class="label">Value</span><strong id="overview-value">—</strong></div><div><span class="label">Last trace</span><strong class="mono" id="overview-trace">—</strong></div></div>
+                <div class="issue-list" id="overview-issues"><div class="empty-state compact">Connect to load the evidence timeline.</div></div>
+              </article>
+
+              <article class="panel span-4">
+                <div class="panel-header"><div><p class="eyebrow">Control posture</p><h2>Safety gates</h2></div><span class="shield">✓</span></div>
+                <div class="control-list">
+                  <div class="control"><span>01</span><div><strong>Grounded evidence</strong><small>Only persisted facts and versioned policy</small></div><b>On</b></div>
+                  <div class="control"><span>02</span><div><strong>Deterministic RBAC</strong><small>Model output cannot grant permission</small></div><b>On</b></div>
+                  <div class="control"><span>03</span><div><strong>Human approval</strong><small>High-risk actions pause for review</small></div><b>On</b></div>
+                  <div class="control"><span>04</span><div><strong>Fresh verification</strong><small>Completion requires an independent read</small></div><b>On</b></div>
+                </div>
+              </article>
+
+              <article class="panel span-7">
+                <div class="panel-header"><div><p class="eyebrow">Employee &amp; IT</p><h2>Repository access</h2></div><span class="status-badge neutral" id="overview-it-status">Not loaded</span></div>
+                <div class="access-overview">
+                  <div class="person-card"><div class="person-avatar" id="overview-employee-avatar">—</div><div><strong id="overview-employee">—</strong><small id="overview-employee-email">—</small></div></div>
+                  <div class="access-arrow">→</div>
+                  <div class="repository-card"><span>Repository</span><strong id="overview-repository">—</strong><small id="overview-access-level">Requested access: —</small></div>
+                </div>
+                <div class="approval-strip"><span class="approval-icon">✓</span><div><strong id="overview-approval">Approval evidence pending</strong><small id="overview-approver">Connect to inspect the authoritative record.</small></div></div>
+              </article>
+
+              <article class="panel span-5">
+                <div class="panel-header"><div><p class="eyebrow">Service health</p><h2>Runtime status</h2></div><button class="icon-button refresh-button" type="button" aria-label="Refresh">↻</button></div>
+                <div class="health-rows"><div><span><i id="live-indicator"></i>API process</span><strong id="live-status">Checking</strong></div><div><span><i id="ready-indicator"></i>Database &amp; schema</span><strong id="ready-status">Checking</strong></div><div><span><i class="ok"></i>Request protection</span><strong>Active</strong></div><div><span><i class="ok"></i>Metrics exposure</span><strong>Authenticated</strong></div></div>
+              </article>
+            </div>
+          </section>
+
+          <section class="view" data-view-panel="customer">
+            <div class="page-heading"><div><p class="eyebrow">Customer operations</p><h1>Multi-issue resolution</h1><p class="subtitle">One customer case, two independent problems, and a separate evidence trail for every decision.</p></div><div class="heading-actions"><button class="secondary-button refresh-button" type="button">↻ Refresh data</button></div></div>
+            <div class="dashboard-grid">
+              <article class="panel span-8"><div class="panel-header"><div><p class="eyebrow">Case record</p><h2 id="customer-case-heading">CASE-1001</h2></div><span class="status-badge neutral" id="customer-status">Not loaded</span></div><div class="detail-grid" id="customer-summary"></div><h3 class="section-title">Issue evidence</h3><div id="customer-issues" class="issue-list"><div class="empty-state compact">Connect to load case evidence.</div></div></article>
+              <article class="panel span-4"><div class="panel-header"><div><p class="eyebrow">Payment ledger</p><h2>Captured payments</h2></div></div><div id="payment-list" class="record-list"><div class="empty-state compact">No live records loaded.</div></div></article>
+              <article class="panel span-6"><div class="panel-header"><div><p class="eyebrow">Active knowledge</p><h2>Policy controls</h2></div></div><div id="policy-list" class="record-list"><div class="empty-state compact">No live policies loaded.</div></div></article>
+              <article class="panel span-6"><div class="panel-header"><div><p class="eyebrow">Communications</p><h2>Tickets &amp; notifications</h2></div></div><div id="communication-list" class="record-list"><div class="empty-state compact">No live communications loaded.</div></div></article>
+            </div>
+          </section>
+
+          <section class="view" data-view-panel="employee">
+            <div class="page-heading"><div><p class="eyebrow">Employee &amp; IT</p><h1>Access with proof.</h1><p class="subtitle">Join HR, directory, Git, approval, ticket, and notification state before any repository grant.</p></div><div class="heading-actions"><button class="secondary-button refresh-button" type="button">↻ Refresh data</button></div></div>
+            <div class="dashboard-grid">
+              <article class="panel span-4"><div class="panel-header"><div><p class="eyebrow">Employee identity</p><h2>Authoritative profile</h2></div></div><div class="profile-large"><div class="person-avatar large" id="employee-avatar">—</div><strong id="employee-name">—</strong><small id="employee-email">—</small></div><div class="health-rows compact"><div><span>Employment</span><strong id="employment-status">—</strong></div><div><span>Identity</span><strong id="identity-status">—</strong></div><div><span>MFA enrolled</span><strong id="mfa-status">—</strong></div><div><span>Git account</span><strong id="git-status">—</strong></div></div></article>
+              <article class="panel span-8"><div class="panel-header"><div><p class="eyebrow">Access request</p><h2 id="access-request-id">ITCASE-2001</h2></div><span class="status-badge neutral" id="access-status">Not loaded</span></div><div class="access-path"><div><span>1</span><strong>Employment</strong><small id="path-employment">Verify active employee</small></div><b></b><div><span>2</span><strong>Approval</strong><small id="path-approval">Verify manager evidence</small></div><b></b><div><span>3</span><strong>Grant</strong><small id="path-grant">Verify repository access</small></div></div><div class="detail-grid" id="access-details"></div><div class="approval-strip prominent"><span class="approval-icon">✓</span><div><strong id="approval-title">Approval record not loaded</strong><small id="approval-detail">Connect to inspect the persisted approver and time.</small></div></div></article>
+              <article class="panel span-7"><div class="panel-header"><div><p class="eyebrow">Fulfilment state</p><h2>Repository controls</h2></div></div><div id="repository-controls" class="record-list"><div class="empty-state compact">No repository state loaded.</div></div></article>
+              <article class="panel span-5"><div class="panel-header"><div><p class="eyebrow">IT service</p><h2>Ticket &amp; notification</h2></div></div><div id="it-service-records" class="record-list"><div class="empty-state compact">No service records loaded.</div></div></article>
+            </div>
+          </section>
+
+          <section class="view" data-view-panel="reliability">
+            <div class="page-heading"><div><p class="eyebrow">Reliability &amp; governance</p><h1>Safe when systems fail.</h1><p class="subtitle">Bounded inputs, authenticated telemetry, idempotent actions, and fresh-state verification keep failure visible and recoverable.</p></div><div class="heading-actions"><button class="secondary-button refresh-button" type="button">↻ Refresh metrics</button></div></div>
+            <div class="dashboard-grid">
+              <article class="panel span-7"><div class="panel-header"><div><p class="eyebrow">Prometheus telemetry</p><h2>HTTP operating signals</h2></div><span class="status-badge neutral" id="metrics-status">Not loaded</span></div><div class="metric-grid"><div><span>Total requests</span><strong id="metric-requests">—</strong></div><div><span>Rejected requests</span><strong id="metric-rejections">—</strong></div><div><span>Rate ceiling</span><strong>120/min</strong></div><div><span>Body ceiling</span><strong>1 MiB</strong></div></div><div class="code-label">GET /metrics · operations role required</div></article>
+              <article class="panel span-5"><div class="panel-header"><div><p class="eyebrow">Latest request</p><h2>Trace context</h2></div></div><div class="trace-card"><span>Trace ID</span><strong class="mono" id="reliability-trace">—</strong><p>Random request correlation only. No customer content, credentials, prompts, or model output is stored in trace attributes.</p></div></article>
+              <article class="panel span-12"><div class="panel-header"><div><p class="eyebrow">Defense in depth</p><h2>Control map</h2></div></div><div class="control-map"><div><span>01</span><strong>Authenticate</strong><small>Hashed bearer keys and generic failures</small></div><i>→</i><div><span>02</span><strong>Isolate</strong><small>Database per authenticated tenant</small></div><i>→</i><div><span>03</span><strong>Authorize</strong><small>Server-side RBAC and value limits</small></div><i>→</i><div><span>04</span><strong>Execute once</strong><small>Idempotency and durable audit state</small></div><i>→</i><div><span>05</span><strong>Verify</strong><small>Fresh read before completion</small></div></div></article>
+            </div>
+          </section>
+        </main>
+      </div>
+    </div>
+
+    <div class="connect-dialog" id="connect-dialog" role="dialog" aria-modal="true" aria-labelledby="connect-title" hidden>
+      <form id="connect-form">
+        <button class="dialog-close" id="close-connect" type="button" aria-label="Close">×</button>
+        <div class="dialog-mark">R</div>
+        <p class="eyebrow">Secure local session</p>
+        <h2 id="connect-title">Connect the operator console</h2>
+        <p>Use a configured ResolveOps Operator, Approver, or System API key. The key stays only in memory—never in browser storage, URLs, traces, or metrics.</p>
+        <label for="api-key">Bearer API key</label>
+        <div class="secret-input"><input id="api-key" name="api-key" type="password" autocomplete="off" spellcheck="false" placeholder="Paste API key"><button id="toggle-key" type="button" aria-label="Show API key">Show</button></div>
+        <div class="dialog-error" id="connect-error" role="alert" hidden></div>
+        <button class="primary-button wide" id="connect-submit" value="default" type="submit">Connect and load live data</button>
+        <small class="privacy-note">For the portfolio demo, use synthetic data only.</small>
+      </form>
+    </div>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  </body>
+</html>

@@ -1,0 +1,815 @@
+{
+  "dataset_name": "evals/workflows/employee_it.jsonl",
+  "case_count": 14,
+  "passed_count": 14,
+  "failed_count": 0,
+  "pass_rate": 1.0,
+  "category_metrics": [
+    {
+      "category": "approval",
+      "case_count": 2,
+      "passed_count": 2,
+      "pass_rate": 1.0
+    },
+    {
+      "category": "eligibility",
+      "case_count": 5,
+      "passed_count": 5,
+      "pass_rate": 1.0
+    },
+    {
+      "category": "idempotency",
+      "case_count": 2,
+      "passed_count": 2,
+      "pass_rate": 1.0
+    },
+    {
+      "category": "permission",
+      "case_count": 1,
+      "passed_count": 1,
+      "pass_rate": 1.0
+    },
+    {
+      "category": "policy",
+      "case_count": 1,
+      "passed_count": 1,
+      "pass_rate": 1.0
+    },
+    {
+      "category": "reasoning",
+      "case_count": 2,
+      "passed_count": 2,
+      "pass_rate": 1.0
+    },
+    {
+      "category": "success",
+      "case_count": 1,
+      "passed_count": 1,
+      "pass_rate": 1.0
+    }
+  ],
+  "cases": [
+    {
+      "evaluation_id": "IT-EVAL-001",
+      "title": "Approved operator grant succeeds",
+      "category": "success",
+      "passed": true,
+      "assertions": [
+        {
+          "name": "outcome",
+          "expected": "access_verified",
+          "actual": "access_verified",
+          "passed": true
+        },
+        {
+          "name": "decision",
+          "expected": "grant_access",
+          "actual": "grant_access",
+          "passed": true
+        },
+        {
+          "name": "error_code",
+          "expected": "None",
+          "actual": "None",
+          "passed": true
+        },
+        {
+          "name": "access_created",
+          "expected": "True",
+          "actual": "True",
+          "passed": true
+        },
+        {
+          "name": "verified",
+          "expected": "True",
+          "actual": "True",
+          "passed": true
+        },
+        {
+          "name": "required_policy",
+          "expected": "POLICY-REPOSITORY-ACCESS",
+          "actual": "POLICY-REPOSITORY-ACCESS",
+          "passed": true
+        }
+      ],
+      "observation": {
+        "outcome": "access_verified",
+        "decision": "grant_access",
+        "error_code": null,
+        "access_created": true,
+        "verified": true,
+        "policy_document_ids": [
+          "POLICY-REPOSITORY-ACCESS"
+        ]
+      },
+      "execution_error": null
+    },
+    {
+      "evaluation_id": "IT-EVAL-002",
+      "title": "Supported advisory reasoning still passes deterministic gates",
+      "category": "reasoning",
+      "passed": true,
+      "assertions": [
+        {
+          "name": "outcome",
+          "expected": "access_verified",
+          "actual": "access_verified",
+          "passed": true
+        },
+        {
+          "name": "decision",
+          "expected": "grant_access",
+          "actual": "grant_access",
+          "passed": true
+        },
+        {
+          "name": "error_code",
+          "expected": "None",
+          "actual": "None",
+          "passed": true
+        },
+        {
+          "name": "access_created",
+          "expected": "True",
+          "actual": "True",
+          "passed": true
+        },
+        {
+          "name": "verified",
+          "expected": "True",
+          "actual": "True",
+          "passed": true
+        },
+        {
+          "name": "required_policy",
+          "expected": "POLICY-REPOSITORY-ACCESS",
+          "actual": "POLICY-REPOSITORY-ACCESS",
+          "passed": true
+        }
+      ],
+      "observation": {
+        "outcome": "access_verified",
+        "decision": "grant_access",
+        "error_code": null,
+        "access_created": true,
+        "verified": true,
+        "policy_document_ids": [
+          "POLICY-REPOSITORY-ACCESS"
+        ]
+      },
+      "execution_error": null
+    },
+    {
+      "evaluation_id": "IT-EVAL-003",
+      "title": "Agent cannot grant repository access",
+      "category": "permission",
+      "passed": true,
+      "assertions": [
+        {
+          "name": "outcome",
+          "expected": "needs_review",
+          "actual": "needs_review",
+          "passed": true
+        },
+        {
+          "name": "decision",
+          "expected": "escalate",
+          "actual": "escalate",
+          "passed": true
+        },
+        {
+          "name": "error_code",
+          "expected": "permission_denied",
+          "actual": "permission_denied",
+          "passed": true
+        },
+        {
+          "name": "access_created",
+          "expected": "False",
+          "actual": "False",
+          "passed": true
+        },
+        {
+          "name": "verified",
+          "expected": "False",
+          "actual": "False",
+          "passed": true
+        },
+        {
+          "name": "required_policy",
+          "expected": "POLICY-REPOSITORY-ACCESS",
+          "actual": "POLICY-REPOSITORY-ACCESS",
+          "passed": true
+        }
+      ],
+      "observation": {
+        "outcome": "needs_review",
+        "decision": "escalate",
+        "error_code": "permission_denied",
+        "access_created": false,
+        "verified": false,
+        "policy_document_ids": [
+          "POLICY-REPOSITORY-ACCESS"
+        ]
+      },
+      "execution_error": null
+    },
+    {
+      "evaluation_id": "IT-EVAL-004",
+      "title": "Inactive employee fails closed",
+      "category": "eligibility",
+      "passed": true,
+      "assertions": [
+        {
+          "name": "outcome",
+          "expected": "needs_review",
+          "actual": "needs_review",
+          "passed": true
+        },
+        {
+          "name": "decision",
+          "expected": "escalate",
+          "actual": "escalate",
+          "passed": true
+        },
+        {
+          "name": "error_code",
+          "expected": "employee_inactive",
+          "actual": "employee_inactive",
+          "passed": true
+        },
+        {
+          "name": "access_created",
+          "expected": "False",
+          "actual": "False",
+          "passed": true
+        },
+        {
+          "name": "verified",
+          "expected": "False",
+          "actual": "False",
+          "passed": true
+        },
+        {
+          "name": "required_policy",
+          "expected": "POLICY-REPOSITORY-ACCESS",
+          "actual": "POLICY-REPOSITORY-ACCESS",
+          "passed": true
+        }
+      ],
+      "observation": {
+        "outcome": "needs_review",
+        "decision": "escalate",
+        "error_code": "employee_inactive",
+        "access_created": false,
+        "verified": false,
+        "policy_document_ids": [
+          "POLICY-REPOSITORY-ACCESS"
+        ]
+      },
+      "execution_error": null
+    },
+    {
+      "evaluation_id": "IT-EVAL-005",
+      "title": "Suspended identity fails closed",
+      "category": "eligibility",
+      "passed": true,
+      "assertions": [
+        {
+          "name": "outcome",
+          "expected": "needs_review",
+          "actual": "needs_review",
+          "passed": true
+        },
+        {
+          "name": "decision",
+          "expected": "escalate",
+          "actual": "escalate",
+          "passed": true
+        },
+        {
+          "name": "error_code",
+          "expected": "identity_ineligible",
+          "actual": "identity_ineligible",
+          "passed": true
+        },
+        {
+          "name": "access_created",
+          "expected": "False",
+          "actual": "False",
+          "passed": true
+        },
+        {
+          "name": "verified",
+          "expected": "False",
+          "actual": "False",
+          "passed": true
+        },
+        {
+          "name": "required_policy",
+          "expected": "POLICY-REPOSITORY-ACCESS",
+          "actual": "POLICY-REPOSITORY-ACCESS",
+          "passed": true
+        }
+      ],
+      "observation": {
+        "outcome": "needs_review",
+        "decision": "escalate",
+        "error_code": "identity_ineligible",
+        "access_created": false,
+        "verified": false,
+        "policy_document_ids": [
+          "POLICY-REPOSITORY-ACCESS"
+        ]
+      },
+      "execution_error": null
+    },
+    {
+      "evaluation_id": "IT-EVAL-006",
+      "title": "Missing MFA fails closed",
+      "category": "eligibility",
+      "passed": true,
+      "assertions": [
+        {
+          "name": "outcome",
+          "expected": "needs_review",
+          "actual": "needs_review",
+          "passed": true
+        },
+        {
+          "name": "decision",
+          "expected": "escalate",
+          "actual": "escalate",
+          "passed": true
+        },
+        {
+          "name": "error_code",
+          "expected": "mfa_required",
+          "actual": "mfa_required",
+          "passed": true
+        },
+        {
+          "name": "access_created",
+          "expected": "False",
+          "actual": "False",
+          "passed": true
+        },
+        {
+          "name": "verified",
+          "expected": "False",
+          "actual": "False",
+          "passed": true
+        },
+        {
+          "name": "required_policy",
+          "expected": "POLICY-REPOSITORY-ACCESS",
+          "actual": "POLICY-REPOSITORY-ACCESS",
+          "passed": true
+        }
+      ],
+      "observation": {
+        "outcome": "needs_review",
+        "decision": "escalate",
+        "error_code": "mfa_required",
+        "access_created": false,
+        "verified": false,
+        "policy_document_ids": [
+          "POLICY-REPOSITORY-ACCESS"
+        ]
+      },
+      "execution_error": null
+    },
+    {
+      "evaluation_id": "IT-EVAL-007",
+      "title": "Revoked team membership fails closed",
+      "category": "eligibility",
+      "passed": true,
+      "assertions": [
+        {
+          "name": "outcome",
+          "expected": "needs_review",
+          "actual": "needs_review",
+          "passed": true
+        },
+        {
+          "name": "decision",
+          "expected": "escalate",
+          "actual": "escalate",
+          "passed": true
+        },
+        {
+          "name": "error_code",
+          "expected": "team_membership_required",
+          "actual": "team_membership_required",
+          "passed": true
+        },
+        {
+          "name": "access_created",
+          "expected": "False",
+          "actual": "False",
+          "passed": true
+        },
+        {
+          "name": "verified",
+          "expected": "False",
+          "actual": "False",
+          "passed": true
+        },
+        {
+          "name": "required_policy",
+          "expected": "POLICY-REPOSITORY-ACCESS",
+          "actual": "POLICY-REPOSITORY-ACCESS",
+          "passed": true
+        }
+      ],
+      "observation": {
+        "outcome": "needs_review",
+        "decision": "escalate",
+        "error_code": "team_membership_required",
+        "access_created": false,
+        "verified": false,
+        "policy_document_ids": [
+          "POLICY-REPOSITORY-ACCESS"
+        ]
+      },
+      "execution_error": null
+    },
+    {
+      "evaluation_id": "IT-EVAL-008",
+      "title": "Suspended Git account fails closed",
+      "category": "eligibility",
+      "passed": true,
+      "assertions": [
+        {
+          "name": "outcome",
+          "expected": "needs_review",
+          "actual": "needs_review",
+          "passed": true
+        },
+        {
+          "name": "decision",
+          "expected": "escalate",
+          "actual": "escalate",
+          "passed": true
+        },
+        {
+          "name": "error_code",
+          "expected": "git_account_inactive",
+          "actual": "git_account_inactive",
+          "passed": true
+        },
+        {
+          "name": "access_created",
+          "expected": "False",
+          "actual": "False",
+          "passed": true
+        },
+        {
+          "name": "verified",
+          "expected": "False",
+          "actual": "False",
+          "passed": true
+        },
+        {
+          "name": "required_policy",
+          "expected": "POLICY-REPOSITORY-ACCESS",
+          "actual": "POLICY-REPOSITORY-ACCESS",
+          "passed": true
+        }
+      ],
+      "observation": {
+        "outcome": "needs_review",
+        "decision": "escalate",
+        "error_code": "git_account_inactive",
+        "access_created": false,
+        "verified": false,
+        "policy_document_ids": [
+          "POLICY-REPOSITORY-ACCESS"
+        ]
+      },
+      "execution_error": null
+    },
+    {
+      "evaluation_id": "IT-EVAL-009",
+      "title": "Pending approval cannot authorize access",
+      "category": "approval",
+      "passed": true,
+      "assertions": [
+        {
+          "name": "outcome",
+          "expected": "needs_review",
+          "actual": "needs_review",
+          "passed": true
+        },
+        {
+          "name": "decision",
+          "expected": "escalate",
+          "actual": "escalate",
+          "passed": true
+        },
+        {
+          "name": "error_code",
+          "expected": "manager_approval_required",
+          "actual": "manager_approval_required",
+          "passed": true
+        },
+        {
+          "name": "access_created",
+          "expected": "False",
+          "actual": "False",
+          "passed": true
+        },
+        {
+          "name": "verified",
+          "expected": "False",
+          "actual": "False",
+          "passed": true
+        },
+        {
+          "name": "required_policy",
+          "expected": "POLICY-REPOSITORY-ACCESS",
+          "actual": "POLICY-REPOSITORY-ACCESS",
+          "passed": true
+        }
+      ],
+      "observation": {
+        "outcome": "needs_review",
+        "decision": "escalate",
+        "error_code": "manager_approval_required",
+        "access_created": false,
+        "verified": false,
+        "policy_document_ids": [
+          "POLICY-REPOSITORY-ACCESS"
+        ]
+      },
+      "execution_error": null
+    },
+    {
+      "evaluation_id": "IT-EVAL-010",
+      "title": "Wrong approver cannot authorize access",
+      "category": "approval",
+      "passed": true,
+      "assertions": [
+        {
+          "name": "outcome",
+          "expected": "needs_review",
+          "actual": "needs_review",
+          "passed": true
+        },
+        {
+          "name": "decision",
+          "expected": "escalate",
+          "actual": "escalate",
+          "passed": true
+        },
+        {
+          "name": "error_code",
+          "expected": "manager_approval_required",
+          "actual": "manager_approval_required",
+          "passed": true
+        },
+        {
+          "name": "access_created",
+          "expected": "False",
+          "actual": "False",
+          "passed": true
+        },
+        {
+          "name": "verified",
+          "expected": "False",
+          "actual": "False",
+          "passed": true
+        },
+        {
+          "name": "required_policy",
+          "expected": "POLICY-REPOSITORY-ACCESS",
+          "actual": "POLICY-REPOSITORY-ACCESS",
+          "passed": true
+        }
+      ],
+      "observation": {
+        "outcome": "needs_review",
+        "decision": "escalate",
+        "error_code": "manager_approval_required",
+        "access_created": false,
+        "verified": false,
+        "policy_document_ids": [
+          "POLICY-REPOSITORY-ACCESS"
+        ]
+      },
+      "execution_error": null
+    },
+    {
+      "evaluation_id": "IT-EVAL-011",
+      "title": "Partial access state is not overwritten",
+      "category": "idempotency",
+      "passed": true,
+      "assertions": [
+        {
+          "name": "outcome",
+          "expected": "needs_review",
+          "actual": "needs_review",
+          "passed": true
+        },
+        {
+          "name": "decision",
+          "expected": "escalate",
+          "actual": "escalate",
+          "passed": true
+        },
+        {
+          "name": "error_code",
+          "expected": "existing_access_conflict",
+          "actual": "existing_access_conflict",
+          "passed": true
+        },
+        {
+          "name": "access_created",
+          "expected": "False",
+          "actual": "False",
+          "passed": true
+        },
+        {
+          "name": "verified",
+          "expected": "False",
+          "actual": "False",
+          "passed": true
+        },
+        {
+          "name": "required_policy",
+          "expected": "POLICY-REPOSITORY-ACCESS",
+          "actual": "POLICY-REPOSITORY-ACCESS",
+          "passed": true
+        }
+      ],
+      "observation": {
+        "outcome": "needs_review",
+        "decision": "escalate",
+        "error_code": "existing_access_conflict",
+        "access_created": false,
+        "verified": false,
+        "policy_document_ids": [
+          "POLICY-REPOSITORY-ACCESS"
+        ]
+      },
+      "execution_error": null
+    },
+    {
+      "evaluation_id": "IT-EVAL-012",
+      "title": "Exact existing access takes no duplicate action",
+      "category": "idempotency",
+      "passed": true,
+      "assertions": [
+        {
+          "name": "outcome",
+          "expected": "already_satisfied",
+          "actual": "already_satisfied",
+          "passed": true
+        },
+        {
+          "name": "decision",
+          "expected": "no_action",
+          "actual": "no_action",
+          "passed": true
+        },
+        {
+          "name": "error_code",
+          "expected": "None",
+          "actual": "None",
+          "passed": true
+        },
+        {
+          "name": "access_created",
+          "expected": "False",
+          "actual": "False",
+          "passed": true
+        },
+        {
+          "name": "verified",
+          "expected": "False",
+          "actual": "False",
+          "passed": true
+        },
+        {
+          "name": "required_policy",
+          "expected": "POLICY-REPOSITORY-ACCESS",
+          "actual": "POLICY-REPOSITORY-ACCESS",
+          "passed": true
+        }
+      ],
+      "observation": {
+        "outcome": "already_satisfied",
+        "decision": "no_action",
+        "error_code": null,
+        "access_created": false,
+        "verified": false,
+        "policy_document_ids": [
+          "POLICY-REPOSITORY-ACCESS"
+        ]
+      },
+      "execution_error": null
+    },
+    {
+      "evaluation_id": "IT-EVAL-013",
+      "title": "Missing active policy blocks the grant",
+      "category": "policy",
+      "passed": true,
+      "assertions": [
+        {
+          "name": "outcome",
+          "expected": "needs_review",
+          "actual": "needs_review",
+          "passed": true
+        },
+        {
+          "name": "decision",
+          "expected": "escalate",
+          "actual": "escalate",
+          "passed": true
+        },
+        {
+          "name": "error_code",
+          "expected": "required_policy_not_found",
+          "actual": "required_policy_not_found",
+          "passed": true
+        },
+        {
+          "name": "access_created",
+          "expected": "False",
+          "actual": "False",
+          "passed": true
+        },
+        {
+          "name": "verified",
+          "expected": "False",
+          "actual": "False",
+          "passed": true
+        }
+      ],
+      "observation": {
+        "outcome": "needs_review",
+        "decision": "escalate",
+        "error_code": "required_policy_not_found",
+        "access_created": false,
+        "verified": false,
+        "policy_document_ids": []
+      },
+      "execution_error": null
+    },
+    {
+      "evaluation_id": "IT-EVAL-014",
+      "title": "Manual-review recommendation blocks action",
+      "category": "reasoning",
+      "passed": true,
+      "assertions": [
+        {
+          "name": "outcome",
+          "expected": "needs_review",
+          "actual": "needs_review",
+          "passed": true
+        },
+        {
+          "name": "decision",
+          "expected": "escalate",
+          "actual": "escalate",
+          "passed": true
+        },
+        {
+          "name": "error_code",
+          "expected": "reasoning_recommends_review",
+          "actual": "reasoning_recommends_review",
+          "passed": true
+        },
+        {
+          "name": "access_created",
+          "expected": "False",
+          "actual": "False",
+          "passed": true
+        },
+        {
+          "name": "verified",
+          "expected": "False",
+          "actual": "False",
+          "passed": true
+        },
+        {
+          "name": "required_policy",
+          "expected": "POLICY-REPOSITORY-ACCESS",
+          "actual": "POLICY-REPOSITORY-ACCESS",
+          "passed": true
+        }
+      ],
+      "observation": {
+        "outcome": "needs_review",
+        "decision": "escalate",
+        "error_code": "reasoning_recommends_review",
+        "access_created": false,
+        "verified": false,
+        "policy_document_ids": [
+          "POLICY-REPOSITORY-ACCESS"
+        ]
+      },
+      "execution_error": null
+    }
+  ]
+}

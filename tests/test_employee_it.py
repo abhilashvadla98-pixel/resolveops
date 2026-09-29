@@ -1,0 +1,367 @@
+from collections.abc import Callable, Iterator
+from datetime import UTC, datetime
+from pathlib import Path
+
+import pytest
+from sqlalchemy import Engine, create_engine, event, func, select
+from sqlalchemy.orm import Session, sessionmaker
+
+from resolveops.database.action_records import AuditEventRecord, OperationRecord
+from resolveops.database.base import Base
+from resolveops.database.employee_it_records import (
+    DirectoryGroupMembershipRecord,
+    EmployeeRecord,
+    EmployeeTeamMembershipRecord,
+    EnterpriseIdentityRecord,
+    GitAccountRecord,
+    GitRepositoryAccessRecord,
+    ITAccessRequestRecord,
+    ITNotificationRecord,
+)
+from resolveops.database.seed import seed_all
+from resolveops.database.session import create_session_factory
+from resolveops.employee_it.models import (
+    AccessRequestStatus,
+    EmploymentStatus,
+    GitAccountStatus,
+    GrantRepositoryAccessRequest,
+    MembershipStatus,
+    RepositoryAccessLevel,
+)
+from resolveops.employee_it.store import EmployeeITStore
+from resolveops.employee_it.workflow import EmployeeAccessWorkflow
+from resolveops.employee_it.workflow_models import (
+    EmployeeAccessWorkflowRequest,
+    EmployeeWorkflowDecision,
+    EmployeeWorkflowOutcome,
+)
+from resolveops.evaluation.employee_dataset import load_employee_evaluation_cases
+from resolveops.evaluation.employee_workflow import evaluate_employee_workflow_cases
+from resolveops.knowledge.embeddings import FeatureHashEmbeddingProvider
+from resolveops.knowledge.ingestion import ingest_directory
+from resolveops.operations.actions import ActionTools
+from resolveops.operations.models import Actor, ActorRole, AuditEventType, OperationType
+from resolveops.reasoning.models import (
+    ReasoningAssessment,
+    ReasoningConclusion,
+    ReasoningContext,
+    ReasoningDisposition,
+)
+from resolveops.workflows.models import WorkflowStatus
+
+NOW = datetime(2026, 9, 24, 12, 0, tzinfo=UTC)
+POLICY_DIRECTORY = Path("domain_packs/employee_it/policies")
+
+
+@pytest.fixture
+def employee_database() -> Iterator[tuple[Engine, sessionmaker[Session]]]:
+    engine = create_engine("sqlite:///:memory:")
+
+    @event.listens_for(engine, "connect")
+    def enable_foreign_keys(dbapi_connection: object, connection_record: object) -> None:
+        cursor = dbapi_connection.cursor()  # type: ignore[attr-defined]
+        cursor.execute("PRAGMA foreign_keys=ON")
+        cursor.close()
+
+    Base.metadata.create_all(engine)
+    factory = create_session_factory(engine)
+    with factory.begin() as session:
+        seed_all(session)
+        ingest_directory(
+            session,
+            POLICY_DIRECTORY,
+            FeatureHashEmbeddingProvider(dimensions=128),
+            ingested_at=NOW,
+        )
+    yield engine, factory
+    engine.dispose()
+
+
+def ids() -> Callable[[str], str]:
+    sequence = iter(range(1, 100))
+    return lambda prefix: f"{prefix}-IT-{next(sequence):04d}"
+
+
+def workflow(
+    factory: sessionmaker[Session],
+    *,
+    role: ActorRole = ActorRole.OPERATOR,
+    reasoning_provider: "ScriptedAccessReasoner | None" = None,
+) -> tuple[EmployeeAccessWorkflow, EmployeeAccessWorkflowRequest]:
+    tools = ActionTools(factory, clock=lambda: NOW, id_generator=ids())
+    service = EmployeeAccessWorkflow(
+        factory,
+        FeatureHashEmbeddingProvider(dimensions=128),
+        action_tools=tools,
+        reasoning_provider=reasoning_provider,
+        clock=lambda: NOW,
+    )
+    request = EmployeeAccessWorkflowRequest(
+        workflow_id=f"IT-WORKFLOW-{role.value.upper()}",
+        case_id="ITCASE-2001",
+        actor=Actor(actor_id=f"USER-{role.value.upper()}", role=role),
+    )
+    return service, request
+
+
+class ScriptedAccessReasoner:
+    provider_name = "test"
+    model_name = "scripted-access-v1"
+
+    def __init__(self, disposition: ReasoningDisposition) -> None:
+        self.disposition = disposition
+        self.contexts: list[ReasoningContext] = []
+
+    def assess(self, context: ReasoningContext) -> ReasoningAssessment:
+        self.contexts.append(context)
+        supported = self.disposition == ReasoningDisposition.ACCESS_CANDIDATE
+        return ReasoningAssessment(
+            summary="Employee access evidence and policy were reviewed.",
+            conclusion=(
+                ReasoningConclusion.CLAIM_SUPPORTED
+                if supported
+                else ReasoningConclusion.EVIDENCE_INSUFFICIENT
+            ),
+            recommended_disposition=self.disposition,
+            supporting_evidence_ids=[context.evidence[0].evidence_id],
+            cited_policy_chunk_ids=[context.policy_excerpts[0].chunk_id],
+            missing_information=[] if supported else ["Manual confirmation"],
+            risk_notes=["Deterministic gates remain authoritative."],
+            rationale="The model is advisory and does not authorize the access action.",
+        )
+
+
+def test_employee_access_workflow_grants_and_verifies_all_final_state(
+    employee_database: tuple[Engine, sessionmaker[Session]],
+) -> None:
+    _, factory = employee_database
+    provider = ScriptedAccessReasoner(ReasoningDisposition.ACCESS_CANDIDATE)
+    service, request = workflow(factory, reasoning_provider=provider)
+
+    result = service.run(request)
+
+    assert result.status == WorkflowStatus.COMPLETED
+    assert result.outcome == EmployeeWorkflowOutcome.ACCESS_VERIFIED
+    assert result.decision == EmployeeWorkflowDecision.GRANT_ACCESS
+    assert result.operation is not None and result.operation.verified
+    assert result.verified_access_id == result.operation.resource_id
+    assert any(item.document_id == "POLICY-REPOSITORY-ACCESS" for item in result.policy_citations)
+    assert provider.contexts[0].issue_type.value == "repository_access"
+    assert result.node_history == [
+        "load_case",
+        "inspect_eligibility",
+        "inspect_access",
+        "retrieve_policy",
+        "reason_case",
+        "decide",
+        "grant_access",
+        "verify_access",
+        "complete",
+    ]
+
+    with factory() as session:
+        snapshot = EmployeeITStore(session).get_snapshot("ITCASE-2001")
+        assert snapshot.repository_access is not None
+        assert snapshot.group_membership is not None
+        assert snapshot.access_request.status == AccessRequestStatus.FULFILLED
+        assert snapshot.access_case.status.value == "resolved"
+        assert snapshot.ticket.status.value == "resolved"
+        assert len(snapshot.notifications) == 1
+        operation = session.scalar(
+            select(OperationRecord).where(
+                OperationRecord.operation_type == OperationType.GRANT_REPOSITORY_ACCESS
+            )
+        )
+        assert operation is not None and operation.result_resource_id == result.verified_access_id
+        audit_types = list(
+            session.scalars(
+                select(AuditEventRecord.event_type)
+                .where(AuditEventRecord.operation_id == operation.operation_id)
+                .order_by(AuditEventRecord.sequence_number)
+            )
+        )
+        assert audit_types == [
+            AuditEventType.REQUESTED,
+            AuditEventType.AUTHORIZED,
+            AuditEventType.EXECUTED,
+            AuditEventType.VERIFIED,
+        ]
+
+
+def test_access_workflow_denies_unprivileged_agent_without_writing_access(
+    employee_database: tuple[Engine, sessionmaker[Session]],
+) -> None:
+    _, factory = employee_database
+    service, request = workflow(factory, role=ActorRole.AGENT)
+
+    result = service.run(request)
+
+    assert result.outcome == EmployeeWorkflowOutcome.NEEDS_REVIEW
+    assert result.error_code == "permission_denied"
+    with factory() as session:
+        assert session.scalar(select(func.count(GitRepositoryAccessRecord.access_id))) == 0
+        assert session.scalar(select(func.count(ITNotificationRecord.notification_id))) == 0
+
+
+def test_repository_access_replay_returns_original_verified_result(
+    employee_database: tuple[Engine, sessionmaker[Session]],
+) -> None:
+    _, factory = employee_database
+    service, workflow_request = workflow(factory)
+    first = service.run(workflow_request)
+    assert first.operation is not None
+    action_request = GrantRepositoryAccessRequest(
+        idempotency_key="repository-access-ACCESS-REQUEST-2001",
+        case_id="ITCASE-2001",
+        access_request_id="ACCESS-REQUEST-2001",
+        employee_id="EMP-2001",
+        identity_id="IDENTITY-2001",
+        repository_id="REPO-ML-PLATFORM",
+        access_level=RepositoryAccessLevel.WRITE,
+        reason="New ML Platform engineer requires repository access for assigned work.",
+    )
+
+    replay = service.action_tools.grant_repository_access(action_request, workflow_request.actor)
+
+    assert replay.resource_id == first.operation.resource_id
+    assert replay.idempotent_replay is True
+    assert replay.verified is True
+    with factory() as session:
+        assert session.scalar(select(func.count(GitRepositoryAccessRecord.access_id))) == 1
+        assert session.scalar(select(func.count(ITNotificationRecord.notification_id))) == 1
+
+
+@pytest.mark.parametrize(
+    ("mutation", "error_code"),
+    [
+        ("inactive_employee", "employee_inactive"),
+        ("missing_mfa", "mfa_required"),
+        ("missing_team", "team_membership_required"),
+        ("inactive_git", "git_account_inactive"),
+        ("pending_approval", "manager_approval_required"),
+    ],
+)
+def test_access_workflow_fails_closed_for_ineligible_or_unapproved_state(
+    employee_database: tuple[Engine, sessionmaker[Session]],
+    mutation: str,
+    error_code: str,
+) -> None:
+    _, factory = employee_database
+    with factory.begin() as session:
+        if mutation == "inactive_employee":
+            employee = session.get(EmployeeRecord, "EMP-2001")
+            assert employee is not None
+            employee.status = EmploymentStatus.LEAVE
+        elif mutation == "missing_mfa":
+            identity = session.get(EnterpriseIdentityRecord, "IDENTITY-2001")
+            assert identity is not None
+            identity.mfa_enrolled = False
+        elif mutation == "missing_team":
+            membership = session.get(
+                EmployeeTeamMembershipRecord,
+                {"employee_id": "EMP-2001", "team_id": "TEAM-ML-PLATFORM"},
+            )
+            assert membership is not None
+            membership.status = MembershipStatus.REVOKED
+        elif mutation == "inactive_git":
+            git_account = session.get(GitAccountRecord, "GIT-ACCOUNT-2001")
+            assert git_account is not None
+            git_account.status = GitAccountStatus.SUSPENDED
+        else:
+            access_request = session.get(ITAccessRequestRecord, "ACCESS-REQUEST-2001")
+            assert access_request is not None
+            access_request.status = AccessRequestStatus.PENDING_APPROVAL
+            access_request.approved_by = None
+            access_request.approved_at = None
+
+    service, request = workflow(factory)
+    result = service.run(request)
+
+    assert result.outcome == EmployeeWorkflowOutcome.NEEDS_REVIEW
+    assert result.error_code == error_code
+    with factory() as session:
+        assert session.scalar(select(func.count(GitRepositoryAccessRecord.access_id))) == 0
+
+
+def test_partial_existing_access_is_escalated_instead_of_overwritten(
+    employee_database: tuple[Engine, sessionmaker[Session]],
+) -> None:
+    _, factory = employee_database
+    with factory.begin() as session:
+        session.add(
+            DirectoryGroupMembershipRecord(
+                membership_id="GM-PARTIAL",
+                group_id="GROUP-ML-PLATFORM-DEVELOPERS",
+                identity_id="IDENTITY-2001",
+                status=MembershipStatus.ACTIVE,
+                granted_at=NOW,
+            )
+        )
+
+    service, request = workflow(factory)
+    result = service.run(request)
+
+    assert result.outcome == EmployeeWorkflowOutcome.NEEDS_REVIEW
+    assert result.error_code == "existing_access_conflict"
+    with factory() as session:
+        assert session.scalar(select(func.count(GitRepositoryAccessRecord.access_id))) == 0
+
+
+def test_existing_exact_access_is_idempotent_no_action(
+    employee_database: tuple[Engine, sessionmaker[Session]],
+) -> None:
+    _, factory = employee_database
+    with factory.begin() as session:
+        session.add_all(
+            [
+                DirectoryGroupMembershipRecord(
+                    membership_id="GM-EXISTING",
+                    group_id="GROUP-ML-PLATFORM-DEVELOPERS",
+                    identity_id="IDENTITY-2001",
+                    status=MembershipStatus.ACTIVE,
+                    granted_at=NOW,
+                ),
+                GitRepositoryAccessRecord(
+                    access_id="GITACCESS-EXISTING",
+                    repository_id="REPO-ML-PLATFORM",
+                    git_account_id="GIT-ACCOUNT-2001",
+                    level=RepositoryAccessLevel.WRITE,
+                    status=MembershipStatus.ACTIVE,
+                    granted_at=NOW,
+                ),
+            ]
+        )
+
+    service, request = workflow(factory)
+    result = service.run(request)
+
+    assert result.outcome == EmployeeWorkflowOutcome.ALREADY_SATISFIED
+    assert result.decision == EmployeeWorkflowDecision.NO_ACTION
+    assert result.verified_access_id == "GITACCESS-EXISTING"
+    with factory() as session:
+        assert session.scalar(select(func.count(OperationRecord.operation_id))) == 0
+
+
+def test_advisory_reasoning_cannot_override_deterministic_control(
+    employee_database: tuple[Engine, sessionmaker[Session]],
+) -> None:
+    _, factory = employee_database
+    provider = ScriptedAccessReasoner(ReasoningDisposition.MANUAL_REVIEW)
+    service, request = workflow(factory, reasoning_provider=provider)
+
+    result = service.run(request)
+
+    assert result.outcome == EmployeeWorkflowOutcome.NEEDS_REVIEW
+    assert result.error_code == "reasoning_recommends_review"
+    with factory() as session:
+        assert session.scalar(select(func.count(GitRepositoryAccessRecord.access_id))) == 0
+
+
+def test_employee_it_evaluation_dataset_passes() -> None:
+    cases = load_employee_evaluation_cases(Path("evals/workflows/employee_it.jsonl"))
+
+    report = evaluate_employee_workflow_cases(cases)
+
+    assert report.case_count == 14
+    assert report.passed_count == 14
+    assert report.failed_count == 0

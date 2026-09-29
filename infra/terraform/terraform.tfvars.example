@@ -1,0 +1,14 @@
+project_name           = "resolveops"
+environment            = "production"
+aws_region             = "us-east-1"
+image_tag              = "replace-with-git-commit-sha"
+application_secret_arn = "arn:aws:secretsmanager:us-east-1:123456789012:secret:resolveops-production"
+
+# Add an ACM certificate ARN before a public production launch.
+certificate_arn = null
+
+database_instance_class      = "db.t4g.micro"
+database_multi_az            = false
+database_deletion_protection = true
+api_desired_count            = 2
+alarm_email                  = null

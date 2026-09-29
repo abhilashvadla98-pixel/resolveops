@@ -1,0 +1,1 @@
+"""Browser operator console assets."""

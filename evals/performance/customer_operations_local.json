@@ -1,0 +1,277 @@
+{
+  "measured_at": "2026-09-27T18:56:34.434387Z",
+  "environment": {
+    "python": "3.12.10",
+    "implementation": "CPython",
+    "operating_system": "Windows",
+    "release": "11",
+    "database": "SQLite in-memory, isolated per case",
+    "embedding_provider": "feature-hash-128",
+    "reasoning_provider": "offline evaluation script where configured"
+  },
+  "dataset_name": "evals/workflows/customer_operations.jsonl",
+  "dataset_sha256": "707249aa5afc5fd88b321c78ddea8891a54919ad7e8ad577c8c0d969fcc354e5",
+  "warmup_runs": 1,
+  "measured_runs": 3,
+  "cases_per_run": 24,
+  "evaluation_passed_count": 72,
+  "evaluation_failed_count": 0,
+  "metrics": {
+    "trace_count": 72,
+    "event_count": 732,
+    "workflow_count": 72,
+    "workflow_outcomes": {
+      "action_verified": 12,
+      "needs_review": 51,
+      "waiting_external": 9
+    },
+    "operations": [
+      {
+        "component": "llm",
+        "operation": "reason_case",
+        "call_count": 15,
+        "failure_count": 6,
+        "latency": {
+          "sample_count": 15,
+          "minimum_ms": 0.0038999714888632298,
+          "p50_ms": 0.026100024115294218,
+          "p95_ms": 0.20980002591386437,
+          "maximum_ms": 0.20980002591386437
+        }
+      },
+      {
+        "component": "retrieval",
+        "operation": "hybrid_policy_search",
+        "call_count": 72,
+        "failure_count": 0,
+        "latency": {
+          "sample_count": 72,
+          "minimum_ms": 3.1820000149309635,
+          "p50_ms": 3.6413000198081136,
+          "p95_ms": 5.07879996439442,
+          "maximum_ms": 164.1815000330098
+        }
+      },
+      {
+        "component": "tool",
+        "operation": "execution_retry_scheduled",
+        "call_count": 3,
+        "failure_count": 3,
+        "latency": {
+          "sample_count": 3,
+          "minimum_ms": 0.0,
+          "p50_ms": 0.0,
+          "p95_ms": 0.0,
+          "maximum_ms": 0.0
+        }
+      },
+      {
+        "component": "tool",
+        "operation": "issue_refund",
+        "call_count": 42,
+        "failure_count": 27,
+        "latency": {
+          "sample_count": 42,
+          "minimum_ms": 3.4209999721497297,
+          "p50_ms": 8.98749998304993,
+          "p95_ms": 13.596399978268892,
+          "maximum_ms": 19.861400010995567
+        }
+      },
+      {
+        "component": "tool",
+        "operation": "verification_retry_scheduled",
+        "call_count": 3,
+        "failure_count": 3,
+        "latency": {
+          "sample_count": 3,
+          "minimum_ms": 0.0,
+          "p50_ms": 0.0,
+          "p95_ms": 0.0,
+          "maximum_ms": 0.0
+        }
+      },
+      {
+        "component": "workflow",
+        "operation": "run",
+        "call_count": 72,
+        "failure_count": 0,
+        "latency": {
+          "sample_count": 72,
+          "minimum_ms": 12.62159994803369,
+          "p50_ms": 19.292400043923408,
+          "p95_ms": 34.92410003673285,
+          "maximum_ms": 174.10560004645959
+        }
+      },
+      {
+        "component": "workflow_node",
+        "operation": "approval_gate",
+        "call_count": 42,
+        "failure_count": 0,
+        "latency": {
+          "sample_count": 42,
+          "minimum_ms": 0.0010999501682817936,
+          "p50_ms": 0.001200009137392044,
+          "p95_ms": 0.00200001522898674,
+          "maximum_ms": 0.0034999684430658817
+        }
+      },
+      {
+        "component": "workflow_node",
+        "operation": "complete",
+        "call_count": 12,
+        "failure_count": 0,
+        "latency": {
+          "sample_count": 12,
+          "minimum_ms": 0.0027999631129205227,
+          "p50_ms": 0.0031999661587178707,
+          "p95_ms": 0.0039000296965241432,
+          "maximum_ms": 0.0039000296965241432
+        }
+      },
+      {
+        "component": "workflow_node",
+        "operation": "decide",
+        "call_count": 66,
+        "failure_count": 0,
+        "latency": {
+          "sample_count": 66,
+          "minimum_ms": 0.004099973011761904,
+          "p50_ms": 0.005699985194951296,
+          "p95_ms": 0.008100003469735384,
+          "maximum_ms": 0.011499971151351929
+        }
+      },
+      {
+        "component": "workflow_node",
+        "operation": "escalate",
+        "call_count": 51,
+        "failure_count": 0,
+        "latency": {
+          "sample_count": 51,
+          "minimum_ms": 0.0028999638743698597,
+          "p50_ms": 0.003500026650726795,
+          "p95_ms": 0.004400033503770828,
+          "maximum_ms": 0.010400020983070135
+        }
+      },
+      {
+        "component": "workflow_node",
+        "operation": "execute_refund",
+        "call_count": 42,
+        "failure_count": 0,
+        "latency": {
+          "sample_count": 42,
+          "minimum_ms": 3.454200050327927,
+          "p50_ms": 9.0483000385575,
+          "p95_ms": 13.950399996247143,
+          "maximum_ms": 20.232099981512874
+        }
+      },
+      {
+        "component": "workflow_node",
+        "operation": "investigate_duplicate",
+        "call_count": 57,
+        "failure_count": 0,
+        "latency": {
+          "sample_count": 57,
+          "minimum_ms": 1.0102000087499619,
+          "p50_ms": 1.1634000111371279,
+          "p95_ms": 1.9127000123262405,
+          "maximum_ms": 2.763899974524975
+        }
+      },
+      {
+        "component": "workflow_node",
+        "operation": "investigate_return",
+        "call_count": 15,
+        "failure_count": 0,
+        "latency": {
+          "sample_count": 15,
+          "minimum_ms": 2.647800021804869,
+          "p50_ms": 2.9506999999284744,
+          "p95_ms": 4.29380004061386,
+          "maximum_ms": 4.29380004061386
+        }
+      },
+      {
+        "component": "workflow_node",
+        "operation": "load_case",
+        "call_count": 72,
+        "failure_count": 0,
+        "latency": {
+          "sample_count": 72,
+          "minimum_ms": 4.591599979903549,
+          "p50_ms": 5.627300008200109,
+          "p95_ms": 7.413299987092614,
+          "maximum_ms": 117.04500002088025
+        }
+      },
+      {
+        "component": "workflow_node",
+        "operation": "reason_case",
+        "call_count": 72,
+        "failure_count": 0,
+        "latency": {
+          "sample_count": 72,
+          "minimum_ms": 0.001200009137392044,
+          "p50_ms": 0.001500011421740055,
+          "p95_ms": 0.07340003503486514,
+          "maximum_ms": 0.30310003785416484
+        }
+      },
+      {
+        "component": "workflow_node",
+        "operation": "retrieve_policy",
+        "call_count": 72,
+        "failure_count": 0,
+        "latency": {
+          "sample_count": 72,
+          "minimum_ms": 3.279399999883026,
+          "p50_ms": 3.728299983777106,
+          "p95_ms": 5.186300026252866,
+          "maximum_ms": 164.32109999004751
+        }
+      },
+      {
+        "component": "workflow_node",
+        "operation": "verify_action",
+        "call_count": 15,
+        "failure_count": 0,
+        "latency": {
+          "sample_count": 15,
+          "minimum_ms": 0.23220002185553312,
+          "p50_ms": 0.2875000354833901,
+          "p95_ms": 0.3890999942086637,
+          "maximum_ms": 0.3890999942086637
+        }
+      },
+      {
+        "component": "workflow_node",
+        "operation": "wait_external",
+        "call_count": 9,
+        "failure_count": 0,
+        "latency": {
+          "sample_count": 9,
+          "minimum_ms": 0.002600019797682762,
+          "p50_ms": 0.002700020559132099,
+          "p95_ms": 0.005299982149153948,
+          "maximum_ms": 0.005299982149153948
+        }
+      }
+    ],
+    "retry_scheduled_count": 6,
+    "total_input_tokens": null,
+    "total_output_tokens": null,
+    "total_cost_usd": null
+  },
+  "measurement_notes": [
+    "Durations use a monotonic high-resolution clock and are reported in milliseconds.",
+    "p50 and p95 use the nearest-rank method over observed samples.",
+    "Workflow latency excludes per-case database creation, seed loading, and policy ingestion.",
+    "The reasoning provider is offline; external model latency and production concurrency are not measured.",
+    "Token totals are null when a provider does not return token usage.",
+    "Cost is null because no paid model call or model price was used in this measurement."
+  ]
+}

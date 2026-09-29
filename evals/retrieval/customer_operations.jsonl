@@ -1,0 +1,15 @@
+{"case_id":"RET-001","query":"The customer says their card was billed twice for one order.","issue_type":"duplicate_charge","relevant_document_ids":["POLICY-DUPLICATE-CHARGE"]}
+{"case_id":"RET-002","query":"Two different payment IDs were both captured for the same amount and currency.","issue_type":"duplicate_charge","relevant_document_ids":["POLICY-DUPLICATE-CHARGE"]}
+{"case_id":"RET-003","query":"A pending authorization appears beside a completed charge. Should it be refunded as a duplicate?","issue_type":"duplicate_charge","relevant_document_ids":["POLICY-PAYMENT-STATUS","POLICY-DUPLICATE-CHARGE"]}
+{"case_id":"RET-004","query":"What is the operator approval limit for a duplicate payment refund?","issue_type":"duplicate_charge","relevant_document_ids":["POLICY-DUPLICATE-CHARGE"]}
+{"case_id":"RET-005","query":"The warehouse received the returned grinder but the customer never received the credit.","issue_type":"missing_return_refund","relevant_document_ids":["POLICY-RETURN-REFUND"]}
+{"case_id":"RET-006","query":"Calculate the refund from returned quantity and the original item unit price.","issue_type":"missing_return_refund","relevant_document_ids":["POLICY-RETURN-REFUND"]}
+{"case_id":"RET-007","query":"Can we refund merchandise while the return is still in transit?","issue_type":"missing_return_refund","relevant_document_ids":["POLICY-RETURN-ELIGIBILITY","POLICY-RETURN-REFUND"]}
+{"case_id":"RET-008","query":"Send a case update to an email address that is not on the customer record.","issue_type":null,"relevant_document_ids":["POLICY-CUSTOMER-COMMUNICATION"]}
+{"case_id":"RET-009","query":"May we text the customer when their phone number has not been verified?","issue_type":null,"relevant_document_ids":["POLICY-CUSTOMER-COMMUNICATION"]}
+{"case_id":"RET-010","query":"Tell the customer the refund succeeded before the post-action verification finishes.","issue_type":null,"relevant_document_ids":["POLICY-CUSTOMER-COMMUNICATION"]}
+{"case_id":"RET-011","query":"One case contains both a duplicate charge and a missing merchandise return refund. Keep the investigations separate.","issue_type":null,"relevant_document_ids":["POLICY-DUPLICATE-CHARGE","POLICY-RETURN-REFUND","POLICY-CUSTOMER-COMMUNICATION"]}
+{"case_id":"RET-012","query":"Retry sending the customer notification without creating a duplicate delivery.","issue_type":null,"relevant_document_ids":["POLICY-CUSTOMER-COMMUNICATION"]}
+{"case_id":"RET-013","query":"The refund was executed but the fresh database read cannot verify it. What handoff is required?","issue_type":null,"relevant_document_ids":["POLICY-CASE-ESCALATION"]}
+{"case_id":"RET-014","query":"Which return states make merchandise eligible before calculating the refund value?","issue_type":"missing_return_refund","relevant_document_ids":["POLICY-RETURN-ELIGIBILITY","POLICY-RETURN-REFUND"]}
+{"case_id":"RET-015","query":"Explain pending, authorized, captured, failed, and voided payment states.","issue_type":"duplicate_charge","relevant_document_ids":["POLICY-PAYMENT-STATUS"]}

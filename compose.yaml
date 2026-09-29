@@ -1,0 +1,83 @@
+name: resolveops
+
+services:
+  database:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: resolveops
+      POSTGRES_USER: resolveops
+      POSTGRES_PASSWORD: ${RESOLVEOPS_POSTGRES_PASSWORD:?Set RESOLVEOPS_POSTGRES_PASSWORD}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U resolveops -d resolveops"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+    volumes:
+      - resolveops-postgres:/var/lib/postgresql/data
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+
+  migrate:
+    build:
+      context: .
+      args:
+        REVISION: ${RESOLVEOPS_IMAGE_REVISION:-local}
+    image: resolveops:${RESOLVEOPS_IMAGE_TAG:-local}
+    command: ["alembic", "upgrade", "head"]
+    environment: &app-environment
+      RESOLVEOPS_DATABASE_URL: postgresql+psycopg://resolveops:${RESOLVEOPS_POSTGRES_PASSWORD}@database:5432/resolveops
+      RESOLVEOPS_DEFAULT_TENANT_ID: TENANT-LOCAL
+      RESOLVEOPS_API_KEY_IDENTITIES_JSON: ${RESOLVEOPS_API_KEY_IDENTITIES_JSON:-[]}
+      RESOLVEOPS_WEBHOOK_SECRET: ${RESOLVEOPS_WEBHOOK_SECRET:-local-development-webhook-secret-change-me}
+      RESOLVEOPS_MAX_REQUEST_BODY_BYTES: ${RESOLVEOPS_MAX_REQUEST_BODY_BYTES:-1048576}
+      RESOLVEOPS_RATE_LIMIT_REQUESTS: ${RESOLVEOPS_RATE_LIMIT_REQUESTS:-120}
+      RESOLVEOPS_RATE_LIMIT_PERIOD_SECONDS: ${RESOLVEOPS_RATE_LIMIT_PERIOD_SECONDS:-60}
+      RESOLVEOPS_RATE_LIMIT_MAX_BUCKETS: ${RESOLVEOPS_RATE_LIMIT_MAX_BUCKETS:-10000}
+      RESOLVEOPS_RATE_LIMIT_IDLE_TTL_SECONDS: ${RESOLVEOPS_RATE_LIMIT_IDLE_TTL_SECONDS:-900}
+    depends_on:
+      database:
+        condition: service_healthy
+    restart: "no"
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+
+  api:
+    image: resolveops:${RESOLVEOPS_IMAGE_TAG:-local}
+    environment: *app-environment
+    depends_on:
+      database:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    ports:
+      - "${RESOLVEOPS_API_PORT:-8000}:8000"
+    init: true
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m,mode=1777
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+
+  seed:
+    image: resolveops:${RESOLVEOPS_IMAGE_TAG:-local}
+    command: ["python", "-m", "resolveops.database.seed"]
+    environment: *app-environment
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    profiles: ["demo"]
+    restart: "no"
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+
+volumes:
+  resolveops-postgres:

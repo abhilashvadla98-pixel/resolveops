@@ -1,6 +1,8 @@
 from enum import Enum
 
-from pydantic import BaseModel, EmailStr
+from pydantic import EmailStr
+
+from resolveops.models.common import DomainModel, Identifier, NonEmptyText
 
 
 class CustomerTier(str, Enum):
@@ -15,9 +17,9 @@ class CustomerStatus(str, Enum):
     CLOSED = "closed"
 
 
-class Customer(BaseModel):
-    customer_id: str
-    name: str
+class Customer(DomainModel):
+    customer_id: Identifier
+    name: NonEmptyText
     email: EmailStr
     tier: CustomerTier
     status: CustomerStatus

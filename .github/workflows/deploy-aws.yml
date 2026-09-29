@@ -1,0 +1,141 @@
+name: Deploy AWS
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: GitHub environment with deployment approval and variables
+        required: true
+        default: production
+        type: choice
+        options: [staging, production]
+      desired_count:
+        description: API task count after successful migration
+        required: true
+        default: "2"
+        type: string
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: deploy-${{ inputs.environment }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    environment: ${{ inputs.environment }}
+    env:
+      TF_IN_AUTOMATION: "true"
+      TF_VAR_environment: ${{ inputs.environment }}
+      TF_VAR_aws_region: ${{ vars.AWS_REGION }}
+      TF_VAR_image_tag: ${{ github.sha }}
+      TF_VAR_application_secret_arn: ${{ vars.APPLICATION_SECRET_ARN }}
+      TF_VAR_api_desired_count: ${{ inputs.desired_count }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - uses: aws-actions/configure-aws-credentials@ff717079ee2060e4bcee96c4779b553acc87447c # v4
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd # v3
+        with:
+          terraform_version: "1.10.5"
+
+      - name: Configure optional certificate
+        if: ${{ vars.CERTIFICATE_ARN != '' }}
+        run: echo "TF_VAR_certificate_arn=${{ vars.CERTIFICATE_ARN }}" >> "$GITHUB_ENV"
+
+      - name: Initialize Terraform
+        working-directory: infra/terraform
+        run: >-
+          terraform init
+          -backend-config="bucket=${{ vars.TF_STATE_BUCKET }}"
+          -backend-config="key=${{ vars.TF_STATE_KEY }}"
+          -backend-config="region=${{ vars.AWS_REGION }}"
+          -backend-config="dynamodb_table=${{ vars.TF_LOCK_TABLE }}"
+          -backend-config="encrypt=true"
+
+      - name: Apply infrastructure with service stopped
+        working-directory: infra/terraform
+        run: terraform apply -auto-approve
+
+      - name: Read deployment outputs
+        id: infrastructure
+        working-directory: infra/terraform
+        run: |
+          {
+            echo "repository=$(terraform output -raw ecr_repository_url)"
+            echo "cluster=$(terraform output -raw ecs_cluster_name)"
+            echo "service=$(terraform output -raw ecs_service_name)"
+            echo "api_task=$(terraform output -raw api_task_definition_arn)"
+            echo "migration_task=$(terraform output -raw migration_task_definition_arn)"
+            echo "security_group=$(terraform output -raw ecs_security_group_id)"
+            echo "desired_count=$(terraform output -raw api_desired_count)"
+            echo "application_url=$(terraform output -raw application_url)"
+            echo "subnets=$(terraform output -json private_subnet_ids | jq -r 'join(",")')"
+          } >> "$GITHUB_OUTPUT"
+
+      - uses: aws-actions/amazon-ecr-login@03f1aad4c6c7ffd436567f42f9384779290529bd # v2
+
+      - name: Build and push immutable image if absent
+        env:
+          REPOSITORY: ${{ steps.infrastructure.outputs.repository }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          REPOSITORY_NAME="${REPOSITORY#*/}"
+          if aws ecr describe-images --repository-name "$REPOSITORY_NAME" --image-ids imageTag="$IMAGE_TAG" >/dev/null 2>&1; then
+            echo "Image already exists; immutable tag will be reused."
+          else
+            docker build --build-arg REVISION="$GITHUB_SHA" -t "$REPOSITORY:$IMAGE_TAG" .
+            docker push "$REPOSITORY:$IMAGE_TAG"
+          fi
+
+      - name: Run one-shot migration task
+        id: migration
+        env:
+          CLUSTER: ${{ steps.infrastructure.outputs.cluster }}
+          TASK_DEFINITION: ${{ steps.infrastructure.outputs.migration_task }}
+          SUBNETS: ${{ steps.infrastructure.outputs.subnets }}
+          SECURITY_GROUP: ${{ steps.infrastructure.outputs.security_group }}
+        run: |
+          TASK_ARN=$(aws ecs run-task \
+            --cluster "$CLUSTER" \
+            --task-definition "$TASK_DEFINITION" \
+            --launch-type FARGATE \
+            --network-configuration "awsvpcConfiguration={subnets=[$SUBNETS],securityGroups=[$SECURITY_GROUP],assignPublicIp=DISABLED}" \
+            --query 'tasks[0].taskArn' \
+            --output text)
+          test "$TASK_ARN" != "None"
+          aws ecs wait tasks-stopped --cluster "$CLUSTER" --tasks "$TASK_ARN"
+          EXIT_CODE=$(aws ecs describe-tasks \
+            --cluster "$CLUSTER" \
+            --tasks "$TASK_ARN" \
+            --query "tasks[0].containers[?name=='migration'].exitCode | [0]" \
+            --output text)
+          test "$EXIT_CODE" = "0"
+
+      - name: Deploy API only after migration succeeds
+        env:
+          CLUSTER: ${{ steps.infrastructure.outputs.cluster }}
+          SERVICE: ${{ steps.infrastructure.outputs.service }}
+          TASK_DEFINITION: ${{ steps.infrastructure.outputs.api_task }}
+          DESIRED_COUNT: ${{ steps.infrastructure.outputs.desired_count }}
+        run: |
+          aws ecs update-service \
+            --cluster "$CLUSTER" \
+            --service "$SERVICE" \
+            --task-definition "$TASK_DEFINITION" \
+            --desired-count "$DESIRED_COUNT" \
+            --force-new-deployment >/dev/null
+          aws ecs wait services-stable --cluster "$CLUSTER" --services "$SERVICE"
+
+      - name: Verify public deployment
+        env:
+          APPLICATION_URL: ${{ steps.infrastructure.outputs.application_url }}
+        run: python scripts/verify_deployment.py --base-url "$APPLICATION_URL" --attempts 24 --delay-seconds 5
