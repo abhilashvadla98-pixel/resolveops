@@ -7,10 +7,12 @@ FROM ${PYTHON_IMAGE} AS builder
 ENV PIP_DISABLE_PIP_VERSION_CHECK=1 \
     PIP_NO_CACHE_DIR=1
 
-WORKDIR /build
-COPY pyproject.toml README.md ./
+WORKDIR /app
+RUN python -m pip install "uv==0.12.20"
+COPY pyproject.toml uv.lock README.md ./
 COPY src ./src
-RUN python -m pip wheel --wheel-dir /wheels ".[interfaces,llm,workflow]"
+RUN uv sync --locked --no-dev --no-editable \
+    --extra interfaces --extra llm --extra workflow
 
 FROM ${PYTHON_IMAGE} AS runtime
 
@@ -28,16 +30,13 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1 \
     PIP_NO_CACHE_DIR=1 \
-    PATH="/home/resolveops/.local/bin:${PATH}"
+    PATH="/app/.venv/bin:${PATH}"
 
 RUN groupadd --gid "${APP_GID}" resolveops \
     && useradd --uid "${APP_UID}" --gid "${APP_GID}" --create-home resolveops
 
-COPY --from=builder /wheels /wheels
-RUN python -m pip install --no-index --find-links=/wheels "resolveops[interfaces,llm,workflow]" \
-    && rm -rf /wheels
-
 WORKDIR /app
+COPY --from=builder /app/.venv /app/.venv
 COPY --chown=resolveops:resolveops alembic.ini ./
 COPY --chown=resolveops:resolveops migrations ./migrations
 COPY --chown=resolveops:resolveops domain_packs ./domain_packs

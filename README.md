@@ -12,9 +12,12 @@ This repository does not connect to real payment, CRM, directory, Git, or suppor
 ResolveOps uses Python 3.12.
 
 ```powershell
-python -m venv .venv
-.\.venv\Scripts\python.exe -m pip install -e ".[dev,embeddings,llm,workflow]"
+python -m pip install "uv==0.12.20"
+uv sync --locked --all-extras
 ```
+
+`uv.lock` is the single dependency lock for local work, CI, and the application image. Run
+`uv lock --check` after changing `pyproject.toml`; update the lock intentionally with `uv lock`.
 
 Copy `.env.example` to `.env` and replace the example PostgreSQL password with the password for
 your local development database. `.env` is ignored by Git.
