@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import Boolean, CheckConstraint, ForeignKey, String, Text, UniqueConstraint
+from sqlalchemy import JSON, Boolean, CheckConstraint, ForeignKey, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from resolveops.database.base import Base
@@ -16,7 +16,11 @@ from resolveops.employee_it.models import (
     MembershipStatus,
     RepositoryAccessLevel,
 )
-from resolveops.workflows.models import ApprovalDecisionType
+from resolveops.employee_it.workflow_models import (
+    EmployeeWorkflowDecision,
+    EmployeeWorkflowOutcome,
+)
+from resolveops.workflows.models import ApprovalDecisionType, WorkflowStatus
 
 
 class EmployeeRecord(Base):
@@ -186,6 +190,32 @@ class ITAccessApprovalDecisionRecord(Base):
     manager_employee_id: Mapped[str] = mapped_column(ForeignKey("employees.employee_id"))
     note: Mapped[str] = mapped_column(Text)
     decided_at: Mapped[datetime] = mapped_column(UTCDateTime())
+
+
+class ITWorkflowExecutionRecord(Base):
+    __tablename__ = "it_workflow_executions"
+    __table_args__ = (
+        CheckConstraint("completed_at >= created_at", name="ck_it_workflow_timestamp_order"),
+    )
+
+    workflow_id: Mapped[str] = mapped_column(String(100), primary_key=True)
+    case_id: Mapped[str] = mapped_column(
+        ForeignKey("it_access_cases.case_id"), unique=True, index=True
+    )
+    status: Mapped[WorkflowStatus] = mapped_column(enum_type(WorkflowStatus, "it_workflow_status"))
+    outcome: Mapped[EmployeeWorkflowOutcome] = mapped_column(
+        enum_type(EmployeeWorkflowOutcome, "it_workflow_outcome")
+    )
+    decision: Mapped[EmployeeWorkflowDecision] = mapped_column(
+        enum_type(EmployeeWorkflowDecision, "it_workflow_decision")
+    )
+    verified_access_id: Mapped[str | None] = mapped_column(String(100))
+    resolution_summary: Mapped[str] = mapped_column(Text)
+    error_code: Mapped[str | None] = mapped_column(String(100))
+    error_message: Mapped[str | None] = mapped_column(Text)
+    node_history: Mapped[list[str]] = mapped_column(JSON)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime())
+    completed_at: Mapped[datetime] = mapped_column(UTCDateTime())
 
 
 class ITTicketRecord(Base):

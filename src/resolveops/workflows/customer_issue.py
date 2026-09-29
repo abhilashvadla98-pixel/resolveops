@@ -46,6 +46,7 @@ from resolveops.reasoning.errors import ReasoningError
 from resolveops.reasoning.models import ReasoningDisposition, ReasoningPolicyExcerpt
 from resolveops.reasoning.providers import ReasoningProvider
 from resolveops.responses.customer import CustomerResponseComposer
+from resolveops.workflows.case_state import synchronize_case_state
 from resolveops.workflows.lifecycle import WorkflowLifecycleStore
 from resolveops.workflows.models import (
     ApprovalStatus,
@@ -134,6 +135,7 @@ class CustomerIssueWorkflow:
         ):
             final = cast(WorkflowState, self.graph.invoke(self._initial_state(request)))
             result = self._result_from_state(final)
+            synchronize_case_state(self.session_factory, result, self.clock)
             span.set_attribute("outcome", result.outcome.value)
             span.set_attribute("final_status", result.status.value)
             return result
@@ -260,18 +262,21 @@ class CustomerIssueWorkflow:
             approval = (
                 raw if isinstance(raw, WorkflowApproval) else WorkflowApproval.model_validate(raw)
             )
-            return WorkflowPause(
+            pause = WorkflowPause(
                 workflow_id=approval.workflow_id,
                 case_id=approval.case_id,
                 issue_id=approval.issue_id,
                 approval=approval,
             )
+            synchronize_case_state(self.session_factory, pause, self.clock)
+            return pause
         if snapshot.next:
             raise RuntimeError("durable workflow stopped before reaching a stable state")
         if not snapshot.values:
             raise RuntimeError("durable workflow has no checkpointed state")
         result = self._result_from_state(cast(WorkflowState, snapshot.values))
         lifecycle.finish(result)
+        synchronize_case_state(self.session_factory, result, self.clock)
         return result
 
     def _required_lifecycle(self) -> WorkflowLifecycleStore:

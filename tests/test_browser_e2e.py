@@ -109,6 +109,9 @@ def test_operator_completes_demo_approval_workflow(running_demo: str, tmp_path: 
         expect(page.locator("#detail-case-id")).to_have_text("CASE-DEMO-D")
         page.locator("#detail-issues .start-workflow").click()
         expect(page.locator("#toast")).to_contain_text("paused for approval")
+        expect(page.locator("#workflow-summary")).to_be_visible()
+        expect(page.locator("#workflow-summary")).to_contain_text("Human approval required")
+        expect(page.locator("#workflow-summary")).to_contain_text("Separate human decision")
 
         page.locator('[data-view="approvals"]').click()
         expect(page.locator("#approval-list")).to_contain_text("650.00 USD")
@@ -116,9 +119,15 @@ def test_operator_completes_demo_approval_workflow(running_demo: str, tmp_path: 
             "Evidence and policy support this controlled refund."
         )
         page.locator('.approval-decision[data-decision="approve"]').click()
-        expect(page.locator("#toast")).to_contain_text("Approval approved")
+        expect(page.locator("#toast")).to_contain_text("independently verified")
 
-        page.locator('[data-view="cases"]').click()
+        expect(page.locator('[data-view-panel="cases"]')).to_have_class("view active")
+        expect(page.locator("#detail-case-status")).to_have_text("Resolved")
+        expect(page.locator("#detail-issues")).to_contain_text("Resolved")
+        expect(page.locator("#workflow-summary")).to_contain_text("Action Verified")
+        expect(page.locator("#workflow-summary")).to_contain_text("Passed")
+        expect(page.locator("#detail-evidence")).to_contain_text("Trusted workflow fact")
+        expect(page.locator("#detail-evidence")).to_contain_text("POLICY-DUPLICATE-CHARGE")
         expect(page.locator("#case-timeline")).to_contain_text("Completed")
         expect(page.locator("#final-response")).to_be_visible()
         expect(page.locator("#final-response-text")).to_contain_text("created refund")
@@ -141,9 +150,8 @@ def test_operator_completes_demo_approval_workflow(running_demo: str, tmp_path: 
         expect(page.locator("#it-step-identity")).to_contain_text("MFA enrolled")
         expect(page.locator("#it-step-approval")).to_contain_text("Approved by")
         page.locator("#run-it-workflow").click()
-        expect(page.locator("#it-result-status")).to_have_text("Resolved")
-        expect(page.locator("#it-result")).to_contain_text("Fresh persisted state")
-        expect(page.locator("#it-result")).to_contain_text("active repository access")
+        expect(page.locator("#it-result-status")).to_have_text("Completed")
+        expect(page.locator("#it-result")).to_contain_text("independently verified")
         expect(page.locator("#it-step-grant")).to_contain_text("Active Write")
         page.locator('[data-it-case="ITCASE-2002"]').click()
         expect(page.locator("#run-it-workflow")).to_have_text("Approval required")
@@ -157,8 +165,21 @@ def test_operator_completes_demo_approval_workflow(running_demo: str, tmp_path: 
         expect(page.locator("#it-step-approval")).to_contain_text("Approved by EMP-2000")
         expect(page.locator("#run-it-workflow")).to_be_enabled()
         page.locator("#run-it-workflow").click()
-        expect(page.locator("#it-result-status")).to_have_text("Resolved")
-        expect(page.locator("#it-result")).to_contain_text("Fresh persisted state")
+        expect(page.locator("#it-result-status")).to_have_text("Completed")
+        expect(page.locator("#it-result")).to_contain_text("independently verified")
+
+        page.locator('[data-it-case="ITCASE-2004"]').click()
+        expect(page.locator("#it-step-identity")).to_contain_text("MFA missing")
+        page.locator("#run-it-workflow").click()
+        expect(page.locator("#it-result-status")).to_have_text("Escalated")
+        expect(page.locator("#it-result")).to_contain_text("Safety stop")
+        expect(page.locator("#it-result")).to_contain_text("No new access was granted")
+
+        page.locator("#reset-demo").click()
+        expect(page.locator("#toast")).to_contain_text("Demo data reset")
+        page.locator('[data-it-case="ITCASE-2002"]').click()
+        expect(page.locator("#run-it-workflow")).to_have_text("Approval required")
+        expect(page.locator("#it-step-grant")).to_have_text("Not granted")
         page.screenshot(
             path=screenshot_directory / "resolveops-employee-it.png",
             full_page=True,

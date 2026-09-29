@@ -134,3 +134,44 @@ def test_demo_endpoint_opens_only_the_synthetic_tenant(demo_api: TestClient) -> 
     )
     assert reset.status_code == 200
     assert len(reset.json()) == 8
+
+
+def test_demo_reset_restores_customer_and_it_workflows(demo_api: TestClient) -> None:
+    token = demo_api.post("/api/v1/demo/session").json()["access_token"]
+    headers = {"Authorization": f"Bearer {token}"}
+    assert demo_api.post("/api/v1/demo/reset", headers=headers).status_code == 200
+
+    approval = demo_api.post(
+        "/api/v1/it/approvals/ITCASE-2002/decision",
+        headers=headers,
+        json={"decision": "approve", "note": "Approved for the assigned project."},
+    )
+    assert approval.status_code == 200
+    feedback = demo_api.post(
+        "/api/v1/feedback",
+        headers=headers,
+        json={
+            "case_id": "CASE-1001",
+            "kind": "evidence_insufficient",
+            "original_value": {"finding": "confirmed"},
+            "corrected_value": {"finding": "undetermined"},
+            "reason": "Operator requested stronger payment evidence.",
+        },
+    )
+    assert feedback.status_code == 201
+
+    reset = demo_api.post("/api/v1/demo/reset", headers=headers)
+    assert reset.status_code == 200
+
+    snapshot = demo_api.get("/simulator/v1/it/cases/ITCASE-2002", headers=headers)
+    assert snapshot.status_code == 200
+    assert snapshot.json()["access_request"]["status"] == "pending_approval"
+    assert snapshot.json()["repository_access"] is None
+    assert snapshot.json()["group_membership"] is None
+    assert snapshot.json()["notifications"] == []
+    pending = demo_api.get("/api/v1/it/approvals", headers=headers)
+    assert pending.status_code == 200
+    assert [item["case_id"] for item in pending.json()] == ["ITCASE-2002"]
+    stored_feedback = demo_api.get("/api/v1/feedback", headers=headers)
+    assert stored_feedback.status_code == 200
+    assert stored_feedback.json() == []

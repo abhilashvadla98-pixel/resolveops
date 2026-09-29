@@ -35,6 +35,7 @@ EXPECTED_TABLES = {
     "inbound_events",
     "it_access_cases",
     "it_access_approval_decisions",
+    "it_workflow_executions",
     "it_access_requests",
     "it_notifications",
     "it_tickets",

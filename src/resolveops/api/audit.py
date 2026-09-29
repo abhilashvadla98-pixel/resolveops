@@ -6,6 +6,10 @@ from sqlalchemy.orm import Session
 
 from resolveops.api.dependencies import get_principal, get_tenant_session
 from resolveops.database.action_records import AuditEventRecord
+from resolveops.database.employee_it_records import (
+    ITAccessApprovalDecisionRecord,
+    ITWorkflowExecutionRecord,
+)
 from resolveops.database.workflow_records import WorkflowEventRecord, WorkflowRunRecord
 from resolveops.models.common import AwareDatetime, DomainModel, Identifier
 from resolveops.operations.auth import has_permission
@@ -41,15 +45,37 @@ def recent_audit_events(
     workflow_statement = select(WorkflowEventRecord, WorkflowRunRecord.case_id).join(
         WorkflowRunRecord, WorkflowRunRecord.workflow_id == WorkflowEventRecord.workflow_id
     )
+    it_approval_statement = select(ITAccessApprovalDecisionRecord)
+    it_workflow_statement = select(ITWorkflowExecutionRecord)
     if case_id:
         audit_statement = audit_statement.where(AuditEventRecord.case_id == case_id)
         workflow_statement = workflow_statement.where(WorkflowRunRecord.case_id == case_id)
+        it_approval_statement = it_approval_statement.where(
+            ITAccessApprovalDecisionRecord.case_id == case_id
+        )
+        it_workflow_statement = it_workflow_statement.where(
+            ITWorkflowExecutionRecord.case_id == case_id
+        )
     audit = list(
         session.scalars(audit_statement.order_by(AuditEventRecord.occurred_at.desc()).limit(limit))
     )
     workflow = session.execute(
         workflow_statement.order_by(WorkflowEventRecord.occurred_at.desc()).limit(limit)
     ).all()
+    it_approvals = list(
+        session.scalars(
+            it_approval_statement.order_by(ITAccessApprovalDecisionRecord.decided_at.desc()).limit(
+                limit
+            )
+        )
+    )
+    it_workflows = list(
+        session.scalars(
+            it_workflow_statement.order_by(ITWorkflowExecutionRecord.completed_at.desc()).limit(
+                limit
+            )
+        )
+    )
     events = [
         GlobalAuditEvent(
             event_id=item.audit_event_id,
@@ -81,5 +107,33 @@ def recent_audit_events(
             else None,
         )
         for item, workflow_case_id in workflow
+    )
+    events.extend(
+        GlobalAuditEvent(
+            event_id=f"{item.approval_id}-decision",
+            occurred_at=item.decided_at,
+            actor_id=item.decided_by,
+            case_id=item.case_id,
+            workflow_or_operation_id=item.approval_id,
+            event_type=(
+                "approval_approved" if item.decision.value == "approve" else "approval_rejected"
+            ),
+            result=item.decision.value,
+            trace_id=None,
+        )
+        for item in it_approvals
+    )
+    events.extend(
+        GlobalAuditEvent(
+            event_id=f"{item.workflow_id}-terminal",
+            occurred_at=item.completed_at,
+            actor_id=None,
+            case_id=item.case_id,
+            workflow_or_operation_id=item.workflow_id,
+            event_type=f"it_workflow_{item.status.value}",
+            result=item.outcome.value,
+            trace_id=None,
+        )
+        for item in it_workflows
     )
     return sorted(events, key=lambda item: (item.occurred_at, item.event_id), reverse=True)[:limit]

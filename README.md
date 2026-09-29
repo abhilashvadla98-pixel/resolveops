@@ -121,8 +121,10 @@ default; production startup continues to reject demo mode.
 4. Return to the case and show the stored customer/order/payment/policy/advice/gate/execution/
    verification timeline and grounded final response.
 5. Open **Reliability** and inspect measured lifecycle latency plus the operation event trace.
-6. Open **IT Requests**, run the controlled access workflow, and show the verified final records.
-7. Run it again to show that ResolveOps detects existing access and creates no duplicate grant.
+6. Open **IT Requests**, approve ITCASE-2002 with a written reason, run the controlled grant, and
+   show the verified directory, repository, ticket, and notification records.
+7. Run ITCASE-2004 to show that missing MFA produces a durable safety stop with no access, then
+   inspect both the approval and terminal workflow in **Audit**.
 
 The same journey is exercised in Chromium by `tests/test_browser_e2e.py`.
 
@@ -133,7 +135,9 @@ table. The default theme is neutral and light, with an optional dark mode.
 
 The Approvals queue covers controlled refunds and employee repository-access requests. Pending IT
 work cannot be processed until an explicit approve/reject decision with a written reason has been
-persisted.
+persisted. Customer and IT workflow outcomes survive refresh, and **Reset demo** clears and rebuilds
+both domains rather than leaving prior approval or access state behind. API tests separately prove
+that replaying a completed access request creates no duplicate grant.
 
 ## Safety and recovery design
 

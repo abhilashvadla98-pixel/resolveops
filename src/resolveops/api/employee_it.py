@@ -14,6 +14,7 @@ from resolveops.database.employee_it_records import (
     ITAccessCaseRecord,
     ITAccessRequestRecord,
     ITTicketRecord,
+    ITWorkflowExecutionRecord,
     TeamRecord,
 )
 from resolveops.database.session import create_session_factory
@@ -28,6 +29,8 @@ from resolveops.employee_it.workflow import EmployeeAccessWorkflow
 from resolveops.employee_it.workflow_models import (
     EmployeeAccessWorkflowRequest,
     EmployeeAccessWorkflowResult,
+    EmployeeWorkflowDecision,
+    EmployeeWorkflowOutcome,
 )
 from resolveops.knowledge.embeddings import FeatureHashEmbeddingProvider
 from resolveops.models.common import AwareDatetime, DomainModel, Identifier, NonEmptyText
@@ -36,7 +39,7 @@ from resolveops.operations.errors import ResourceNotFoundError
 from resolveops.operations.models import Actor, ActorRole, Permission
 from resolveops.security.models import SecurityPrincipal
 from resolveops.security.pii import redact_employee, redact_employee_access_snapshot
-from resolveops.workflows.models import ApprovalDecisionType, ApprovalStatus
+from resolveops.workflows.models import ApprovalDecisionType, ApprovalStatus, WorkflowStatus
 
 router = APIRouter(prefix="/simulator/v1/it", tags=["employee and IT simulator"])
 action_router = APIRouter(prefix="/api/v1/it", tags=["employee and IT operations"])
@@ -82,6 +85,21 @@ class ITApprovalItem(DomainModel):
     decided_by: Identifier | None = None
     decision_note: str | None = None
     decided_at: AwareDatetime | None = None
+
+
+class ITWorkflowSummary(DomainModel):
+    workflow_id: Identifier
+    case_id: Identifier
+    status: WorkflowStatus
+    outcome: EmployeeWorkflowOutcome
+    decision: EmployeeWorkflowDecision
+    verified_access_id: Identifier | None = None
+    resolution_summary: NonEmptyText
+    error_code: Identifier | None = None
+    error_message: NonEmptyText | None = None
+    node_history: list[Identifier]
+    created_at: AwareDatetime
+    completed_at: AwareDatetime
 
 
 def workflow_actor(principal: SecurityPrincipal) -> Actor:
@@ -367,10 +385,63 @@ def execute_access_case(
         create_session_factory(engine),
         FeatureHashEmbeddingProvider(dimensions=128),
     )
-    return workflow.run(
+    started_at = datetime.now(UTC)
+    result = workflow.run(
         EmployeeAccessWorkflowRequest(
             workflow_id=f"IT-WORKFLOW-{case_id}",
             case_id=case_id,
             actor=workflow_actor(principal),
         )
+    )
+    existing = session.get(ITWorkflowExecutionRecord, result.workflow_id)
+    if existing is None:
+        session.add(
+            ITWorkflowExecutionRecord(
+                workflow_id=result.workflow_id,
+                case_id=result.case_id,
+                status=result.status,
+                outcome=result.outcome,
+                decision=result.decision,
+                verified_access_id=result.verified_access_id,
+                resolution_summary=result.resolution_summary,
+                error_code=result.error_code,
+                error_message=result.error_message,
+                node_history=result.node_history,
+                created_at=started_at,
+                completed_at=datetime.now(UTC),
+            )
+        )
+    if result.status == WorkflowStatus.ESCALATED:
+        access_case = session.get(ITAccessCaseRecord, case_id)
+        if access_case is not None:
+            access_case.status = ITCaseStatus.ESCALATED
+            access_case.updated_at = datetime.now(UTC)
+    session.commit()
+    return result
+
+
+@action_router.get("/cases/{case_id}/workflow", response_model=ITWorkflowSummary)
+def get_access_workflow(
+    case_id: str, session: DatabaseSession, principal: Principal
+) -> ITWorkflowSummary:
+    if not has_permission(principal.actor(), Permission.READ_OPERATIONS):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="permission denied")
+    record = session.scalar(
+        select(ITWorkflowExecutionRecord).where(ITWorkflowExecutionRecord.case_id == case_id)
+    )
+    if record is None:
+        not_found("IT workflow for case", case_id)
+    return ITWorkflowSummary(
+        workflow_id=record.workflow_id,
+        case_id=record.case_id,
+        status=record.status,
+        outcome=record.outcome,
+        decision=record.decision,
+        verified_access_id=record.verified_access_id,
+        resolution_summary=record.resolution_summary,
+        error_code=record.error_code,
+        error_message=record.error_message,
+        node_history=record.node_history,
+        created_at=record.created_at,
+        completed_at=record.completed_at,
     )

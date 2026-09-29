@@ -10,6 +10,25 @@ from resolveops.database.action_records import (
     ReliabilityEventRecord,
 )
 from resolveops.database.demo_records import DemoScenarioRecord
+from resolveops.database.employee_it_records import (
+    DirectoryGroupMembershipRecord,
+    DirectoryGroupRecord,
+    EmployeeRecord,
+    EmployeeTeamMembershipRecord,
+    EnterpriseIdentityRecord,
+    GitAccountRecord,
+    GitRepositoryAccessRecord,
+    GitRepositoryRecord,
+    ITAccessApprovalDecisionRecord,
+    ITAccessCaseRecord,
+    ITAccessRequestRecord,
+    ITNotificationRecord,
+    ITTicketRecord,
+    ITWorkflowExecutionRecord,
+    TeamRecord,
+)
+from resolveops.database.event_records import InboundEventRecord, ResourceEventCursorRecord
+from resolveops.database.feedback_records import OperatorFeedbackRecord
 from resolveops.database.records import (
     CaseIssueActionRecord,
     CaseIssueEvidenceRecord,
@@ -29,6 +48,7 @@ from resolveops.database.records import (
 from resolveops.database.seed import (
     seed_additional_it_cases,
     seed_customer_operations,
+    seed_employee_it,
     seed_simulator_resources,
 )
 from resolveops.database.simulator_records import NotificationRecord, TicketRecord
@@ -206,12 +226,15 @@ def list_demo_scenarios(session: Session) -> list[DemoScenarioRecord]:
 def reset_demo_scenarios(session: Session) -> None:
     reset_order = (
         DemoScenarioRecord,
+        OperatorFeedbackRecord,
         WorkflowApprovalRecord,
         WorkflowEventRecord,
         WorkflowRunRecord,
         AuditEventRecord,
         ReliabilityEventRecord,
         OperationRecord,
+        ResourceEventCursorRecord,
+        InboundEventRecord,
         NotificationRecord,
         TicketRecord,
         RefundRecord,
@@ -228,12 +251,28 @@ def reset_demo_scenarios(session: Session) -> None:
         OrderItemRecord,
         OrderRecord,
         CustomerRecord,
+        ITAccessApprovalDecisionRecord,
+        ITWorkflowExecutionRecord,
+        ITNotificationRecord,
+        ITTicketRecord,
+        GitRepositoryAccessRecord,
+        DirectoryGroupMembershipRecord,
+        ITAccessRequestRecord,
+        ITAccessCaseRecord,
+        GitAccountRecord,
+        EnterpriseIdentityRecord,
+        EmployeeTeamMembershipRecord,
+        GitRepositoryRecord,
+        DirectoryGroupRecord,
+        TeamRecord,
+        EmployeeRecord,
     )
     for record in reset_order:
         session.execute(delete(record))
     session.flush()
     seed_customer_operations(session)
     seed_simulator_resources(session)
+    seed_employee_it(session)
     seed_additional_it_cases(session)
     seed_demo_scenarios(session)
 

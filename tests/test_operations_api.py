@@ -161,11 +161,17 @@ def test_employee_access_api_executes_verifies_and_replays_safely(
     assert snapshot.json()["access_case"]["status"] == "resolved"
     assert snapshot.json()["access_request"]["status"] == "fulfilled"
     assert snapshot.json()["repository_access"]["status"] == "active"
+    stored = client.get("/api/v1/it/cases/ITCASE-2001/workflow")
+    assert stored.status_code == 200
+    assert stored.json()["outcome"] == "access_verified"
+    assert stored.json()["verified_access_id"] == result["verified_access_id"]
 
     replay = client.post("/api/v1/it/cases/ITCASE-2001/execute")
     assert replay.status_code == 200
     assert replay.json()["outcome"] == "already_satisfied"
     assert replay.json()["decision"] == "no_action"
+    stored_after_replay = client.get("/api/v1/it/cases/ITCASE-2001/workflow")
+    assert stored_after_replay.json()["outcome"] == "access_verified"
 
 
 def test_pending_it_request_can_be_approved_then_processed(
@@ -202,6 +208,40 @@ def test_pending_it_request_can_be_approved_then_processed(
     decided = client.get("/api/v1/it/approvals")
     assert decided.status_code == 200
     assert decided.json()[0]["decision_note"].startswith("Manager confirmed")
+    audit = client.get("/api/v1/audit/events", params={"case_id": "ITCASE-2002"})
+    assert audit.status_code == 200
+    assert any(
+        item["event_type"] == "approval_approved"
+        and item["workflow_or_operation_id"] == "IT-APPROVAL-ITCASE-2002"
+        for item in audit.json()
+    )
+
+
+def test_it_safety_stop_is_persisted_and_auditable(
+    operations_api: tuple[TestClient, dict[str, ActorRole], Engine],
+) -> None:
+    client, _role, engine = operations_api
+    with Session(engine) as session:
+        assert seed_additional_it_cases(session) is True
+        session.commit()
+
+    result = client.post("/api/v1/it/cases/ITCASE-2004/execute")
+    assert result.status_code == 200
+    assert result.json()["status"] == "escalated"
+    assert result.json()["outcome"] == "needs_review"
+    assert result.json()["error_code"] == "mfa_required"
+
+    stored = client.get("/api/v1/it/cases/ITCASE-2004/workflow")
+    assert stored.status_code == 200
+    assert stored.json()["error_code"] == "mfa_required"
+    snapshot = client.get("/simulator/v1/it/cases/ITCASE-2004")
+    assert snapshot.json()["access_case"]["status"] == "escalated"
+    assert snapshot.json()["repository_access"] is None
+    audit = client.get("/api/v1/audit/events", params={"case_id": "ITCASE-2004"})
+    assert any(
+        item["event_type"] == "it_workflow_escalated" and item["result"] == "needs_review"
+        for item in audit.json()
+    )
 
 
 def test_workflow_approval_can_be_listed_and_resumed(
@@ -236,6 +276,8 @@ def test_workflow_approval_can_be_listed_and_resumed(
     assert started.status_code == 201
     pause = started.json()
     assert pause["status"] == "waiting_approval", started.text
+    waiting_case = client.get("/api/v1/cases/CASE-1001").json()
+    assert waiting_case["status"] == "pending_approval"
     approvals = client.get("/api/v1/approvals?status=pending")
     assert approvals.status_code == 200
     assert [item["approval_id"] for item in approvals.json()] == [pause["approval"]["approval_id"]]
@@ -248,6 +290,14 @@ def test_workflow_approval_can_be_listed_and_resumed(
 
     assert decided.status_code == 200
     assert decided.json()["outcome"] == "action_verified"
+    updated_case = client.get("/api/v1/cases/CASE-1001").json()
+    assert updated_case["status"] == "in_progress"
+    duplicate_issue = next(
+        item for item in updated_case["issues"] if item["issue_id"] == "ISSUE-1001"
+    )
+    assert duplicate_issue["status"] == "resolved"
+    assert duplicate_issue["verification"]["status"] == "passed"
+    assert duplicate_issue["resolution"]["summary"]
     final_response = client.get("/api/v1/workflows/WORKFLOW-API-1001/response")
     assert final_response.status_code == 200
     assert "independently verified" in final_response.json()["message"]

@@ -22,19 +22,28 @@ assessment/operator correction. Audit works globally and can be narrowed to a ca
    authorizes an action.
 5. Select scenario D, start the investigation, and inspect the pending refund approval.
 6. Enter a decision note and approve or reject. Approval resumes the durable workflow.
-7. Inspect the ordered timeline and final response. A successful path states that the refund record
-   was created and independently verified, not that an external provider completed settlement.
+7. Inspect the decision summary, trusted workflow facts, versioned policy citations, ordered
+   timeline, fresh verification, and grounded response. The case and issue statuses move with the
+   workflow instead of remaining in their pre-action state. A successful path states that the
+   refund record was created and independently verified, not that an external provider completed
+   settlement.
 8. Use scenario G to run the Employee/IT flow. It checks employment, identity, MFA, team ownership,
    manager approval, Git identity, and active policy before granting access, then reloads repository,
    group, ticket, and notification state for verification. Replaying it performs no duplicate grant.
    Use scenario H for verification recovery.
-9. Choose **Reset demo** to rebuild only the synthetic demo records.
+9. Choose **Reset demo** to remove prior customer workflows, IT grants, approval decisions,
+   feedback, audit/reliability records, and event cursors before rebuilding the synthetic records.
 
 Pending IT requests show **Approval required** instead of attempting execution. Use **Review
 approval** to open the shared Approvals queue, enter a required decision reason, and approve or
 reject. ResolveOps stores the approver, target-team manager, note, decision, and timestamp. An
 approval returns the operator to the IT request with **Process request** enabled; rejection blocks
 execution.
+
+Every terminal IT workflow is also stored independently from the repository grant. Successful,
+already-satisfied, and safety-stopped outcomes therefore remain visible after refresh. A blocked
+request such as missing MFA becomes an escalated IT case and appears in the global audit history;
+no access is granted.
 
 The reset also creates several IT requests in different states so the queue is a real multi-record
 working surface rather than a single flagship card. Submitting an operator correction persists
@@ -68,9 +77,11 @@ role from their trusted API-key identity.
 
 `tests/test_browser_e2e.py` starts the actual application with a migrated and seeded disposable
 database, opens Chromium, creates a complaint, runs scenario D to an approval pause, approves it,
-checks the persisted completion timeline and grounded final response, inspects real reliability
-metrics, and completes the controlled Employee/IT access flow. CI installs Chromium and runs this
-test in its own browser job. The test writes its screenshot only to a temporary test directory.
+checks synchronized case state, trusted evidence, the persisted completion timeline, and grounded
+final response, inspects real reliability metrics, completes the controlled Employee/IT access
+flow, proves an MFA safety stop, and verifies that reset restores both domains. CI installs Chromium
+and runs this test in its own browser job. The test writes its screenshot only to a temporary test
+directory.
 
 ## Current limits
 
