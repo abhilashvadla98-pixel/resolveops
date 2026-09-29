@@ -98,7 +98,8 @@ uv run --locked python -m resolveops.database.seed
 uv run --locked uvicorn resolveops.api.main:app
 ```
 
-Open [http://127.0.0.1:8000/console](http://127.0.0.1:8000/console) and choose **Try demo**.
+Open [http://127.0.0.1:8000](http://127.0.0.1:8000). ResolveOps opens the operator console
+automatically; choose **Try demo**.
 No model key or paid service is required. The seed command builds a deterministic local policy index.
 
 ![ResolveOps Customer Operations workflow](docs/assets/resolveops-customer-workflow.png)

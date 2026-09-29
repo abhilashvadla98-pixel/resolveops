@@ -38,9 +38,19 @@ def test_operator_console_serves_secure_shell_and_local_assets() -> None:
     assert "CSS.escape" in script.text
 
 
+def test_product_home_redirects_to_operator_console() -> None:
+    with TestClient(app, follow_redirects=False) as client:
+        response = client.get("/")
+
+    assert response.status_code == 307
+    assert response.headers["location"] == "/console"
+    assert response.headers["cache-control"] == "no-store"
+
+
 def test_console_assets_are_not_listed_as_public_api_operations() -> None:
     schema = app.openapi()
 
     assert "/console" not in schema["paths"]
     assert "/console/app.css" not in schema["paths"]
     assert "/console/app.js" not in schema["paths"]
+    assert "/" not in schema["paths"]

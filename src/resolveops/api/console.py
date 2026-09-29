@@ -1,7 +1,7 @@
 from pathlib import Path
 
 from fastapi import APIRouter
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, RedirectResponse
 
 router = APIRouter()
 
@@ -15,6 +15,16 @@ SECURITY_HEADERS = {
     "X-Content-Type-Options": "nosniff",
     "X-Frame-Options": "DENY",
 }
+
+
+@router.get("/", include_in_schema=False)
+def product_home() -> RedirectResponse:
+    """Send human visitors to the operator workspace."""
+    return RedirectResponse(
+        url="/console",
+        status_code=307,
+        headers={**SECURITY_HEADERS, "Cache-Control": "no-store"},
+    )
 
 
 @router.get("/console", include_in_schema=False)
