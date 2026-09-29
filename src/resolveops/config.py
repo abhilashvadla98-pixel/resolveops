@@ -82,6 +82,29 @@ class TrafficProtectionSettings(BaseSettings):
     )
 
 
+class DemoSettings(BaseSettings):
+    demo_enabled: bool = False
+    demo_tenant_id: str = "TENANT-DEMO"
+    demo_session_secret: SecretStr | None = None
+    demo_session_ttl_seconds: int = Field(default=1800, ge=300, le=3600)
+
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_prefix="RESOLVEOPS_",
+        extra="ignore",
+    )
+
+    @model_validator(mode="after")
+    def validate_demo_configuration(self) -> "DemoSettings":
+        if self.demo_enabled and self.demo_session_secret is None:
+            raise ValueError("demo_session_secret is required when demo mode is enabled")
+        if self.demo_session_secret is not None and len(
+            self.demo_session_secret.get_secret_value()
+        ) < 32:
+            raise ValueError("demo_session_secret must contain at least 32 characters")
+        return self
+
+
 @lru_cache
 def get_settings() -> Settings:
     return Settings()
@@ -90,3 +113,8 @@ def get_settings() -> Settings:
 @lru_cache
 def get_traffic_protection_settings() -> TrafficProtectionSettings:
     return TrafficProtectionSettings()
+
+
+@lru_cache
+def get_demo_settings() -> DemoSettings:
+    return DemoSettings()

@@ -5,6 +5,7 @@ from fastapi import Depends, FastAPI, Request, Response, status
 from fastapi.responses import JSONResponse
 
 from resolveops.api.console import router as console_router
+from resolveops.api.demo import router as demo_router
 from resolveops.api.dependencies import get_tenant_registry
 from resolveops.api.employee_it import router as employee_it_router
 from resolveops.api.events import router as events_router
@@ -27,6 +28,7 @@ app = FastAPI(
     ),
 )
 app.include_router(simulator_router)
+app.include_router(demo_router)
 app.include_router(employee_it_router)
 app.include_router(events_router)
 app.include_router(metrics_router)

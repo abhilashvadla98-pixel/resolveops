@@ -7,7 +7,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
-from resolveops.config import get_settings
+from resolveops.config import get_demo_settings, get_settings
 from resolveops.database.session import create_database_engine, create_session_factory
 from resolveops.events.webhook import WebhookVerifier
 from resolveops.security.authentication import (
@@ -15,6 +15,7 @@ from resolveops.security.authentication import (
     AuthenticationConfigurationError,
     AuthenticationError,
 )
+from resolveops.security.demo_sessions import DemoSessionAuthenticator, DemoSessionError
 from resolveops.security.models import SecurityPrincipal
 from resolveops.security.tenancy import (
     TenantAccessError,
@@ -44,13 +45,10 @@ def get_session() -> Iterator[Session]:
 
 
 @lru_cache
-def get_authenticator() -> APIKeyAuthenticator:
+def get_authenticator() -> APIKeyAuthenticator | None:
     configured = get_settings().api_key_identities_json
     if configured is None:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="API authentication is not configured",
-        )
+        return None
     try:
         return APIKeyAuthenticator.from_json(configured.get_secret_value())
     except AuthenticationConfigurationError as exc:
@@ -60,8 +58,23 @@ def get_authenticator() -> APIKeyAuthenticator:
         ) from exc
 
 
+@lru_cache
+def get_demo_session_authenticator() -> DemoSessionAuthenticator | None:
+    settings = get_demo_settings()
+    if not settings.demo_enabled or settings.demo_session_secret is None:
+        return None
+    return DemoSessionAuthenticator(
+        settings.demo_session_secret.get_secret_value(),
+        tenant_id=settings.demo_tenant_id,
+        ttl_seconds=settings.demo_session_ttl_seconds,
+    )
+
+
 def get_principal(
-    authenticator: Annotated[APIKeyAuthenticator, Depends(get_authenticator)],
+    authenticator: Annotated[APIKeyAuthenticator | None, Depends(get_authenticator)],
+    demo_authenticator: Annotated[
+        DemoSessionAuthenticator | None, Depends(get_demo_session_authenticator)
+    ],
     credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(bearer_scheme)],
 ) -> SecurityPrincipal:
     if (
@@ -70,14 +83,30 @@ def get_principal(
         or not credentials.credentials
         or len(credentials.credentials) > 512
     ):
-        authenticator.record_failure("missing_or_malformed_authorization")
+        if authenticator is not None:
+            authenticator.record_failure("missing_or_malformed_authorization")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="authentication failed",
             headers={"WWW-Authenticate": "Bearer"},
         )
+    token = credentials.credentials
+    if token.startswith("demo.") and demo_authenticator is not None:
+        try:
+            return demo_authenticator.authenticate(token)
+        except DemoSessionError:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="authentication failed",
+                headers={"WWW-Authenticate": "Bearer"},
+            ) from None
+    if authenticator is None:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="API authentication is not configured",
+        )
     try:
-        return authenticator.authenticate(credentials.credentials)
+        return authenticator.authenticate(token)
     except AuthenticationError as exc:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
