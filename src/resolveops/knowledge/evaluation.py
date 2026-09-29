@@ -9,6 +9,7 @@ from pydantic import ValidationError
 
 from resolveops.knowledge.models import (
     RetrievalCaseResult,
+    RetrievalCategoryMetrics,
     RetrievalEvaluationCase,
     RetrievalMethod,
     RetrievalMetrics,
@@ -87,6 +88,7 @@ def evaluate_retriever(
         case_results.append(
             RetrievalCaseResult(
                 case_id=evaluation_case.case_id,
+                category=evaluation_case.category,
                 retrieved_document_ids=document_ids,
                 recall_at_k=recall,
                 reciprocal_rank=reciprocal_rank,
@@ -95,6 +97,18 @@ def evaluate_retriever(
         )
 
     count = len(case_results)
+    category_metrics = []
+    for category in sorted({item.category for item in case_results}, key=lambda item: item.value):
+        matching = [item for item in case_results if item.category == category]
+        category_metrics.append(
+            RetrievalCategoryMetrics(
+                category=category,
+                query_count=len(matching),
+                recall_at_k=sum(item.recall_at_k for item in matching) / len(matching),
+                mrr=sum(item.reciprocal_rank for item in matching) / len(matching),
+                ndcg_at_k=sum(item.ndcg_at_k for item in matching) / len(matching),
+            )
+        )
     return RetrievalMetrics(
         method=method,
         query_count=count,
@@ -102,6 +116,7 @@ def evaluate_retriever(
         recall_at_k=sum(item.recall_at_k for item in case_results) / count,
         mrr=sum(item.reciprocal_rank for item in case_results) / count,
         ndcg_at_k=sum(item.ndcg_at_k for item in case_results) / count,
+        category_metrics=category_metrics,
         cases=case_results,
     )
 

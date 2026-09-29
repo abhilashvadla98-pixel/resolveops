@@ -30,6 +30,15 @@ class RetrievalMethod(str, Enum):
     HYBRID = "hybrid"
 
 
+class RetrievalEvaluationCategory(str, Enum):
+    DIRECT_LOOKUP = "direct_lookup"
+    HARD_NEGATIVE = "hard_negative"
+    SIMILAR_POLICY = "similar_policy"
+    WRONG_ISSUE_TYPE = "wrong_issue_type"
+    MULTI_SECTION = "multi_section"
+    CONFUSING_TERMINOLOGY = "confusing_terminology"
+
+
 class KnowledgeDocument(DomainModel):
     document_id: Identifier
     title: NonEmptyText
@@ -124,6 +133,7 @@ class RetrievalResult(DomainModel):
 class RetrievalEvaluationCase(DomainModel):
     case_id: Identifier
     query: NonEmptyText
+    category: RetrievalEvaluationCategory = RetrievalEvaluationCategory.DIRECT_LOOKUP
     issue_type: CaseIssueType | None = None
     relevant_document_ids: list[Identifier] = Field(min_length=1)
 
@@ -136,9 +146,18 @@ class RetrievalEvaluationCase(DomainModel):
 
 class RetrievalCaseResult(DomainModel):
     case_id: Identifier
+    category: RetrievalEvaluationCategory
     retrieved_document_ids: list[Identifier]
     recall_at_k: float = Field(ge=0, le=1)
     reciprocal_rank: float = Field(ge=0, le=1)
+    ndcg_at_k: float = Field(ge=0, le=1)
+
+
+class RetrievalCategoryMetrics(DomainModel):
+    category: RetrievalEvaluationCategory
+    query_count: int = Field(gt=0)
+    recall_at_k: float = Field(ge=0, le=1)
+    mrr: float = Field(ge=0, le=1)
     ndcg_at_k: float = Field(ge=0, le=1)
 
 
@@ -149,4 +168,5 @@ class RetrievalMetrics(DomainModel):
     recall_at_k: float = Field(ge=0, le=1)
     mrr: float = Field(ge=0, le=1)
     ndcg_at_k: float = Field(ge=0, le=1)
+    category_metrics: list[RetrievalCategoryMetrics]
     cases: list[RetrievalCaseResult]

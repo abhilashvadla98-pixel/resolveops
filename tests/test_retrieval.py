@@ -114,8 +114,16 @@ def test_evaluation_dataset_is_valid_and_covers_all_policies() -> None:
     dataset_hash = hashlib.sha256(EVALUATION_DATASET.read_bytes()).hexdigest()
     evaluation_readme = Path("evals/retrieval/README.md").read_text(encoding="utf-8")
 
-    assert len(cases) == 15
+    assert len(cases) == 50
     assert dataset_hash in evaluation_readme
+    assert {case.category.value for case in cases} == {
+        "direct_lookup",
+        "hard_negative",
+        "similar_policy",
+        "wrong_issue_type",
+        "multi_section",
+        "confusing_terminology",
+    }
     assert {document_id for case in cases for document_id in case.relevant_document_ids} == {
         "POLICY-CASE-ESCALATION",
         "POLICY-CUSTOMER-COMMUNICATION",
@@ -183,7 +191,15 @@ def test_hybrid_evaluation_runs_reproducibly() -> None:
         )
 
         assert first == second
-        assert first.query_count == 15
+        assert first.query_count == 50
+        assert {item.category.value for item in first.category_metrics} == {
+            "direct_lookup",
+            "hard_negative",
+            "similar_policy",
+            "wrong_issue_type",
+            "multi_section",
+            "confusing_terminology",
+        }
         assert first.recall_at_k >= 0.9
         assert first.mrr >= 0.85
         assert first.ndcg_at_k >= 0.85

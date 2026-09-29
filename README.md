@@ -52,7 +52,7 @@ development and deterministic tests, use `--provider feature-hash`. Retrieval re
 version, section, source, effective dates, chunk text, and ranking evidence.
 
 The retrieval layer provides exact cosine vector search, Okapi BM25 lexical search, and weighted
-reciprocal-rank fusion. Reproduce the checked-in 15-query evaluation with:
+reciprocal-rank fusion. Reproduce the checked-in 50-question evaluation with:
 
 ```powershell
 .\.venv\Scripts\python.exe -m resolveops.knowledge.evaluate --provider fastembed --k 3
@@ -248,7 +248,7 @@ controls, and residual risk.
 ## Evaluation and regression
 
 ResolveOps keeps retrieval quality separate from workflow correctness. The retrieval benchmark
-measures Recall@K, MRR, and nDCG on 15 policy questions. Deterministic workflow benchmarks run 24
+measures Recall@K, MRR, and nDCG on 50 policy questions. Deterministic workflow benchmarks run 24
 Customer Operations cases and 14 Employee/IT access cases through the real workflows and check
 outcomes, permissions, persistence, policy citations, failure handling, and verification.
 

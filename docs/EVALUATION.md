@@ -6,9 +6,11 @@ case resolution.
 
 ## Retrieval evaluation
 
-The existing retrieval benchmark contains 15 hand-authored queries over six versioned policy
-documents. It measures Recall@K, MRR, and nDCG independently for vector, BM25, and hybrid retrieval.
-Its dataset, measured baseline, and reproduction command are in `evals/retrieval/README.md`.
+The retrieval benchmark contains 50 hand-authored questions over six versioned policy documents.
+It measures Recall@K, MRR, and nDCG independently for vector, BM25, and hybrid retrieval, including
+category-level results for direct lookups, hard negatives, similar policies, wrong-issue terms,
+multi-section answers, and confusing terminology. Its dataset, measured baseline, and reproduction
+command are in `evals/retrieval/README.md`.
 
 ## Workflow regression evaluation
 
