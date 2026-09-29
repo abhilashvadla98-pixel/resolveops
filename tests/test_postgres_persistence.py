@@ -151,7 +151,7 @@ def test_postgres_migration_and_seed() -> None:
                 as_of=datetime(2026, 9, 24, tzinfo=UTC),
                 k=3,
             )
-            assert metrics.query_count == 15
+            assert metrics.query_count == 50
             assert metrics.recall_at_k >= 0.9
 
         with session_factory.begin() as session:
