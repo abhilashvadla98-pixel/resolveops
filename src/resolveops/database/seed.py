@@ -418,12 +418,27 @@ def seed_employee_it(session: Session) -> bool:
 
 
 def main() -> None:
+    from pathlib import Path
+
+    from resolveops.knowledge.embeddings import FeatureHashEmbeddingProvider
+    from resolveops.knowledge.ingestion import ingest_directory
+
     settings = get_settings()
     engine = create_database_engine(settings.resolved_database_url())
     session_factory = create_session_factory(engine)
     with session_factory.begin() as session:
         created = seed_all(session)
+        knowledge = ingest_directory(
+            session,
+            Path("domain_packs"),
+            FeatureHashEmbeddingProvider(dimensions=128),
+            ingested_at=datetime.now(UTC),
+        )
     print("Seed data created." if created else "Seed data already exists.")
+    print(
+        f"Demo policy index ready: {knowledge.created_documents} documents and "
+        f"{knowledge.created_embeddings} embeddings added."
+    )
 
 
 if __name__ == "__main__":

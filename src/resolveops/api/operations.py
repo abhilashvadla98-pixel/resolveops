@@ -18,7 +18,7 @@ from resolveops.knowledge.embeddings import FeatureHashEmbeddingProvider
 from resolveops.models.case import Case
 from resolveops.models.common import AwareDatetime, DomainModel, Identifier, NonEmptyText
 from resolveops.operations.auth import has_permission
-from resolveops.operations.models import IssueRefundRequest, Permission
+from resolveops.operations.models import Actor, ActorRole, IssueRefundRequest, Permission
 from resolveops.security.models import SecurityPrincipal
 from resolveops.workflows.checkpointing import checkpoint_serializer, open_postgres_checkpointer
 from resolveops.workflows.customer_issue import CustomerIssueWorkflow
@@ -76,6 +76,18 @@ class CaseTimelineEvent(DomainModel):
 def _require_operations_access(principal: SecurityPrincipal) -> None:
     if not has_permission(principal.actor(), Permission.READ_OPERATIONS):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="permission denied")
+
+
+def _workflow_actor(principal: SecurityPrincipal) -> Actor:
+    if principal.authentication_method == "demo_session":
+        return Actor(actor_id="DEMO-OPERATOR", role=ActorRole.OPERATOR)
+    return principal.actor()
+
+
+def _approval_actor(principal: SecurityPrincipal) -> Actor:
+    if principal.authentication_method == "demo_session":
+        return Actor(actor_id="DEMO-APPROVER", role=ActorRole.APPROVER)
+    return principal.actor()
 
 
 def _factory(session: Session) -> tuple[Engine, sessionmaker[Session]]:
@@ -162,7 +174,7 @@ def start_workflow(
     body: StartWorkflow, session: DatabaseSession, principal: Principal
 ) -> WorkflowResult | WorkflowPause:
     _require_operations_access(principal)
-    request = WorkflowRequest(actor=principal.actor(), **body.model_dump())
+    request = WorkflowRequest(actor=_workflow_actor(principal), **body.model_dump())
     try:
         with _workflow_service(session) as workflow:
             return workflow.start(request)
@@ -229,7 +241,7 @@ def decide_approval(
     decision = WorkflowApprovalDecision(
         approval_id=approval_id,
         decision=body.decision,
-        actor=principal.actor(),
+        actor=_approval_actor(principal),
         note=body.note,
     )
     try:

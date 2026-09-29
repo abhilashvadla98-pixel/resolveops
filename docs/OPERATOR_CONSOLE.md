@@ -1,53 +1,52 @@
 # Operator console
 
-The ResolveOps operator console is a read-only operations interface served by the FastAPI process at
-`/console`. It demonstrates the product as an operating system, not just a collection of endpoints.
-All displayed business records come from authenticated simulator reads.
+The ResolveOps console is served by FastAPI at `/console`. It is a compact operations workspace for
+Cases, Approvals, IT Requests, Reliability, and Audit. Business records and timelines come from the
+same authenticated APIs and persistence used by programmatic clients.
 
-## Demonstration flow
+## Demo flow
 
-1. Migrate and seed the database.
+1. Run migrations and `python -m resolveops.database.seed`. The seed command also creates the
+   deterministic 128-dimension demo policy index.
 2. Start the API and open `http://127.0.0.1:8000/console`.
-3. Select **Connect securely** and enter a configured Operator, Approver, or System API key.
-4. Use **Overview** to explain the cross-system case, safety gates, service health, and traceability.
-5. Use **Customer Ops** to show separate issue evidence, captured payments, active policy versions,
-   tickets, and notifications for `CASE-1001`.
-6. Use **Employee & IT** to show the independent approval and access-control evidence for
-   `ITCASE-2001`.
-7. Use **Reliability** to show authenticated Prometheus request signals and the deterministic control
-   boundaries.
+3. Choose **Try demo**. No API key is needed; the signed session can access only the synthetic demo
+   tenant and expires after the configured short lifetime.
+4. Submit a natural-language complaint and inspect its persisted classification. Intake never
+   authorizes an action.
+5. Select scenario D, start the investigation, and inspect the pending refund approval.
+6. Enter a decision note and approve or reject. Approval resumes the durable workflow.
+7. Inspect the ordered timeline and final response. A successful path states that the refund record
+   was created and independently verified, not that an external provider completed settlement.
+8. Use scenario G for the simulated Employee/IT evidence and scenario H for verification recovery.
+9. Choose **Reset demo** to rebuild only the synthetic demo records.
 
-The checked-in seed is synthetic. Names, email addresses, case identifiers, orders, payments, and
-employee records shown in this demonstration are not real customer or employee data.
+The demo session represents separate synthetic duties: workflow submissions use `DEMO-OPERATOR`,
+while approval decisions use `DEMO-APPROVER`. This makes the approval pause visible without granting
+arbitrary tenant or real-system access. Normal authenticated requests continue to use the actor and
+role from their trusted API-key identity.
 
 ## Security boundary
 
-- The API key stays only in JavaScript memory. The console uses neither `localStorage` nor
-  `sessionStorage` and clears the input immediately after starting a connection.
-- Protected requests use the bearer credential in an authorization header. The key is not placed in
-  a URL, DOM record, trace, metric label, or error message.
-- The console relies on server-side identity, tenant routing, RBAC, masking, rate limits, and body
-  limits. It does not accept a tenant or role from the browser.
-- Only operations roles can read `/metrics`. Other authenticated roles continue to receive the
-  server's denial instead of UI-created telemetry.
-- The Content Security Policy allows only same-origin scripts and styles. No analytics, CDN, remote
-  fonts, or third-party browser package is loaded.
-- The console performs reads only. Model output cannot approve or execute a refund, message, ticket,
-  directory change, or repository grant.
+- Demo and operator tokens stay only in JavaScript memory; the page uses neither `localStorage` nor
+  `sessionStorage`.
+- The server chooses tenant and role. Request bodies cannot select either.
+- Reset is accepted only from a signed demo session and affects only its configured synthetic tenant.
+- Refund and access execution still passes deterministic permissions, limits, idempotency, approval,
+  and fresh-state verification.
+- The same-origin Content Security Policy loads no analytics, CDN scripts, or remote fonts.
+- Screenshots must contain synthetic data only and must never include keys, `.env` content, account
+  pages, or cloud credentials.
 
-## Visual and browser checks
+## Browser regression
 
-The console is designed for keyboard access, reduced-motion preferences, desktop navigation, and a
-mobile drawer. The implementation was visually checked with populated protected data at desktop and
-390-pixel mobile widths. Automated tests verify response headers, local asset delivery, the absence
-of persistent browser credential storage, and exclusion of UI assets from the public OpenAPI schema.
-
-Public screenshots must show only seeded synthetic data. Never capture a real
-API key, `.env` file, cloud credential, browser password prompt, or private account page.
+`tests/test_browser_e2e.py` starts the actual application with a migrated and seeded disposable
+database, opens Chromium, creates a complaint, runs scenario D to an approval pause, approves it,
+resumes the workflow, and checks the persisted completion timeline and grounded final response. CI
+installs Chromium and runs this test in its own browser job. The test writes its screenshot only to a
+temporary test directory.
 
 ## Current limits
 
-This is an operator-facing demonstration, not a public end-user application. It has no single sign-on,
-browser session cookie, live vendor integration, or mutation control. A production web console would
-use an identity provider, short-lived server-managed sessions, CSRF protection where applicable, a
-shared gateway rate limit, and deployment-specific CSP/connect-source review.
+The console has no enterprise SSO, live payment/CRM/directory/Git integration, shared multi-process
+rate limiter, or customer-facing workflow. The small same-origin HTML/CSS/JavaScript interface does
+not yet justify a separate frontend build and deployment.

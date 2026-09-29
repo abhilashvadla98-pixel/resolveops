@@ -1,0 +1,126 @@
+import json
+import os
+import socket
+import subprocess
+import time
+import urllib.request
+from collections.abc import Iterator
+from pathlib import Path
+
+import pytest
+from alembic import command
+from alembic.config import Config
+from playwright.sync_api import Page, expect, sync_playwright
+
+
+def available_port() -> int:
+    with socket.socket() as listener:
+        listener.bind(("127.0.0.1", 0))
+        return int(listener.getsockname()[1])
+
+
+@pytest.fixture
+def running_demo(tmp_path: Path) -> Iterator[str]:
+    database_path = (tmp_path / "browser-e2e.db").as_posix()
+    database_url = f"sqlite:///{database_path}"
+    port = available_port()
+    environment = os.environ.copy()
+    environment.update(
+        {
+            "RESOLVEOPS_ENVIRONMENT": "development",
+            "RESOLVEOPS_DATABASE_URL": database_url,
+            "RESOLVEOPS_DEFAULT_TENANT_ID": "TENANT-DEMO",
+            "RESOLVEOPS_TENANT_DATABASE_URLS_JSON": json.dumps(
+                {"TENANT-DEMO": database_url}
+            ),
+            "RESOLVEOPS_WEBHOOK_SECRET": "browser-e2e-webhook-secret-with-32-characters",
+            "RESOLVEOPS_DEMO_ENABLED": "true",
+            "RESOLVEOPS_DEMO_TENANT_ID": "TENANT-DEMO",
+            "RESOLVEOPS_DEMO_SESSION_SECRET": (
+                "browser-e2e-session-secret-with-more-than-32-characters"
+            ),
+        }
+    )
+    config = Config("alembic.ini")
+    config.set_main_option("sqlalchemy.url", database_url)
+    command.upgrade(config, "head")
+    subprocess.run(
+        [os.sys.executable, "-m", "resolveops.database.seed"],
+        check=True,
+        env=environment,
+        capture_output=True,
+        text=True,
+    )
+    process = subprocess.Popen(
+        [
+            os.sys.executable,
+            "-m",
+            "uvicorn",
+            "resolveops.api.main:app",
+            "--host",
+            "127.0.0.1",
+            "--port",
+            str(port),
+        ],
+        env=environment,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+    base_url = f"http://127.0.0.1:{port}"
+    try:
+        for _ in range(50):
+            try:
+                with urllib.request.urlopen(f"{base_url}/health/live", timeout=1) as response:
+                    if response.status == 200:
+                        break
+            except OSError:
+                time.sleep(0.1)
+        else:
+            raise RuntimeError("ResolveOps browser-test server did not start")
+        yield base_url
+    finally:
+        process.terminate()
+        try:
+            process.wait(timeout=5)
+        except subprocess.TimeoutExpired:
+            process.kill()
+            process.wait(timeout=5)
+
+
+@pytest.mark.browser
+def test_operator_completes_demo_approval_workflow(running_demo: str, tmp_path: Path) -> None:
+    with sync_playwright() as playwright:
+        browser = playwright.chromium.launch()
+        page: Page = browser.new_page(viewport={"width": 1440, "height": 1000})
+        page.goto(f"{running_demo}/console")
+        page.locator("#try-demo").click()
+        expect(page.locator("#sidebar-connection")).to_have_text("Connected")
+        expect(page.locator("#case-table")).to_contain_text("CASE-1001")
+
+        page.locator("#complaint-text").fill(
+            "I returned my headphones last week and still have not received my refund."
+        )
+        page.get_by_role("button", name="Create case").click()
+        expect(page.locator("#detail-complaint")).to_contain_text("returned my headphones")
+        expect(page.locator("#detail-issues")).to_contain_text("Missing Return Refund")
+
+        page.locator("#scenario-select").select_option("CASE-DEMO-D")
+        expect(page.locator("#detail-case-id")).to_have_text("CASE-DEMO-D")
+        page.locator("#detail-issues .start-workflow").click()
+        expect(page.locator("#toast")).to_contain_text("paused for approval")
+
+        page.locator('[data-view="approvals"]').click()
+        expect(page.locator("#approval-list")).to_contain_text("650.00 USD")
+        page.get_by_label("Decision note").fill(
+            "Evidence and policy support this controlled refund."
+        )
+        page.locator('.approval-decision[data-decision="approve"]').click()
+        expect(page.locator("#toast")).to_contain_text("Approval approved")
+
+        page.locator('[data-view="cases"]').click()
+        expect(page.locator("#case-timeline")).to_contain_text("Completed")
+        expect(page.locator("#final-response")).to_be_visible()
+        expect(page.locator("#final-response-text")).to_contain_text("created refund")
+        expect(page.locator("#final-response-text")).to_contain_text("independently verified")
+        page.screenshot(path=tmp_path / "completed-workflow.png", full_page=True)
+        browser.close()
