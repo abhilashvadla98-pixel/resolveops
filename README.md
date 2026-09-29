@@ -93,7 +93,7 @@ internal typed action tools; they are not public HTTP endpoints.
 ## Operator console
 
 Start the migrated and seeded API, then open `http://127.0.0.1:8000/console`. The responsive
-operator console turns the synthetic backend into a recruiter-ready demonstration with four views:
+operator console presents the synthetic backend through four operational views:
 an operational overview, Customer Operations evidence, Employee/IT access evidence, and reliability
 signals. It reads the same authenticated, tenant-isolated simulator APIs and protected Prometheus
 endpoint used by other clients; the screen is not filled with hard-coded success data.
@@ -101,7 +101,7 @@ endpoint used by other clients; the screen is not filled with hard-coded success
 Choose **Connect securely** and provide a configured Operator, Approver, or System API key. The key
 is held only in the page's JavaScript memory. It is not written to local storage, session storage,
 URLs, traces, or metrics, and it disappears when the page closes or the operator disconnects. Use
-synthetic portfolio data only. The console is read-only: refunds, notifications, and access grants
+synthetic data only. The console is read-only: refunds, notifications, and access grants
 remain behind the internal deterministic authorization and approval layer.
 
 See `docs/OPERATOR_CONSOLE.md` for the demonstration flow, security boundary, and screenshot rules.
@@ -171,7 +171,7 @@ with the same Pydantic schema used by the application. Install the `llm` extra, 
 `CustomerIssueWorkflow`. No API key or model name is stored in the repository, and tests use an
 offline scripted provider rather than making paid network calls.
 
-`GeminiReasoningProvider` supplies the no-billing live-model path for the portfolio demonstration.
+`GeminiReasoningProvider` supplies the optional live-model reasoning path.
 It uses the same advisory schema and system boundary, limits serialized input and output tokens,
 sets a request timeout, and permits at most two provider attempts by default. A refusal, malformed
 response, unknown citation, exhausted free quota, or provider failure fails closed instead of

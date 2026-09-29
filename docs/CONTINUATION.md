@@ -126,12 +126,12 @@ Last verified: 2026-09-28
 ## Current completion plan
 
 The user does not want paid infrastructure. Keep the validated AWS Terraform and deployment
-workflow as reference architecture, but do not create AWS resources. Finish the portfolio in this
+workflow as reference architecture, but do not create AWS resources. Finish the product work in this
 order:
 
 1. deploy the working demonstration with free Render compute and free Supabase PostgreSQL;
 2. run the controlled cloud workload, analyze real failures, and rerun regressions; and
-3. finish the recruiter README, screenshots, walkthrough, ADRs, interview notes, public release,
+3. finish the README, screenshots, walkthrough, ADRs, engineering notes, and public release,
    and profile pin.
 
 The free-tier Gemini proof is complete. On 2026-09-28, `gemini-3.5-flash-lite` passed all 3 synthetic
@@ -145,7 +145,7 @@ digest of the presented credential. Operations roles can scrape bounded-label me
 The complete suite now passes 156 tests with 1 intentionally skipped PostgreSQL environment test;
 Docker Compose configuration, the rebuilt image, lint, formatting, strict typing, and dependency
 checks also pass. The limiter and counters are intentionally process-local for the single-worker
-portfolio container; scaled deployment requires shared gateway or datastore enforcement.
+application container; scaled deployment requires shared gateway or datastore enforcement.
 
 The operator-console packet is complete locally. The interface is served by FastAPI with local
 assets only, performs authenticated reads without browser credential persistence, and passed live

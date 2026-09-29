@@ -30,7 +30,7 @@ HTTP/HTTPS only to the load balancer, load-balancer traffic only to API port 800
 only from the ECS tasks. RDS is encrypted, not publicly accessible, keeps seven days of backups,
 uses an AWS-managed master password, and enables deletion protection by default.
 
-The checked-in defaults use one NAT gateway and a single-AZ small RDS instance to limit a portfolio
+The checked-in defaults use one NAT gateway and a single-AZ small RDS instance to limit a demonstration
 environment's cost. That creates availability limitations. A production review should choose
 multi-AZ RDS and either a NAT gateway per Availability Zone or the needed VPC endpoints. ALB, NAT,
 RDS, Fargate, logs, data transfer, and public IPv4 resources can all incur charges; review the AWS

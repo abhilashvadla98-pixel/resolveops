@@ -1,6 +1,6 @@
 # Operator console
 
-The ResolveOps operator console is a read-only portfolio interface served by the FastAPI process at
+The ResolveOps operator console is a read-only operations interface served by the FastAPI process at
 `/console`. It demonstrates the product as an operating system, not just a collection of endpoints.
 All displayed business records come from authenticated simulator reads.
 
@@ -42,7 +42,7 @@ mobile drawer. The implementation was visually checked with populated protected 
 390-pixel mobile widths. Automated tests verify response headers, local asset delivery, the absence
 of persistent browser credential storage, and exclusion of UI assets from the public OpenAPI schema.
 
-Screenshots used in the public portfolio must show only seeded synthetic data. Never capture a real
+Public screenshots must show only seeded synthetic data. Never capture a real
 API key, `.env` file, cloud credential, browser password prompt, or private account page.
 
 ## Current limits

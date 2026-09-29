@@ -14,7 +14,7 @@ def test_operator_console_serves_secure_shell_and_local_assets() -> None:
     assert page.headers["x-frame-options"] == "DENY"
     assert "default-src 'self'" in page.headers["content-security-policy"]
     assert "ResolveOps | Operations Console" in page.text
-    assert "Evidence before action." in page.text
+    assert "Case overview" in page.text
     assert 'src="/console/app.js?v=20260928"' in page.text
     assert 'role="dialog"' in page.text
     assert 'aria-modal="true"' in page.text

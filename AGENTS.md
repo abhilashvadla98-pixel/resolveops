@@ -2,26 +2,19 @@
 
 ## 1. Project Goal
 
-ResolveOps is a production-grade AI engineering portfolio project.
+ResolveOps investigates operational cases using trusted backend state,
+versioned policy evidence, bounded model reasoning, deterministic action
+controls, human approval where required, and fresh-state verification.
 
-It must demonstrate:
-- real backend engineering
-- RAG
-- agent orchestration
-- multi-agent workflows
-- tool/function calling
-- MCP
-- durable state
-- human-in-the-loop
-- reliability
-- security
-- evaluation
-- observability
-- Docker
-- CI/CD
-- cloud deployment
-
-Do not reduce ResolveOps into a chatbot or simple demo.
+Engineering invariants:
+- model output is advisory
+- sensitive actions require deterministic authorization
+- financial and access changes cannot be controlled directly by a model
+- every sensitive side effect must be idempotent
+- completion requires fresh-state verification
+- evidence retains source, version, and provenance
+- failures remain visible
+- simulator integrations are clearly labeled
 
 ## 2. Architecture Rule
 
