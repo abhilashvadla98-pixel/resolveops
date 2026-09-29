@@ -122,9 +122,10 @@ class DemoSettings(BaseSettings):
     def validate_demo_configuration(self) -> "DemoSettings":
         if self.demo_enabled and self.demo_session_secret is None:
             raise ValueError("demo_session_secret is required when demo mode is enabled")
-        if self.demo_session_secret is not None and len(
-            self.demo_session_secret.get_secret_value()
-        ) < 32:
+        if (
+            self.demo_session_secret is not None
+            and len(self.demo_session_secret.get_secret_value()) < 32
+        ):
             raise ValueError("demo_session_secret must contain at least 32 characters")
         return self
 
@@ -134,11 +135,24 @@ def validate_runtime_safety(settings: Settings, demo_settings: DemoSettings) -> 
     environment = settings.environment
     if environment == RuntimeEnvironment.DEVELOPMENT:
         return
+    _validate_environment_mode(environment, demo_settings)
+    _validate_database_configuration(settings)
+    _validate_tenant_configuration(settings, demo_settings)
+    _validate_webhook_configuration(settings)
+    if environment == RuntimeEnvironment.PRODUCTION:
+        _validate_production_identities(settings)
+
+
+def _validate_environment_mode(
+    environment: RuntimeEnvironment, demo_settings: DemoSettings
+) -> None:
     if environment == RuntimeEnvironment.DEMO and not demo_settings.demo_enabled:
         raise RuntimeSafetyError("demo environment requires restricted demo sessions")
     if environment == RuntimeEnvironment.PRODUCTION and demo_settings.demo_enabled:
         raise RuntimeSafetyError("production environment cannot enable the public demo workspace")
 
+
+def _validate_database_configuration(settings: Settings) -> None:
     database_urls = [settings.resolved_database_url()]
     if settings.tenant_database_urls_json is not None:
         try:
@@ -158,11 +172,18 @@ def validate_runtime_safety(settings: Settings, demo_settings: DemoSettings) -> 
         if unsafe_database:
             raise RuntimeSafetyError("non-development database configuration is unsafe")
 
+
+def _validate_tenant_configuration(settings: Settings, demo_settings: DemoSettings) -> None:
     if settings.default_tenant_id == "TENANT-LOCAL":
         raise RuntimeSafetyError("non-development environment cannot use TENANT-LOCAL")
-    if environment == RuntimeEnvironment.DEMO and settings.default_tenant_id != demo_settings.demo_tenant_id:
+    if (
+        settings.environment == RuntimeEnvironment.DEMO
+        and settings.default_tenant_id != demo_settings.demo_tenant_id
+    ):
         raise RuntimeSafetyError("demo environment must route only to the synthetic demo tenant")
 
+
+def _validate_webhook_configuration(settings: Settings) -> None:
     webhook_values = []
     if settings.webhook_secret is not None:
         webhook_values.append(settings.webhook_secret.get_secret_value())
@@ -171,20 +192,23 @@ def validate_runtime_safety(settings: Settings, demo_settings: DemoSettings) -> 
     if not webhook_values or any(_contains_placeholder(value) for value in webhook_values):
         raise RuntimeSafetyError("non-development webhook secrets must be configured")
 
-    if environment == RuntimeEnvironment.PRODUCTION:
-        if settings.api_key_identities_json is None:
-            raise RuntimeSafetyError("production requires at least one enabled API identity")
-        try:
-            identities = json.loads(settings.api_key_identities_json.get_secret_value())
-        except json.JSONDecodeError as exc:
-            raise RuntimeSafetyError("API identity configuration must be valid JSON") from exc
-        if not isinstance(identities, list) or not any(
-            isinstance(identity, dict)
-            and identity.get("enabled") is True
-            and identity.get("key_sha256") != "0" * 64
-            for identity in identities
-        ):
-            raise RuntimeSafetyError("production requires at least one non-example enabled API identity")
+
+def _validate_production_identities(settings: Settings) -> None:
+    if settings.api_key_identities_json is None:
+        raise RuntimeSafetyError("production requires at least one enabled API identity")
+    try:
+        identities = json.loads(settings.api_key_identities_json.get_secret_value())
+    except json.JSONDecodeError as exc:
+        raise RuntimeSafetyError("API identity configuration must be valid JSON") from exc
+    if not isinstance(identities, list) or not any(
+        isinstance(identity, dict)
+        and identity.get("enabled") is True
+        and identity.get("key_sha256") != "0" * 64
+        for identity in identities
+    ):
+        raise RuntimeSafetyError(
+            "production requires at least one non-example enabled API identity"
+        )
 
 
 def _contains_placeholder(value: str) -> bool:
