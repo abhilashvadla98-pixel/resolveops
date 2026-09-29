@@ -89,6 +89,8 @@ def running_demo(tmp_path: Path) -> Iterator[str]:
 
 @pytest.mark.browser
 def test_operator_completes_demo_approval_workflow(running_demo: str, tmp_path: Path) -> None:
+    screenshot_directory = Path(os.environ.get("RESOLVEOPS_SCREENSHOT_DIR", tmp_path))
+    screenshot_directory.mkdir(parents=True, exist_ok=True)
     with sync_playwright() as playwright:
         browser = playwright.chromium.launch()
         page: Page = browser.new_page(viewport={"width": 1440, "height": 1000})
@@ -122,11 +124,19 @@ def test_operator_completes_demo_approval_workflow(running_demo: str, tmp_path: 
         expect(page.locator("#final-response")).to_be_visible()
         expect(page.locator("#final-response-text")).to_contain_text("created refund")
         expect(page.locator("#final-response-text")).to_contain_text("independently verified")
+        page.screenshot(
+            path=screenshot_directory / "resolveops-customer-workflow.png",
+            full_page=True,
+        )
         page.locator('[data-view="reliability"]').click()
         expect(page.locator("#reliability-total")).to_have_text("1")
         expect(page.locator("#reliability-operations")).to_contain_text("Issue Refund")
         expect(page.locator("#reliability-events")).to_contain_text("Attempt Succeeded")
         expect(page.locator("#reliability-p50")).to_contain_text("ms")
+        page.screenshot(
+            path=screenshot_directory / "resolveops-reliability.png",
+            full_page=True,
+        )
         page.locator('[data-view="it"]').click()
         expect(page.locator("#it-step-identity")).to_contain_text("MFA enrolled")
         expect(page.locator("#it-step-approval")).to_contain_text("Approved by")
@@ -135,5 +145,8 @@ def test_operator_completes_demo_approval_workflow(running_demo: str, tmp_path: 
         expect(page.locator("#it-result")).to_contain_text("Access Verified")
         expect(page.locator("#it-result")).to_contain_text("independently verified")
         expect(page.locator("#it-step-grant")).to_contain_text("Active Write")
-        page.screenshot(path=tmp_path / "completed-workflow.png", full_page=True)
+        page.screenshot(
+            path=screenshot_directory / "resolveops-employee-it.png",
+            full_page=True,
+        )
         browser.close()

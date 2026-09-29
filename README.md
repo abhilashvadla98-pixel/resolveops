@@ -1,343 +1,267 @@
 # ResolveOps
 
-ResolveOps investigates operations cases across simulated enterprise systems. It currently includes
-Customer Operations and Employee/IT domain packs. The first models customers, orders, payments,
-returns, refunds, and independently tracked case issues. The second models employee identity,
-team membership, directory groups, repository access, approvals, tickets, and notifications.
+ResolveOps is a production-minded AI operations system for investigating customer and employee
+cases, grounding recommendations in versioned policy, pausing risky actions for human approval, and
+proving the final state after execution.
 
-This repository does not connect to real payment, CRM, directory, Git, or support platforms.
+It is built to demonstrate a boundary that matters in real AI engineering:
 
-## Local setup
+> The model may advise. Deterministic software authorizes, executes, audits, and verifies.
 
-ResolveOps uses Python 3.12.
+The repository includes a working operator console, two end-to-end business domains, durable
+workflows, PostgreSQL persistence and concurrency controls, retrieval and workflow evaluations,
+reliability evidence, browser automation, deployment infrastructure, and recovery drills. All
+checked-in business data is synthetic. No live payment, CRM, identity, Git, ticketing, or cloud
+account is connected.
+
+## What the product does
+
+### Customer Operations
+
+- accepts a natural-language complaint and persists separate issues;
+- reads current customer, order, payment, return, and refund state;
+- retrieves active policy with version and section citations;
+- optionally asks a bounded model for structured advice;
+- applies deterministic permission, amount, business-state, idempotency, and approval gates;
+- creates a simulated refund only when authorized;
+- reads the state again before reporting that the refund record was created;
+- never claims that an external payment provider completed settlement.
+
+### Employee and IT Operations
+
+- verifies active employment, enterprise identity ownership, MFA, team membership, Git identity,
+  repository ownership, and exact manager approval;
+- retrieves the active access policy;
+- grants the minimum approved repository access through an idempotent action;
+- verifies directory group membership, repository access, request, case, ticket, and notification
+  state from fresh reads;
+- returns no action on an exact replay and escalates partial or conflicting access.
+
+## Architecture
+
+```mermaid
+flowchart LR
+    UI[Operator console] --> API[FastAPI boundary]
+    CLIENT[API / MCP client] --> API
+    API --> AUTH[Authentication, tenant routing, RBAC]
+    AUTH --> WF[LangGraph workflows]
+    WF --> READS[Typed simulator reads]
+    WF --> RETRIEVAL[Versioned policy retrieval]
+    RETRIEVAL --> ADVICE[Optional structured model advice]
+    ADVICE --> GATES[Deterministic safety gates]
+    READS --> GATES
+    GATES --> APPROVAL[Durable human approval]
+    APPROVAL --> ACTIONS[Idempotent action tools]
+    ACTIONS --> VERIFY[Fresh-state verification]
+    VERIFY --> DB[(PostgreSQL / local SQLite)]
+    API --> OBS[Metrics and structured traces]
+    ACTIONS --> AUDIT[Audit and reliability events]
+    AUDIT --> DB
+```
+
+```mermaid
+flowchart TD
+    A[Complaint or access case] --> B[Load independent evidence]
+    B --> C[Retrieve active policy]
+    C --> D[Optional advisory assessment]
+    D --> E{Deterministic gates pass?}
+    E -- No --> F[Escalate with reason]
+    E -- Approval required --> G[Persist pause and wait]
+    G --> H{Human decision}
+    H -- Reject --> F
+    H -- Approve --> I[Execute once with idempotency key]
+    E -- Yes --> I
+    I --> J[Read final state again]
+    J -- Verified --> K[Grounded response and audit trail]
+    J -- Uncertain --> L[Verify-only recovery or review]
+```
+
+## Try the complete demo locally
+
+Requirements: Python 3.12. Docker is optional for this quick SQLite demo.
 
 ```powershell
 python -m pip install "uv==0.12.20"
 uv sync --locked --all-extras
+
+$env:RESOLVEOPS_ENVIRONMENT = "development"
+$env:RESOLVEOPS_DATABASE_URL = "sqlite:///./resolveops-demo.db"
+$env:RESOLVEOPS_DEFAULT_TENANT_ID = "TENANT-DEMO"
+$env:RESOLVEOPS_TENANT_DATABASE_URLS_JSON = '{"TENANT-DEMO":"sqlite:///./resolveops-demo.db"}'
+$env:RESOLVEOPS_WEBHOOK_SECRET = "local-demo-webhook-secret-at-least-32-chars"
+$env:RESOLVEOPS_DEMO_ENABLED = "true"
+$env:RESOLVEOPS_DEMO_TENANT_ID = "TENANT-DEMO"
+$env:RESOLVEOPS_DEMO_SESSION_SECRET = "local-demo-session-secret-at-least-32-chars"
+
+uv run --locked alembic upgrade head
+uv run --locked python -m resolveops.database.seed
+uv run --locked uvicorn resolveops.api.main:app
 ```
 
-`uv.lock` is the single dependency lock for local work, CI, and the application image. Run
-`uv lock --check` after changing `pyproject.toml`; update the lock intentionally with `uv lock`.
+Open [http://127.0.0.1:8000/console](http://127.0.0.1:8000/console) and choose **Try demo**.
+No model key or paid service is required. The seed command builds a deterministic local policy index.
 
-Copy `.env.example` to `.env` and replace the example PostgreSQL password with the password for
-your local development database. `.env` is ignored by Git.
+![ResolveOps Customer Operations workflow](docs/assets/resolveops-customer-workflow.png)
 
-Create or update the database schema:
+| Reliability evidence | Verified Employee/IT access |
+| --- | --- |
+| ![ResolveOps reliability view](docs/assets/resolveops-reliability.png) | ![ResolveOps Employee and IT workflow](docs/assets/resolveops-employee-it.png) |
+
+### Five-minute walkthrough
+
+1. Submit a complaint and show that intake creates persisted issues but authorizes no action.
+2. Select demo scenario D and start the refund investigation.
+3. Open **Approvals**, add a decision note, and approve the paused action.
+4. Return to the case and show the stored customer/order/payment/policy/advice/gate/execution/
+   verification timeline and grounded final response.
+5. Open **Reliability** and inspect measured lifecycle latency plus the operation event trace.
+6. Open **IT Requests**, run the controlled access workflow, and show the verified final records.
+7. Run it again to show that ResolveOps detects existing access and creates no duplicate grant.
+
+The same journey is exercised in Chromium by `tests/test_browser_e2e.py`.
+
+## Safety and recovery design
+
+Every action uses a typed request, server-derived actor, unique idempotency key, database transaction,
+ordered audit events, bounded retry policy, and fresh verification. A committed-but-unverified action
+is never blindly repeated: recovery is verify-only. Refunds and customer communications do not have
+automatic destructive compensation because a local inverse write cannot prove that an external side
+effect was reversed.
+
+Durable customer workflows use PostgreSQL-backed LangGraph checkpoints and application-owned run,
+approval, and event tables. Real PostgreSQL tests cover simultaneous refund attempts, duplicate
+approval decisions, and duplicate webhook delivery. `scripts/backup_restore_drill.py` performs a
+guarded seed → backup → mutation → database recreation → restore → verification drill and refuses a
+database name that does not contain `test` or `drill`.
+
+See [Reliability](docs/RELIABILITY.md), [Failure cases](docs/FAILURE_CASES.md), and
+[Threat model](docs/THREAT_MODEL.md).
+
+## Evaluation evidence
+
+These are reproducible repository results, not production accuracy or scale claims.
+
+| Evidence | Current checked-in result |
+| --- | --- |
+| Customer workflow regression | 24/24 passed |
+| Employee/IT workflow regression | 14/14 passed |
+| Response safety/grounding candidates | 24/24 automated checks passed; **0/24 human-reviewed** |
+| Retrieval set | 50 hand-authored queries |
+| FastEmbed vector Recall@3 / MRR / nDCG@3 | 0.9200 / 0.9100 / 0.9024 |
+| BM25 Recall@3 / MRR / nDCG@3 | 0.9800 / 0.9467 / 0.9418 |
+| Hybrid Recall@3 / MRR / nDCG@3 | 0.9800 / 0.9233 / 0.9363 |
+| Offline workflow timing sample | 72 workflows; p50 19.29 ms, p95 34.92 ms |
+| Optional Gemini synthetic gate | 3/3 passed on the recorded 2026-09-28 run |
+
+BM25 beat hybrid on MRR and nDCG in the measured small corpus. That result is kept visible instead of
+selecting only the most flattering metric. The 24 response candidates have deterministic safety and
+grounding checks, but remain explicitly pending human tone/usefulness review.
+
+Reproduce the main gates:
 
 ```powershell
-.\.venv\Scripts\alembic.exe upgrade head
+uv run --locked python -m resolveops.evaluation.run
+uv run --locked python -m resolveops.evaluation.run_employee
+uv run --locked python scripts/run_response_evaluation.py
+uv run --locked python -m resolveops.knowledge.evaluate --provider fastembed --k 3
+uv run --locked python -m pytest
 ```
 
-Load the repeatable Customer Operations and Employee/IT samples:
+Detailed methodology and limitations live in [Evaluation](docs/EVALUATION.md),
+[retrieval results](evals/retrieval/README.md), and
+[response review](evals/responses/README.md).
 
-```powershell
-.\.venv\Scripts\python.exe -m resolveops.database.seed
+## Observability
+
+The console and authenticated APIs expose:
+
+- p50/p95 operation lifecycle duration calculated from persisted records;
+- operation outcomes, failures, retries, waits, recovery, and manual-review counts;
+- clickable reliability-event traces for recent operations;
+- ordered workflow lifecycle events;
+- bounded-label Prometheus HTTP counters and histograms at `/metrics`;
+- a request trace ID for correlation with structured server logs.
+
+Trace attributes exclude credentials, request bodies, prompts, model outputs, policy text, evidence,
+and customer PII. OpenTelemetry export was not added: the current single-service demo has structured
+traces and Prometheus metrics, and adding an exporter without a real backend would create setup with
+no new evidence.
+
+## Security boundaries
+
+- The authenticated server identity chooses tenant and role; request bodies cannot.
+- Each tenant maps to a separate database.
+- Agents receive masked PII; explicitly permitted roles can read full values.
+- Demo sessions are short-lived, signed, and restricted to the synthetic demo tenant.
+- Webhooks use per-tenant HMAC secrets, timestamps, replay protection, event idempotency, and ordered
+  state transitions.
+- Non-development startup rejects SQLite/local/example databases, placeholder secrets, `TENANT-LOCAL`,
+  unsafe demo settings, and missing production identities.
+- The console keeps its token only in JavaScript memory and loads no CDN script, analytics, or remote
+  font.
+
+See [Security](docs/SECURITY.md) and the six decisions in [ADRs](docs/adr/).
+
+## Deployment status
+
+The repository contains a locked, non-root multi-stage image, a migration-gated Compose stack, and
+Terraform for private ECS Fargate, RDS PostgreSQL, ALB, ECR, Secrets Manager, and CloudWatch. CI
+checks quality, security, PostgreSQL, the container, browser behavior, and Terraform.
+
+No public cloud environment is currently deployed, and the repository does not claim otherwise.
+The AWS design can incur charges. A public deployment requires the owner's cloud account, cost
+choice, credentials/OIDC setup, secrets, and explicit launch authorization. The local demo provides
+the complete recruiter walkthrough without paid infrastructure. See
+[Deployment](docs/DEPLOYMENT.md) for the exact order, rollback, and cost/resilience tradeoffs.
+
+## Repository map
+
+```text
+src/resolveops/          API, workflows, actions, security, retrieval, observability
+domain_packs/            versioned policies and domain fixtures
+migrations/              Alembic schema history
+evals/                   retrieval, workflow, response, reasoning, and timing evidence
+tests/                   unit, security, PostgreSQL, migration, and browser tests
+infra/terraform/         reviewed AWS reference deployment
+docs/adr/                architecture decision records
 ```
 
-The sample contains one customer case with a possible duplicate charge and a missing return refund,
-plus an approved ML Platform repository-access case whose group and repository grants are missing.
+Recommended reading:
 
-## Policy knowledge and retrieval
+- [Operator console](docs/OPERATOR_CONSOLE.md)
+- [Engineering notes](docs/ENGINEERING_NOTES.md)
+- [Code audit](docs/CODE_AUDIT.md)
+- [Non-goals](docs/NON_GOALS.md)
+- [Backup and restore](docs/BACKUP_RESTORE.md)
+- [Interfaces](docs/INTERFACES.md)
 
-Versioned Markdown policies live under each domain pack's `policies` directory. Every document
-has validated TOML metadata for its identity, version, status, applicable issue types, source, and
-effective date. Ingestion uses heading-aware chunks, immutable content fingerprints, and separate
-embedding records so a later model can be added without rewriting the source documents.
-
-After running migrations, build the local semantic index with FastEmbed:
-
-```powershell
-.\.venv\Scripts\python.exe -m resolveops.knowledge.cli --provider fastembed
-```
-
-The first run downloads `BAAI/bge-small-en-v1.5`; no paid API key is required. For fully offline
-development and deterministic tests, use `--provider feature-hash`. Retrieval returns the policy
-version, section, source, effective dates, chunk text, and ranking evidence.
-
-The retrieval layer provides exact cosine vector search, Okapi BM25 lexical search, and weighted
-reciprocal-rank fusion. Reproduce the checked-in 50-question evaluation with:
+## Quality gates
 
 ```powershell
-.\.venv\Scripts\python.exe -m resolveops.knowledge.evaluate --provider fastembed --k 3
-```
-
-The command safely re-runs ingestion and reports document-level Recall@K, MRR, and nDCG for vector,
-lexical, and hybrid retrieval. The dataset and latest measured baseline are documented in
-`evals/retrieval/README.md`. A cross-encoder reranker is intentionally not included yet: the current
-small corpus does not justify its latency and operational cost. Approximate database vector search
-can replace the exact in-process index when corpus scale requires it.
-
-## Simulator API
-
-Start the API after migrating and seeding the database:
-
-```powershell
-.\.venv\Scripts\uvicorn.exe resolveops.api.main:app --reload
-```
-
-Open `http://127.0.0.1:8000/docs` for the generated API documentation. Customer Operations
-simulators are under `/simulator/v1`; Employee/IT reads are under `/simulator/v1/it`. They provide
-read access to the local enterprise-system simulator records.
-
-All simulator routes require a configured bearer API key. The authenticated identity supplies the
-tenant and role; clients cannot select either value. Multi-tenant deployments use a separate
-database per tenant. Agents receive masked PII, while roles with the explicit `read_pii` permission
-receive full values. Local configuration and rotation guidance are in `docs/SECURITY.md`.
-
-The API rejects bodies larger than 1 MiB by default and applies a bounded token-bucket limit to
-both the client network identity and a one-way digest of any presented bearer credential. Health
-probes are exempt so deployment health checks cannot lock themselves out. Successful responses
-include rate-limit metadata; rejected bursts receive HTTP 429 plus `Retry-After`. Limits are
-configurable through the documented `RESOLVEOPS_*` environment settings.
-
-The simulator routes are intentionally read-only. Write operations are available only through the
-internal typed action tools; they are not public HTTP endpoints.
-
-## Operator console
-
-Start the migrated and seeded API, then open `http://127.0.0.1:8000/console`. The responsive
-operator console presents the synthetic backend through four operational views:
-an operational overview, Customer Operations evidence, Employee/IT access evidence, and reliability
-signals. It reads the same authenticated, tenant-isolated simulator APIs and protected Prometheus
-endpoint used by other clients; the screen is not filled with hard-coded success data.
-
-Choose **Connect securely** and provide a configured Operator, Approver, or System API key. The key
-is held only in the page's JavaScript memory. It is not written to local storage, session storage,
-URLs, traces, or metrics, and it disappears when the page closes or the operator disconnects. Use
-synthetic data only. The console is read-only: refunds, notifications, and access grants
-remain behind the internal deterministic authorization and approval layer.
-
-See `docs/OPERATOR_CONSOLE.md` for the demonstration flow, security boundary, and screenshot rules.
-
-## Safe operations
-
-The internal action layer supports issuing a refund, sending a customer email, creating a support
-ticket, and granting approved repository access. Each operation applies deterministic controls
-before changing data:
-
-- role-based permission checks and USD refund limits
-- confirmed issue, payment, return, currency, and amount rules
-- a unique idempotency key that makes safe retries return the original result
-- a durable audit trail for requested, authorized, denied, failed, executed, and verified states
-- a fresh database read after execution before the operation is marked complete
-
-An AI recommendation cannot bypass these controls or directly issue a refund. Amounts above an
-actor's limit return an approval-required error. Agents cannot refund; operators can approve up to
-500 USD, and approvers or the system can approve up to 5,000 USD. `Actor` values must come from a
-trusted authentication boundary and must never be accepted directly from an untrusted request.
-
-The current notification simulator supports only email sent to the customer's stored address; SMS
-remains blocked until verified phone data exists. External provider connections are intentionally
-left for later roadmap packets.
-
-## Employee and IT access workflow
-
-`EmployeeAccessWorkflow` handles the ML Platform onboarding scenario using the shared runtime. It
-checks active employment, identity ownership, MFA, active team membership, the linked Git account,
-repository ownership, exact manager approval, policy evidence, and existing access. It then uses the
-shared idempotent and audited action layer to create the required directory-group membership and
-repository grant, resolve the request, case, and ticket, notify the employee, and independently
-verify the final state.
-
-All directory, Git, ticket, and notification integrations are simulators. Model reasoning is
-optional and advisory; it cannot bypass a deterministic check or perform an action. See
-`docs/EMPLOYEE_IT.md` for the architecture, API, evaluation, and limitations.
-
-## Case workflow orchestration
-
-`CustomerIssueWorkflow` uses LangGraph to coordinate a typed, deterministic workflow for one issue
-inside a case. It loads the case, routes by issue type, independently investigates current backend
-state, retrieves applicable policy with citations, applies deterministic action gates, executes the
-existing safe refund tool when authorized, and performs another fresh database read before reporting
-an action as verified.
-
-The terminal paths are intentionally different:
-
-- `action_verified` means the requested refund record exists and matches the authorized request. It
-  does not mean the external payment provider has completed the refund, so the case stays open.
-- `waiting_external` means an active refund already exists and no duplicate action was taken.
-- `needs_review` means evidence, persisted issue state, policy, authorization, or verification was
-  insufficient. The workflow completes without silently bypassing the failed gate.
-
-The workflow has one optional, bounded LLM reasoning role. It synthesizes collected evidence and
-retrieved policy into a structured advisory assessment with evidence IDs, policy chunk citations,
-missing information, risk notes, and a recommended disposition. A model recommendation cannot set a
-refund amount, authorize an action, invoke a tool, change workflow state, or mark a case resolved.
-Unknown citations, contradictory structured output, provider failures, and non-supportive
-recommendations fail closed to review. The workflow still operates deterministically when no model
-provider is configured.
-
-The optional OpenAI adapter uses the
-[Responses API structured-output parser](https://developers.openai.com/api/docs/guides/structured-outputs)
-with the same Pydantic schema used by the application. Install the `llm` extra, construct
-`OpenAIReasoningProvider` with an authenticated `OpenAI` client and an explicitly selected model, and pass it to
-`CustomerIssueWorkflow`. No API key or model name is stored in the repository, and tests use an
-offline scripted provider rather than making paid network calls.
-
-`GeminiReasoningProvider` supplies the optional live-model reasoning path.
-It uses the same advisory schema and system boundary, limits serialized input and output tokens,
-sets a request timeout, and permits at most two provider attempts by default. A refusal, malformed
-response, unknown citation, exhausted free quota, or provider failure fails closed instead of
-authorizing an action. The API key is optional and must be supplied only through
-`RESOLVEOPS_GEMINI_API_KEY`; it is never stored in the repository. The synthetic live gate was run
-on 2026-09-28 with `gemini-3.5-flash-lite`: all 3 cases passed, the median observed latency was
-4.74 seconds (range 1.49-6.77 seconds), and the provider reported 1,589 total tokens. These are
-observations from that small run, not general model-quality or production-latency claims.
-
-### Durable execution and human approval
-
-Production workflow execution can use PostgreSQL-backed LangGraph checkpoints together with the
-application's audited workflow lifecycle tables. Configure `CustomerIssueWorkflow` with both an
-`open_postgres_checkpointer(...)` checkpointer and a `WorkflowLifecycleStore`, then call `start()`.
-The checkpointer uses an explicit deserialization allowlist and synchronous durability. Its `setup()`
-call creates LangGraph's internal checkpoint tables on first use; the normal Alembic migration owns
-the ResolveOps workflow, approval, and event tables.
-
-When a refund is above an operator's limit but within an approver's limit, `start()` returns a
-`WorkflowPause` containing one persisted approval request. A trusted approver or system actor can
-later send a typed `WorkflowApprovalDecision` to `resume()`. Approval continues from the stored
-checkpoint and executes the existing deterministic action controls. Rejection ends in review with
-no refund. Repeated starts, approval creation, and terminal lifecycle writes are idempotent, and
-every lifecycle transition is stored as an ordered event.
-
-The basic `run()` method remains available for non-durable local execution. It does not invent an
-approval result and still fails closed when the caller lacks authority. A background worker is not
-included because the current workflow has no long-running task that requires one.
-
-### Reliability and recovery
-
-Action execution uses a bounded `ReliabilityPolicy`. Only failures explicitly classified as
-transient are retried. Retries use capped exponential backoff, the same idempotency key, durable
-attempt counts, and an execution lease. Authorization failures, approval failures, invalid business
-state, and changed idempotency payloads are never retried.
-
-Database-backed simulator actions run inside a transaction-bound attempt deadline. If an attempt
-returns after its deadline or raises before commit, the transaction rolls back before the next
-attempt. A crashed `started` operation can be reclaimed only after its lease expires. If the action
-was already committed, recovery is verify-only: ResolveOps performs fresh reads and never executes
-the action again. Completed idempotent replays are also re-verified instead of trusting the old
-success record.
-
-Every attempt, scheduled retry, lease recovery, verification retry, and compensation decision is
-stored as an ordered reliability event. `get_recovery_plan()` explains whether to wait, retry,
-verify only, or require manual review. `recover_refund()`, `recover_notification()`, and
-`recover_ticket()` provide explicit verify-only recovery for committed actions. ResolveOps does not
-automatically reverse refunds or customer communications; those potentially harmful compensations
-are marked for manual review. The full failure matrix and timeout boundary are documented in
-`docs/RELIABILITY.md`.
-
-## MCP and event interfaces
-
-The optional `interfaces` dependency adds a local stdio MCP server with five read-only tools for
-case, refund, policy, workflow, and recovery inspection. Write actions intentionally remain behind
-the internal deterministic authorization layer. Run it with `resolveops-mcp` after configuring the
-database.
-
-The API also accepts authenticated payment-provider refund status events at
-`POST /events/v1/refund-status`. HMAC verification, a replay window, durable event-ID idempotency,
-per-tenant secrets, per-refund ordering, allowed state transitions, and stored rejection reasons
-prevent duplicated, cross-tenant, or out-of-order delivery from silently corrupting refund state.
-Configuration and the exact signing contract are documented in `docs/INTERFACES.md`.
-
-## Security
-
-ResolveOps uses authenticated tenant routing, database-per-tenant isolation, server-side RBAC, PII
-masking, tenant-specific webhook secrets, secret-safe settings, and a pre-storage malicious-policy
-guard. It also enforces request-size and rate limits before business processing. Retrieved knowledge
-and evidence remain untrusted data, and model output remains advisory.
-See `docs/SECURITY.md` for configuration and limitations and `docs/THREAT_MODEL.md` for threats,
-controls, and residual risk.
-
-## Evaluation and regression
-
-ResolveOps keeps retrieval quality separate from workflow correctness. The retrieval benchmark
-measures Recall@K, MRR, and nDCG on 50 policy questions. Deterministic workflow benchmarks run 24
-Customer Operations cases and 14 Employee/IT access cases through the real workflows and check
-outcomes, permissions, persistence, policy citations, failure handling, and verification.
-
-Run the workflow regression gate with:
-
-```powershell
-.\.venv\Scripts\python.exe -m resolveops.evaluation.run
-```
-
-The current checked-in result is 24 of 24 cases passing. This is a reproducible regression result,
-not a claim of general production accuracy. See `docs/EVALUATION.md` for the design, limitations,
-and semantic-evaluation decision.
-
-Run the Employee/IT regression gate with:
-
-```powershell
-.\.venv\Scripts\python.exe -m resolveops.evaluation.run_employee
-```
-
-Its current checked-in result is 14 of 14 cases passing.
-
-## Observability and measured performance
-
-ResolveOps emits structured parent/child traces for HTTP requests, workflows, graph nodes, policy
-retrieval, action tools, retries, and bounded model calls. HTTP responses include a trace ID. Trace
-attributes exclude request bodies, evidence, policy text, prompts, model outputs, customer PII,
-credentials, and exception messages.
-
-Authenticated Operator, Approver, and System identities can scrape Prometheus text metrics from
-`GET /metrics`. The endpoint exports bounded-label HTTP totals, response-duration histograms,
-in-progress requests, and pre-processing rejection totals. It never labels metrics with credentials,
-tenant IDs, case IDs, request bodies, or raw URLs.
-
-Run the reproducible offline workflow benchmark with `resolveops-observe`, or use:
-
-```powershell
-.\.venv\Scripts\python.exe -m resolveops.observability.benchmark `
-  --warmup-runs 1 --runs 3 `
-  --output evals/performance/customer_operations_local.json
-```
-
-The checked-in run contains 72 measured workflows and preserves real p50/p95 component timings.
-It uses SQLite, local deterministic embeddings, and an offline scripted reasoner, so it is not a
-production latency or scale claim. See `docs/OBSERVABILITY.md`, `docs/PERFORMANCE.md`, and
-`docs/FAILURE_ANALYSIS.md`.
-
-An optional three-case live Gemini gate checks real structured reasoning, citations, latency, and
-provider-reported token usage over synthetic data. It is excluded from required CI because it uses
-external quota. See `docs/EVALUATION.md` for the command, privacy limitation, and reporting rules.
-
-## Deployment
-
-ResolveOps includes a non-root multi-stage Docker image and a Compose stack with PostgreSQL,
-one-shot migrations, migration-aware readiness, and an optional repeatable demo seed. The AWS
-design uses Terraform for a two-AZ VPC, private ECS Fargate tasks, private encrypted RDS PostgreSQL,
-an Application Load Balancer, ECR, Secrets Manager, CloudWatch logs/alarms, and restricted security
-groups.
-
-CI runs code quality, local tests, PostgreSQL integration, a real Compose deployment check, Terraform
-validation, credential-pattern scanning, Bandit, and dependency vulnerability auditing. Third-party
-GitHub Actions are pinned to reviewed commit SHAs, and Dependabot monitors Python, Actions, Docker,
-and Terraform dependencies. The manual AWS workflow uses GitHub OIDC, immutable commit-SHA images,
-and a migrate-before-service rollout. No AWS environment has been created from this repository yet. See
-`docs/DEPLOYMENT.md` for local commands, cloud prerequisites, deployment order, verification,
-rollback, cost-sensitive choices, and limitations.
-
-The same container also packages the operator console at `/console`; it requires no separate frontend
-service, third-party JavaScript, font CDN, or browser build step.
-
-## Checks
-
-```powershell
-.\.venv\Scripts\python.exe -m pytest
-.\.venv\Scripts\python.exe -m ruff check .
-.\.venv\Scripts\python.exe -m mypy
-.\.venv\Scripts\python.exe scripts\security_check.py
-.\.venv\Scripts\python.exe -m bandit -r src -q -ll
-.\.venv\Scripts\python.exe -m pip_audit --local --skip-editable
+uv lock --check
+uv run --locked python -m pytest
+uv run --locked ruff check .
+uv run --locked mypy src
+uv run --locked python scripts/security_check.py
+uv run --locked bandit -r src -q -ll
+uv run --locked pip-audit --local --skip-editable
 docker compose config --quiet
 terraform -chdir=infra/terraform fmt -check -recursive
 terraform -chdir=infra/terraform validate
 ```
 
-PostgreSQL integration tests require a dedicated database whose name contains `test`:
+PostgreSQL-marked tests require a dedicated database whose name contains `test`:
 
 ```powershell
 $env:RESOLVEOPS_TEST_DATABASE_URL = "postgresql+psycopg://user:password@localhost/resolveops_test"
-.\.venv\Scripts\python.exe -m pytest -m postgres
+uv run --locked python -m pytest -m postgres
 ```
+
+## Current limitations
+
+- Enterprise systems are simulators, not live vendor integrations.
+- SQLite demo checkpoints are process-local; durable restart uses PostgreSQL.
+- Rate limiting is process-local and must move to a gateway or shared store before horizontal scale.
+- There is no enterprise SSO, customer-facing portal, background worker, or public cloud instance.
+- The retrieval corpus is deliberately small, and the measured scores must not be generalized.
+- Human review of the 24 customer-response candidates is still pending.
