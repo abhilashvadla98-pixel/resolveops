@@ -14,6 +14,13 @@ class CaseStatus(str, Enum):
     CLOSED = "closed"
 
 
+class CaseIntakeStatus(str, Enum):
+    CLASSIFIED = "classified"
+    NEEDS_CLARIFICATION = "needs_clarification"
+    UNSUPPORTED = "unsupported"
+    REJECTED = "rejected"
+
+
 class CaseIssueType(str, Enum):
     DUPLICATE_CHARGE = "duplicate_charge"
     MISSING_RETURN_REFUND = "missing_return_refund"
@@ -110,6 +117,7 @@ class CaseIssue(DomainModel):
     verification: CaseIssueVerification | None = None
     resolution: CaseIssueResolution | None = None
     reported_at: AwareDatetime
+    classification_confidence: float | None = Field(default=None, ge=0, le=1)
 
     @model_validator(mode="after")
     def validate_issue(self) -> "CaseIssue":
@@ -140,7 +148,10 @@ class Case(DomainModel):
     customer_id: Identifier
     order_id: Identifier
     status: CaseStatus = CaseStatus.OPEN
-    issues: list[CaseIssue] = Field(min_length=1)
+    issues: list[CaseIssue] = Field(default_factory=list)
+    complaint_text: str | None = Field(default=None, min_length=1, max_length=4000)
+    intake_status: CaseIntakeStatus | None = None
+    intake_summary: str | None = Field(default=None, min_length=1, max_length=1000)
     opened_at: AwareDatetime
     updated_at: AwareDatetime
 
@@ -163,4 +174,10 @@ class Case(DomainModel):
             issue.status != CaseIssueStatus.RESOLVED for issue in self.issues
         ):
             raise ValueError("resolved and closed cases require every issue to be resolved")
+        if self.status in {CaseStatus.RESOLVED, CaseStatus.CLOSED} and not self.issues:
+            raise ValueError("resolved and closed cases require at least one issue")
+        if self.intake_status == CaseIntakeStatus.CLASSIFIED and not self.issues:
+            raise ValueError("classified cases require at least one issue")
+        if self.intake_status is not None and self.complaint_text is None:
+            raise ValueError("intake status requires complaint text")
         return self

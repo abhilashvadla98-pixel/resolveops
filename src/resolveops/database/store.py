@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
@@ -199,6 +201,9 @@ class CustomerOperationsStore:
                 customer_id=customer_case.customer_id,
                 order_id=customer_case.order_id,
                 status=customer_case.status,
+                complaint_text=customer_case.complaint_text,
+                intake_status=customer_case.intake_status,
+                intake_summary=customer_case.intake_summary,
                 opened_at=customer_case.opened_at,
                 updated_at=customer_case.updated_at,
                 issues=[self._issue_record(issue) for issue in customer_case.issues],
@@ -227,6 +232,9 @@ class CustomerOperationsStore:
             order_id=record.order_id,
             status=record.status,
             issues=[self._issue_from_record(issue) for issue in record.issues],
+            complaint_text=record.complaint_text,
+            intake_status=record.intake_status,
+            intake_summary=record.intake_summary,
             opened_at=record.opened_at,
             updated_at=record.updated_at,
         )
@@ -332,6 +340,11 @@ class CustomerOperationsStore:
             finding=issue.finding,
             return_id=issue.return_id,
             reported_at=issue.reported_at,
+            classification_confidence=(
+                Decimal(str(issue.classification_confidence))
+                if issue.classification_confidence is not None
+                else None
+            ),
             payment_links=[
                 CaseIssuePaymentRecord(
                     issue_id=issue.issue_id,
@@ -415,4 +428,9 @@ class CustomerOperationsStore:
             verification=verification,
             resolution=resolution,
             reported_at=record.reported_at,
+            classification_confidence=(
+                float(record.classification_confidence)
+                if record.classification_confidence is not None
+                else None
+            ),
         )

@@ -20,6 +20,7 @@ from sqlalchemy.types import TypeDecorator
 
 from resolveops.database.base import Base
 from resolveops.models.case import (
+    CaseIntakeStatus,
     CaseIssueStatus,
     CaseIssueType,
     CaseStatus,
@@ -230,6 +231,11 @@ class CaseRecord(Base):
     customer_id: Mapped[str] = mapped_column(String(100), index=True)
     order_id: Mapped[str] = mapped_column(String(100), index=True)
     status: Mapped[CaseStatus] = mapped_column(enum_type(CaseStatus, "case_status"))
+    complaint_text: Mapped[str | None] = mapped_column(Text)
+    intake_status: Mapped[CaseIntakeStatus | None] = mapped_column(
+        enum_type(CaseIntakeStatus, "case_intake_status")
+    )
+    intake_summary: Mapped[str | None] = mapped_column(Text)
     opened_at: Mapped[datetime] = mapped_column(UTCDateTime())
     updated_at: Mapped[datetime] = mapped_column(UTCDateTime())
 
@@ -269,6 +275,7 @@ class CaseIssueRecord(Base):
     finding: Mapped[IssueFinding] = mapped_column(enum_type(IssueFinding, "issue_finding"))
     return_id: Mapped[str | None] = mapped_column(String(100))
     reported_at: Mapped[datetime] = mapped_column(UTCDateTime())
+    classification_confidence: Mapped[Decimal | None] = mapped_column(Numeric(5, 4))
 
     case: Mapped[CaseRecord] = relationship(back_populates="issues")
     payment_links: Mapped[list["CaseIssuePaymentRecord"]] = relationship(
