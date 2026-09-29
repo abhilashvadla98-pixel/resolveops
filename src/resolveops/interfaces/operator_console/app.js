@@ -1,480 +1,143 @@
 "use strict";
 
-const state = {
-  token: "",
-  traceId: "",
-  customerCase: null,
-  customer: null,
-  order: null,
-  payments: [],
-  policies: [],
-  tickets: [],
-  notifications: [],
-  it: null,
-  metrics: { requests: null, rejections: null, available: false },
-};
-let connectTrigger = null;
-
+const state = { token: "", mode: "", cases: [], selectedCase: null, timeline: [], approvals: [], traceId: "" };
 const byId = (id) => document.getElementById(id);
 const all = (selector) => Array.from(document.querySelectorAll(selector));
+const escapeHtml = (value) => String(value ?? "—").replace(/[&<>'"]/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" })[char]);
 
-function setText(id, value) {
-  const element = byId(id);
-  if (element) element.textContent = value ?? "—";
-}
+function titleCase(value) { return value ? String(value).replaceAll("_", " ").replace(/\b\w/g, (letter) => letter.toUpperCase()) : "—"; }
+function formatDate(value) { const date = new Date(value); return value && !Number.isNaN(date.getTime()) ? new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }).format(date) : "—"; }
+function setText(id, value) { const node = byId(id); if (node) node.textContent = value ?? "—"; }
+function setStatus(id, value) { const node = byId(id); if (!node) return; const known = ["open", "in_progress", "pending_approval", "pending", "approved", "resolved", "fulfilled", "escalated", "failed", "active"]; node.className = `status-badge ${known.includes(value) ? value : "neutral"}`; node.textContent = titleCase(value || "not loaded"); }
+function showToast(message, error = false) { const toast = byId("toast"); toast.textContent = message; toast.className = `toast show${error ? " error" : ""}`; clearTimeout(showToast.timer); showToast.timer = setTimeout(() => { toast.className = "toast"; }, 3500); }
 
-function titleCase(value) {
-  if (!value) return "—";
-  return String(value).replaceAll("_", " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
-}
+class ApiError extends Error { constructor(message, status) { super(message); this.status = status; } }
 
-function statusClass(value) {
-  const allowed = new Set([
-    "active", "in_progress", "approved", "resolved", "fulfilled", "captured", "ready",
-    "pending", "pending_approval", "investigating", "failed", "escalated",
-  ]);
-  return allowed.has(value) ? value : "neutral";
-}
-
-function setStatus(id, value) {
-  const element = byId(id);
-  if (!element) return;
-  element.className = `status-badge ${statusClass(value)}`;
-  element.textContent = titleCase(value || "not loaded");
-}
-
-function initials(name) {
-  if (!name || name === "—") return "—";
-  return name.split(/\s+/).slice(0, 2).map((part) => part[0]).join("").toUpperCase();
-}
-
-function formatDate(value) {
-  if (!value) return "—";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return String(value);
-  return new Intl.DateTimeFormat("en-US", {
-    month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit",
-  }).format(date);
-}
-
-function formatMoney(amount, currency = "USD") {
-  const numeric = Number(amount);
-  if (!Number.isFinite(numeric)) return "—";
-  return new Intl.NumberFormat("en-US", { style: "currency", currency }).format(numeric);
-}
-
-function setIndicator(id, status) {
-  const element = byId(id);
-  if (!element) return;
-  element.className = status === "ok" ? "ok" : status === "error" ? "error" : "";
-}
-
-function showToast(message, isError = false) {
-  const toast = byId("toast");
-  toast.textContent = message;
-  toast.className = `toast show${isError ? " error" : ""}`;
-  window.clearTimeout(showToast.timeout);
-  showToast.timeout = window.setTimeout(() => { toast.className = "toast"; }, 3200);
-}
-
-class ApiError extends Error {
-  constructor(message, status) {
-    super(message);
-    this.status = status;
-  }
-}
-
-async function apiFetch(path, { authenticated = true, text = false } = {}) {
+async function apiFetch(path, options = {}) {
+  const { authenticated = true, method = "GET", body = null, text = false } = options;
+  if (authenticated && !state.token) throw new ApiError("Open the demo or sign in first.", 401);
   const headers = { Accept: text ? "text/plain" : "application/json" };
-  if (authenticated) {
-    if (!state.token) throw new ApiError("Connect with an API key first.", 401);
-    headers.Authorization = `Bearer ${state.token}`;
-  }
-  const controller = new AbortController();
-  const timeout = window.setTimeout(() => controller.abort(), 10000);
-  let response;
+  if (authenticated) headers.Authorization = `Bearer ${state.token}`;
+  if (body !== null) headers["Content-Type"] = "application/json";
+  const controller = new AbortController(); const timeout = setTimeout(() => controller.abort(), 12000);
   try {
-    response = await fetch(path, { headers, signal: controller.signal, cache: "no-store" });
+    const response = await fetch(path, { method, headers, body: body === null ? null : JSON.stringify(body), signal: controller.signal, cache: "no-store" });
+    state.traceId = response.headers.get("X-ResolveOps-Trace-ID") || state.traceId;
+    if (!response.ok) { let detail = `Request failed (${response.status}).`; try { detail = (await response.json()).detail || detail; } catch (_) { /* response was not JSON */ } throw new ApiError(detail, response.status); }
+    return text ? response.text() : response.json();
   } catch (error) {
     if (error.name === "AbortError") throw new ApiError("The API request timed out.", 408);
+    if (error instanceof ApiError) throw error;
     throw new ApiError("The API could not be reached.", 0);
-  } finally {
-    window.clearTimeout(timeout);
-  }
-  const traceId = response.headers.get("x-resolveops-trace-id");
-  if (traceId) {
-    state.traceId = traceId;
-    setText("overview-trace", traceId.slice(0, 12));
-    setText("reliability-trace", traceId);
-  }
-  if (!response.ok) {
-    let detail = `Request failed with status ${response.status}.`;
-    try {
-      const body = await response.json();
-      if (body.detail) detail = body.detail;
-    } catch (_ignored) {
-      // Keep the generic status message when a non-JSON proxy response is returned.
-    }
-    throw new ApiError(detail, response.status);
-  }
-  return text ? response.text() : response.json();
+  } finally { clearTimeout(timeout); }
 }
 
-async function loadHealth() {
-  const [live, ready] = await Promise.allSettled([
-    apiFetch("/health/live", { authenticated: false }),
-    apiFetch("/health/ready", { authenticated: false }),
-  ]);
-  const liveOk = live.status === "fulfilled" && live.value.status === "alive";
-  const readyOk = ready.status === "fulfilled" && ready.value.status === "ready";
-  setText("live-status", liveOk ? "Healthy" : "Unavailable");
-  setText("ready-status", readyOk ? "Ready" : "Not ready");
-  setIndicator("live-indicator", liveOk ? "ok" : "error");
-  setIndicator("ready-indicator", readyOk ? "ok" : "error");
-  byId("health-dot").className = liveOk ? "ok" : "error";
-  setText("health-label", liveOk ? (readyOk ? "System ready" : "API live") : "API unavailable");
+async function checkHealth() {
+  try { await apiFetch("/health/live", { authenticated: false }); setText("health-label", "API online"); byId("health-dot").className = "ok"; }
+  catch (_) { setText("health-label", "API unavailable"); byId("health-dot").className = "error"; }
 }
 
-async function loadMetrics() {
+function setConnected(mode) {
+  state.mode = mode; setText("sidebar-connection", "Connected"); setText("session-label", mode === "demo" ? "Restricted demo session" : "Operator session");
+  byId("sidebar-pulse").classList.add("connected"); byId("disconnect-button").hidden = false; byId("connection-notice").classList.add("connected");
+  byId("connection-notice").querySelector("strong").textContent = "Synthetic workspace connected";
+  byId("connection-notice").querySelector("p").textContent = "Cases, approvals, IT state, and telemetry are loaded from authenticated APIs.";
+  byId("notice-demo").hidden = true; setText("last-updated", `Updated ${formatDate(new Date().toISOString())}`);
+}
+
+function disconnect() {
+  state.token = ""; state.mode = ""; state.cases = []; state.selectedCase = null; state.timeline = []; state.approvals = [];
+  setText("sidebar-connection", "Not connected"); setText("session-label", "No active session"); byId("sidebar-pulse").classList.remove("connected"); byId("disconnect-button").hidden = true; byId("notice-demo").hidden = false;
+  byId("connection-notice").classList.remove("connected"); renderCases(); renderApprovals(); showToast("Session disconnected.");
+}
+
+async function openDemo() {
+  const buttons = [byId("try-demo"), byId("notice-demo")]; buttons.forEach((button) => { button.disabled = true; });
+  try { const session = await apiFetch("/api/v1/demo/session", { authenticated: false, method: "POST" }); state.token = session.access_token; setConnected("demo"); await loadAll(); showToast("Demo workspace opened."); }
+  catch (error) { showToast(error.message === "demo is not enabled" ? "Demo mode is not enabled on this server. Use secure sign in." : error.message, true); }
+  finally { buttons.forEach((button) => { button.disabled = false; }); }
+}
+
+async function loadCases() {
+  state.cases = await apiFetch("/api/v1/cases"); setText("case-count", state.cases.length); setStatus("case-list-status", "active"); renderCases();
+  if (!state.selectedCase && state.cases.length) await selectCase(state.cases[0].case_id);
+}
+
+function filteredCases() {
+  const query = byId("case-search").value.trim().toLowerCase(); const status = byId("case-filter").value;
+  return state.cases.filter((item) => (!status || item.status === status) && (!query || JSON.stringify(item).toLowerCase().includes(query)));
+}
+
+function renderCases() {
+  const rows = filteredCases();
+  byId("case-table").innerHTML = rows.length ? rows.map((item) => `<tr class="case-row${state.selectedCase?.case_id === item.case_id ? " selected" : ""}" data-case-id="${escapeHtml(item.case_id)}"><td><strong>${escapeHtml(item.case_id)}</strong><small>${escapeHtml(item.order_id)}</small></td><td>${escapeHtml(item.customer_id)}</td><td>${item.issues.map((issue) => `<span class="issue-chip">${escapeHtml(titleCase(issue.issue_type))}</span>`).join("") || "Needs classification"}</td><td><span class="status-badge ${escapeHtml(item.status)}">${escapeHtml(titleCase(item.status))}</span></td><td>${escapeHtml(formatDate(item.updated_at))}</td></tr>`).join("") : `<tr><td colspan="5" class="table-empty">${state.token ? "No cases match the current filters." : "Open the demo to load persisted cases."}</td></tr>`;
+  all(".case-row").forEach((row) => row.addEventListener("click", () => selectCase(row.dataset.caseId)));
+}
+
+async function selectCase(caseId) {
   try {
-    const text = await apiFetch("/metrics", { text: true });
-    state.metrics = {
-      requests: sumMetric(text, "resolveops_http_requests_total"),
-      rejections: sumMetric(text, "resolveops_http_rejections_total"),
-      available: true,
-    };
-  } catch (error) {
-    if (error.status === 403) {
-      state.metrics = { requests: null, rejections: null, available: false };
-      return;
-    }
-    throw error;
+    const [customerCase, timeline] = await Promise.all([apiFetch(`/api/v1/cases/${encodeURIComponent(caseId)}`), apiFetch(`/api/v1/cases/${encodeURIComponent(caseId)}/timeline`)]);
+    state.selectedCase = customerCase; state.timeline = timeline; renderCases(); renderCaseDetail(); renderTimeline(); await loadFinalResponse();
+  } catch (error) { showToast(error.message, true); }
+}
+
+function renderCaseDetail() {
+  const item = state.selectedCase; if (!item) return;
+  setText("detail-case-id", item.case_id); setStatus("detail-case-status", item.status); setText("detail-customer", item.customer_id); setText("detail-order", item.order_id); setText("detail-opened", formatDate(item.opened_at)); setText("detail-updated", formatDate(item.updated_at)); setText("detail-complaint", item.complaint_text || "This seeded case predates natural-language intake."); setText("audit-case-id", item.case_id);
+  byId("detail-issues").innerHTML = item.issues.length ? item.issues.map((issue) => `<div class="issue-row"><div class="issue-number">${escapeHtml(issue.issue_id.split("-").at(-1))}</div><div><strong>${escapeHtml(titleCase(issue.issue_type))}</strong><p>${escapeHtml(titleCase(issue.finding))} · ${escapeHtml(issue.evidence.length)} evidence records · verification ${escapeHtml(titleCase(issue.verification?.status || "pending"))}</p><button class="text-button start-workflow" data-issue-id="${escapeHtml(issue.issue_id)}" type="button">Start investigation</button></div><span class="status-badge ${escapeHtml(issue.status)}">${escapeHtml(titleCase(issue.status))}</span></div>`).join("") : `<div class="empty-state compact">${escapeHtml(item.intake_summary || "No supported issue was classified.")}</div>`;
+  all(".start-workflow").forEach((button) => button.addEventListener("click", () => startIssueWorkflow(button.dataset.issueId)));
+}
+
+function renderTimeline() {
+  const content = state.timeline.length ? state.timeline.map((event) => `<div class="timeline-event"><span class="timeline-dot"></span><div><strong>${escapeHtml(titleCase(event.event_type))}</strong><p>${escapeHtml(event.entity_id)} · ${escapeHtml(summaryForEvent(event))}</p><small>${escapeHtml(formatDate(event.occurred_at))}</small></div></div>`).join("") : `<div class="empty-state compact">No stored events for this case.</div>`;
+  byId("case-timeline").innerHTML = content; byId("audit-events").innerHTML = content; byId("reliability-events").innerHTML = content; setText("reliability-trace", state.traceId || "—");
+}
+
+function summaryForEvent(event) { const details = event.details || {}; return details.summary || details.outcome || details.note || details.issue_type || details.source || "Stored workflow event"; }
+
+async function loadFinalResponse() {
+  const panel = byId("final-response"); panel.hidden = true;
+  const workflowIds = [...new Set(state.timeline.filter((event) => event.event_type === "completed" || event.event_type === "escalated").map((event) => event.entity_id))];
+  if (!workflowIds.length) return;
+  try { const response = await apiFetch(`/api/v1/workflows/${encodeURIComponent(workflowIds.at(-1))}/response`); setText("final-response-text", response.message); panel.hidden = false; } catch (_) { panel.hidden = true; }
+}
+
+async function startIssueWorkflow(issueId) {
+  const issue = state.selectedCase.issues.find((candidate) => candidate.issue_id === issueId); if (!issue) return;
+  const workflowId = `WF-${issueId}-${Date.now()}`; let refundRequest = null;
+  if (issue.issue_type === "duplicate_charge" && issue.payment_ids.length > 1) {
+    const payments = await apiFetch(`/simulator/v1/orders/${encodeURIComponent(state.selectedCase.order_id)}/payments`); const payment = payments.find((candidate) => candidate.payment_id === issue.payment_ids.at(-1));
+    if (payment) refundRequest = { idempotency_key: workflowId, case_id: state.selectedCase.case_id, issue_id: issueId, payment_id: payment.payment_id, amount: payment.amount, currency: payment.currency, kind: "duplicate_charge", reason: "Potential duplicate charge requires controlled investigation" };
   }
+  try { const result = await apiFetch("/api/v1/workflows", { method: "POST", body: { workflow_id: workflowId, case_id: state.selectedCase.case_id, issue_id: issueId, refund_request: refundRequest } }); showToast(result.status === "waiting_approval" ? "Workflow paused for approval." : `Workflow finished: ${titleCase(result.outcome)}.`); await Promise.all([loadApprovals(), selectCase(state.selectedCase.case_id)]); }
+  catch (error) { showToast(error.message, true); }
 }
 
-function sumMetric(text, metricName) {
-  return text.split("\n")
-    .filter((line) => line.startsWith(metricName))
-    .reduce((total, line) => {
-      const value = Number(line.trim().split(/\s+/).at(-1));
-      return total + (Number.isFinite(value) ? value : 0);
-    }, 0);
+async function submitComplaint(event) {
+  event.preventDefault(); const button = event.submitter; button.disabled = true;
+  try { const created = await apiFetch("/api/v1/cases", { method: "POST", body: { customer_id: byId("complaint-customer").value.trim(), order_id: byId("complaint-order").value.trim(), complaint: byId("complaint-text").value.trim() } }); byId("complaint-text").value = ""; await loadCases(); await selectCase(created.case_id); showToast(`Case ${created.case_id} created.`); }
+  catch (error) { showToast(error.message, true); } finally { button.disabled = false; }
 }
 
-async function loadProtectedData() {
-  const customerCase = await apiFetch("/simulator/v1/cases/CASE-1001");
-  const [customer, order, payments, policies, tickets, notifications, it] = await Promise.all([
-    apiFetch(`/simulator/v1/customers/${encodeURIComponent(customerCase.customer_id)}`),
-    apiFetch(`/simulator/v1/orders/${encodeURIComponent(customerCase.order_id)}`),
-    apiFetch(`/simulator/v1/orders/${encodeURIComponent(customerCase.order_id)}/payments`),
-    apiFetch("/simulator/v1/policies"),
-    apiFetch(`/simulator/v1/cases/${encodeURIComponent(customerCase.case_id)}/tickets`),
-    apiFetch(`/simulator/v1/cases/${encodeURIComponent(customerCase.case_id)}/notifications`),
-    apiFetch("/simulator/v1/it/cases/ITCASE-2001"),
-  ]);
-  state.customerCase = customerCase;
-  state.customer = customer;
-  state.order = order;
-  state.payments = payments;
-  state.policies = policies;
-  state.tickets = tickets;
-  state.notifications = notifications;
-  state.it = it;
-  await loadMetrics();
-  renderAll();
+async function loadApprovals() { state.approvals = await apiFetch("/api/v1/approvals"); setText("approval-count", state.approvals.filter((item) => item.status === "pending").length); renderApprovals(); }
+function renderApprovals() {
+  byId("approval-list").innerHTML = state.approvals.length ? state.approvals.map((item) => `<article class="panel approval-card"><div class="panel-header"><div><p class="eyebrow">${escapeHtml(item.workflow_id)}</p><h2>${escapeHtml(item.approval_id)}</h2></div><span class="status-badge ${escapeHtml(item.status)}">${escapeHtml(titleCase(item.status))}</span></div><div class="detail-grid"><div class="detail-item"><span>Requested action</span><strong>Issue refund</strong></div><div class="detail-item"><span>Amount</span><strong>${escapeHtml(item.amount)} ${escapeHtml(item.currency)}</strong></div><div class="detail-item"><span>Case / issue</span><strong>${escapeHtml(item.case_id)} / ${escapeHtml(item.issue_id)}</strong></div><div class="detail-item"><span>Payment</span><strong>${escapeHtml(item.payment_id)}</strong></div><div class="detail-item"><span>Requested</span><strong>${escapeHtml(formatDate(item.requested_at))}</strong></div><div class="detail-item"><span>Reason</span><strong>${escapeHtml(item.reason)}</strong></div></div>${item.status === "pending" ? `<div class="approval-actions"><input aria-label="Decision note" data-note-for="${escapeHtml(item.approval_id)}" placeholder="Short decision reason"><button class="primary-button approval-decision" data-approval-id="${escapeHtml(item.approval_id)}" data-decision="approve" type="button">Approve</button><button class="secondary-button approval-decision" data-approval-id="${escapeHtml(item.approval_id)}" data-decision="reject" type="button">Reject</button></div>` : `<p class="decision-record">Decision: ${escapeHtml(item.decision_note || "No note")} · ${escapeHtml(formatDate(item.decided_at))}</p>`}</article>`).join("") : `<div class="empty-state">No approval requests are recorded.</div>`;
+  all(".approval-decision").forEach((button) => button.addEventListener("click", () => decideApproval(button.dataset.approvalId, button.dataset.decision)));
 }
+async function decideApproval(approvalId, decision) { const note = document.querySelector(`[data-note-for="${CSS.escape(approvalId)}"]`).value.trim(); if (!note) { showToast("Enter a short decision reason.", true); return; } try { await apiFetch(`/api/v1/approvals/${encodeURIComponent(approvalId)}/decision`, { method: "POST", body: { decision, note } }); showToast(`Approval ${decision === "approve" ? "approved" : "rejected"}.`); await Promise.all([loadApprovals(), state.selectedCase ? selectCase(state.selectedCase.case_id) : Promise.resolve()]); } catch (error) { showToast(error.message, true); } }
 
-async function refreshAll() {
-  const buttons = all(".refresh-button");
-  buttons.forEach((button) => { button.disabled = true; });
-  try {
-    await loadHealth();
-    if (state.token) await loadProtectedData();
-    setText("last-updated", `Updated ${new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit", second: "2-digit" }).format(new Date())}`);
-    if (state.token) showToast("Live operational data refreshed.");
-  } catch (error) {
-    showToast(error.message || "Refresh failed.", true);
-    if (error.status === 401) disconnect(false);
-  } finally {
-    buttons.forEach((button) => { button.disabled = false; });
-  }
-}
+async function loadIT() { try { const data = await apiFetch("/simulator/v1/it/cases/ITCASE-2001"); setText("it-employee-name", data.employee.name); setStatus("it-employment", data.employee.status); setText("it-case-id", data.access_case.case_id); setStatus("it-status", data.access_case.status); setText("it-step-identity", `${titleCase(data.identity.status)} · MFA ${data.identity.mfa_enrolled ? "enrolled" : "missing"}`); setText("it-step-approval", data.access_request.approved_by ? `Approved by ${data.access_request.approved_by}` : "Approval pending"); setText("it-step-grant", data.repository_access ? `${titleCase(data.repository_access.status)} ${titleCase(data.repository_access.level)}` : "Not granted"); byId("it-identity").innerHTML = [["Employee ID", data.employee.employee_id], ["Work email", data.employee.work_email], ["Identity", data.identity.username], ["Git account", data.git_account.username], ["Team", data.team.name], ["Repository", data.repository.name]].map(([label, value]) => `<div class="detail-item"><span>${escapeHtml(label)}</span><strong>${escapeHtml(value)}</strong></div>`).join(""); byId("it-records").innerHTML = `<div class="record"><div class="record-head"><strong>${escapeHtml(data.access_request.access_request_id)}</strong><span class="status-badge ${escapeHtml(data.access_request.status)}">${escapeHtml(titleCase(data.access_request.status))}</span></div><p>${escapeHtml(data.access_request.justification)}</p></div><div class="record"><div class="record-head"><strong>${escapeHtml(data.ticket.ticket_id)}</strong><span class="status-badge ${escapeHtml(data.ticket.status)}">${escapeHtml(titleCase(data.ticket.status))}</span></div><p>${escapeHtml(data.ticket.subject)}</p></div>`; } catch (error) { showToast(error.message, true); } }
 
-function renderAll() {
-  renderOverview();
-  renderCustomer();
-  renderEmployee();
-  renderReliability();
-}
+function metricValue(text, name) { return text.split("\n").filter((line) => line.startsWith(name) && !line.startsWith("#")).reduce((sum, line) => sum + (Number(line.trim().split(/\s+/).at(-1)) || 0), 0); }
+async function loadMetrics() { try { const text = await apiFetch("/metrics", { text: true }); setText("metric-requests", metricValue(text, "resolveops_http_requests_total")); setText("metric-rejections", metricValue(text, "resolveops_http_rejections_total")); setStatus("metrics-status", "active"); setText("reliability-trace", state.traceId || "—"); } catch (_) { setStatus("metrics-status", "not_loaded"); } }
+async function loadAll() { try { await Promise.all([loadCases(), loadApprovals(), loadIT(), loadMetrics()]); setText("last-updated", `Updated ${formatDate(new Date().toISOString())}`); } catch (error) { if (error.status === 401) disconnect(); showToast(error.message, true); } }
 
-function renderOverview() {
-  const customerCase = state.customerCase;
-  const it = state.it;
-  if (!customerCase || !it) return;
-  const evidenceCount = customerCase.issues.reduce((sum, issue) => sum + issue.evidence.length, 0);
-  setText("kpi-issues", customerCase.issues.length);
-  setText("kpi-issues-note", `${customerCase.issues.filter((issue) => issue.status !== "resolved").length} require investigation`);
-  setText("kpi-evidence", evidenceCount);
-  setText("kpi-access", titleCase(it.access_request.status));
-  setText("kpi-access-note", `${titleCase(it.access_request.requested_level)} access to ${it.repository.name}`);
-  setText("kpi-requests", state.metrics.available ? Math.round(state.metrics.requests) : "Restricted");
-  setText("kpi-rejections", state.metrics.available ? `${Math.round(state.metrics.rejections)} pre-processing rejections` : "Operations role required for metrics");
-  setText("overview-case-id", customerCase.case_id);
-  setStatus("overview-case-status", customerCase.status);
-  setText("overview-customer", state.customer.name);
-  setText("overview-order", customerCase.order_id);
-  setText("overview-value", formatMoney(state.order.total_amount, state.order.currency));
-  renderIssueRows("overview-issues", customerCase.issues);
+function openDialog() { byId("connect-dialog").hidden = false; document.body.classList.add("dialog-open"); byId("api-key").focus(); }
+function closeDialog() { byId("connect-dialog").hidden = true; document.body.classList.remove("dialog-open"); byId("connect-error").hidden = true; }
+async function secureSignIn(event) { event.preventDefault(); const token = byId("api-key").value.trim(); if (!token) return; state.token = token; try { await apiFetch("/api/v1/cases"); setConnected("operator"); byId("api-key").value = ""; closeDialog(); await loadAll(); } catch (error) { state.token = ""; byId("connect-error").textContent = error.message; byId("connect-error").hidden = false; } }
 
-  setStatus("overview-it-status", it.access_request.status);
-  setText("overview-employee", it.employee.name);
-  setText("overview-employee-email", it.employee.work_email);
-  setText("overview-employee-avatar", initials(it.employee.name));
-  setText("overview-repository", it.repository.name);
-  setText("overview-access-level", `Requested access: ${titleCase(it.access_request.requested_level)}`);
-  const approved = Boolean(it.access_request.approved_by && it.access_request.approved_at);
-  setText("overview-approval", approved ? "Persisted approval verified" : "Approval evidence missing");
-  setText("overview-approver", approved ? `${it.access_request.approved_by} · ${formatDate(it.access_request.approved_at)}` : "The workflow must stop for review.");
-}
-
-function renderIssueRows(containerId, issues) {
-  const container = byId(containerId);
-  const rows = issues.map((issue, index) => {
-    const row = element("div", "issue-row");
-    row.append(element("span", "issue-number", String(index + 1).padStart(2, "0")));
-    const body = element("div");
-    body.append(element("strong", "", titleCase(issue.issue_type)));
-    const finding = titleCase(issue.finding);
-    body.append(element("p", "", `${titleCase(issue.status)} · Finding: ${finding}`));
-    row.append(body);
-    row.append(element("span", "evidence-count", `${issue.evidence.length} evidence record${issue.evidence.length === 1 ? "" : "s"}`));
-    return row;
-  });
-  container.replaceChildren(...rows);
-}
-
-function renderCustomer() {
-  const customerCase = state.customerCase;
-  if (!customerCase) return;
-  setText("customer-case-heading", customerCase.case_id);
-  setStatus("customer-status", customerCase.status);
-  renderDetails("customer-summary", [
-    ["Customer", state.customer.name],
-    ["Order", customerCase.order_id],
-    ["Case opened", formatDate(customerCase.opened_at)],
-    ["Order total", formatMoney(state.order.total_amount, state.order.currency)],
-    ["Issues", String(customerCase.issues.length)],
-    ["Last updated", formatDate(customerCase.updated_at)],
-  ]);
-  renderIssueRows("customer-issues", customerCase.issues);
-  renderRecords("payment-list", state.payments.map((payment) => ({
-    title: payment.payment_id,
-    status: payment.status,
-    description: `${formatMoney(payment.amount, payment.currency)} · ${titleCase(payment.status)}`,
-    meta: [formatDate(payment.captured_at || payment.created_at)],
-  })));
-  renderRecords("policy-list", state.policies.map((policy) => ({
-    title: policy.title,
-    status: policy.status,
-    description: policy.content,
-    meta: [`v${policy.version}`, policy.policy_id],
-  })));
-  const communications = [
-    ...state.tickets.map((ticket) => ({ title: ticket.subject, status: ticket.status, description: ticket.description, meta: [ticket.ticket_id] })),
-    ...state.notifications.map((notification) => ({ title: `Notification · ${titleCase(notification.channel)}`, status: notification.status, description: notification.message, meta: [notification.notification_id, formatDate(notification.sent_at)] })),
-  ];
-  renderRecords("communication-list", communications);
-}
-
-function renderEmployee() {
-  const it = state.it;
-  if (!it) return;
-  setText("employee-avatar", initials(it.employee.name));
-  setText("employee-name", it.employee.name);
-  setText("employee-email", it.employee.work_email);
-  setText("employment-status", titleCase(it.employee.status));
-  setText("identity-status", titleCase(it.identity.status));
-  setText("mfa-status", it.identity.mfa_enrolled ? "Enrolled" : "Missing");
-  setText("git-status", titleCase(it.git_account.status));
-  setText("access-request-id", it.access_request.access_request_id);
-  setStatus("access-status", it.access_request.status);
-  setText("path-employment", it.employee.status === "active" ? "Active employee verified" : "Employment requires review");
-  setText("path-approval", it.access_request.approved_by ? "Approval evidence verified" : "Approval missing");
-  setText("path-grant", it.repository_access ? "Access record present" : "Grant not yet verified");
-  renderDetails("access-details", [
-    ["Case", it.access_case.case_id],
-    ["Team", it.team.name],
-    ["Repository", it.repository.name],
-    ["Requested level", titleCase(it.access_request.requested_level)],
-    ["Ticket", it.ticket.ticket_id],
-    ["Case status", titleCase(it.access_case.status)],
-  ]);
-  const approved = Boolean(it.access_request.approved_by && it.access_request.approved_at);
-  setText("approval-title", approved ? "Human approval evidence is persisted" : "Human approval is required");
-  setText("approval-detail", approved ? `${it.access_request.approved_by} approved at ${formatDate(it.access_request.approved_at)}` : "The deterministic workflow must stop before execution.");
-  const repositoryRecords = [
-    { title: it.repository.name, status: "active", description: `Owned by ${it.team.name}; requires directory group ${it.repository.required_group_id}.`, meta: [it.repository.repository_id] },
-    { title: "Directory membership", status: it.group_membership?.status || "pending", description: it.group_membership ? `Membership ${it.group_membership.membership_id} is present.` : "No required group membership is present.", meta: [it.identity.username] },
-    { title: "Repository access", status: it.repository_access?.status || "pending", description: it.repository_access ? `${titleCase(it.repository_access.level)} access has a persisted record.` : "No verified repository grant exists yet.", meta: [it.git_account.username] },
-  ];
-  renderRecords("repository-controls", repositoryRecords);
-  const serviceRecords = [
-    { title: it.ticket.subject, status: it.ticket.status, description: it.ticket.description, meta: [it.ticket.ticket_id, formatDate(it.ticket.updated_at)] },
-    ...it.notifications.map((notification) => ({ title: "Employee notification", status: notification.status, description: notification.message, meta: [notification.notification_id, formatDate(notification.sent_at)] })),
-  ];
-  renderRecords("it-service-records", serviceRecords);
-}
-
-function renderReliability() {
-  setText("metric-requests", state.metrics.available ? Math.round(state.metrics.requests) : "Restricted");
-  setText("metric-rejections", state.metrics.available ? Math.round(state.metrics.rejections) : "Restricted");
-  setStatus("metrics-status", state.metrics.available ? "ready" : "neutral");
-}
-
-function renderDetails(containerId, pairs) {
-  const nodes = pairs.map(([label, value]) => {
-    const item = element("div", "detail-item");
-    item.append(element("span", "", label), element("strong", "", value));
-    return item;
-  });
-  byId(containerId).replaceChildren(...nodes);
-}
-
-function renderRecords(containerId, records) {
-  const container = byId(containerId);
-  if (!records.length) {
-    container.replaceChildren(element("div", "empty-state compact", "No records found."));
-    return;
-  }
-  const nodes = records.map((record) => {
-    const wrapper = element("div", "record");
-    const head = element("div", "record-head");
-    head.append(element("strong", "", record.title));
-    const badge = element("span", `status-badge ${statusClass(record.status)}`, titleCase(record.status));
-    head.append(badge);
-    wrapper.append(head, element("p", "", record.description));
-    const meta = element("div", "record-meta");
-    (record.meta || []).forEach((value) => meta.append(element("span", "", value)));
-    wrapper.append(meta);
-    return wrapper;
-  });
-  container.replaceChildren(...nodes);
-}
-
-function element(tag, className = "", text = "") {
-  const node = document.createElement(tag);
-  if (className) node.className = className;
-  if (text !== "") node.textContent = text;
-  return node;
-}
-
-function setConnected(connected) {
-  byId("sidebar-pulse").classList.toggle("connected", connected);
-  setText("sidebar-connection", connected ? "API connected" : "Not connected");
-  byId("disconnect-button").hidden = !connected;
-  byId("open-connect").textContent = connected ? "Change connection" : "Connect securely";
-  const notice = byId("connection-notice");
-  notice.classList.toggle("connected", connected);
-  notice.querySelector("strong").textContent = connected ? "Live secured data connected" : "Connect to the secured demo API";
-  notice.querySelector("p").textContent = connected ? "Data comes from authenticated tenant-isolated simulator APIs." : "Paste a configured operator API key. It stays in browser memory only and disappears when this page closes.";
-  notice.querySelector("button").textContent = connected ? "Reconnect" : "Connect";
-}
-
-function disconnect(showMessage = true) {
-  state.token = "";
-  state.customerCase = null;
-  state.customer = null;
-  state.order = null;
-  state.payments = [];
-  state.policies = [];
-  state.tickets = [];
-  state.notifications = [];
-  state.it = null;
-  state.metrics = { requests: null, rejections: null, available: false };
-  setConnected(false);
-  setText("last-updated", "Waiting for connection");
-  if (showMessage) showToast("The in-memory API key was cleared.");
-}
-
-function closeConnectDialog() {
-  const dialog = byId("connect-dialog");
-  dialog.hidden = true;
-  document.body.classList.remove("dialog-open");
-  if (connectTrigger) connectTrigger.focus();
-}
-
-function openConnectDialog() {
-  const dialog = byId("connect-dialog");
-  connectTrigger = document.activeElement;
-  byId("connect-error").hidden = true;
-  byId("api-key").value = "";
-  dialog.hidden = false;
-  document.body.classList.add("dialog-open");
-  window.setTimeout(() => byId("api-key").focus(), 50);
-}
-
-function selectView(name) {
-  all(".nav-item").forEach((item) => item.classList.toggle("active", item.dataset.view === name));
-  all(".view").forEach((view) => view.classList.toggle("active", view.dataset.viewPanel === name));
-  byId("main-content").focus({ preventScroll: true });
-  window.scrollTo({ top: 0, behavior: "smooth" });
-  document.querySelector(".sidebar").classList.remove("open");
-}
-
-function bindEvents() {
-  all(".nav-item").forEach((item) => item.addEventListener("click", () => selectView(item.dataset.view)));
-  all(".connect-trigger").forEach((button) => button.addEventListener("click", openConnectDialog));
-  byId("open-connect").addEventListener("click", openConnectDialog);
-  byId("close-connect").addEventListener("click", closeConnectDialog);
-  byId("disconnect-button").addEventListener("click", () => disconnect(true));
-  all(".refresh-button").forEach((button) => button.addEventListener("click", refreshAll));
-  byId("mobile-menu").addEventListener("click", () => document.querySelector(".sidebar").classList.toggle("open"));
-  window.addEventListener("keydown", (event) => {
-    if (event.key === "Escape" && !byId("connect-dialog").hidden) closeConnectDialog();
-  });
-  byId("toggle-key").addEventListener("click", () => {
-    const input = byId("api-key");
-    const visible = input.type === "text";
-    input.type = visible ? "password" : "text";
-    byId("toggle-key").textContent = visible ? "Show" : "Hide";
-  });
-  byId("connect-form").addEventListener("submit", async (event) => {
-    event.preventDefault();
-    const input = byId("api-key");
-    const errorBox = byId("connect-error");
-    const submit = byId("connect-submit");
-    const token = input.value.trim();
-    if (token.length < 20) {
-      errorBox.textContent = "Enter a configured ResolveOps API key.";
-      errorBox.hidden = false;
-      return;
-    }
-    state.token = token;
-    input.value = "";
-    submit.disabled = true;
-    submit.textContent = "Connecting…";
-    errorBox.hidden = true;
-    try {
-      await loadProtectedData();
-      setConnected(true);
-      closeConnectDialog();
-      setText("last-updated", `Updated ${new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit" }).format(new Date())}`);
-      showToast("Secure operator session connected.");
-    } catch (error) {
-      state.token = "";
-      errorBox.textContent = error.status === 401 ? "Authentication failed. Check the API key and try again." : (error.message || "Connection failed.");
-      errorBox.hidden = false;
-    } finally {
-      submit.disabled = false;
-      submit.textContent = "Connect and load live data";
-    }
-  });
-}
-
-async function initialize() {
-  bindEvents();
-  setConnected(false);
-  await loadHealth();
-}
-
-initialize().catch(() => showToast("The health endpoint could not be reached.", true));
+all(".nav-item").forEach((button) => button.addEventListener("click", () => { all(".nav-item").forEach((item) => item.classList.toggle("active", item === button)); all(".view").forEach((view) => view.classList.toggle("active", view.dataset.viewPanel === button.dataset.view)); byId("mobile-menu").closest(".workspace").previousElementSibling.classList.remove("open"); }));
+all(".refresh-button").forEach((button) => button.addEventListener("click", () => state.token ? loadAll() : showToast("Open the demo or sign in first.", true)));
+byId("try-demo").addEventListener("click", openDemo); byId("notice-demo").addEventListener("click", openDemo); byId("open-connect").addEventListener("click", openDialog); byId("close-connect").addEventListener("click", closeDialog); byId("connect-form").addEventListener("submit", secureSignIn); byId("disconnect-button").addEventListener("click", disconnect); byId("complaint-form").addEventListener("submit", submitComplaint); byId("case-search").addEventListener("input", renderCases); byId("case-filter").addEventListener("change", renderCases); byId("mobile-menu").addEventListener("click", () => document.querySelector(".sidebar").classList.toggle("open")); byId("toggle-key").addEventListener("click", () => { const input = byId("api-key"); input.type = input.type === "password" ? "text" : "password"; byId("toggle-key").textContent = input.type === "password" ? "Show" : "Hide"; });
+window.addEventListener("keydown", (event) => { if (event.key === "Escape") closeDialog(); });
+checkHealth();

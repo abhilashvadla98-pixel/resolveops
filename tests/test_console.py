@@ -14,8 +14,12 @@ def test_operator_console_serves_secure_shell_and_local_assets() -> None:
     assert page.headers["x-frame-options"] == "DENY"
     assert "default-src 'self'" in page.headers["content-security-policy"]
     assert "ResolveOps | Operations Console" in page.text
-    assert "Case overview" in page.text
-    assert 'src="/console/app.js?v=20260928"' in page.text
+    assert ">Cases<" in page.text
+    assert ">Approvals<" in page.text
+    assert ">IT Requests<" in page.text
+    assert ">Audit<" in page.text
+    assert ">Try demo<" in page.text
+    assert 'src="/console/app.js?v=20260929"' in page.text
     assert 'role="dialog"' in page.text
     assert 'aria-modal="true"' in page.text
     assert styles.status_code == 200
@@ -27,8 +31,10 @@ def test_operator_console_serves_secure_shell_and_local_assets() -> None:
     assert "sessionStorage" not in script.text
     assert "state.token = token" in script.text
     assert "Authorization" in script.text
-    assert "dialog.hidden = false" in script.text
-    assert "dialog.hidden = true" in script.text
+    assert 'apiFetch("/api/v1/demo/session"' in script.text
+    assert 'apiFetch("/api/v1/cases"' in script.text
+    assert 'apiFetch("/api/v1/approvals"' in script.text
+    assert "CSS.escape" in script.text
 
 
 def test_console_assets_are_not_listed_as_public_api_operations() -> None:
