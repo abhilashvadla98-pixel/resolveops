@@ -13,7 +13,7 @@ Last verified: 2026-09-28
   guidance, cost/resilience limitations, and deployment documentation are implemented.
 - The security architecture deliberately uses one database per tenant. Packet 13 therefore requires
   no domain-table tenant migration; every tenant database receives the existing migrations.
-- All work is saved in the working tree and intentionally remains uncommitted.
+- The implementation is committed and pushed to the private GitHub `codex-build` branch.
 - No real OpenAI API call or cloud connection has been made.
 - No AWS resources were created and no cloud credentials were used.
 - Packet 16's temporary Compose stack, PostgreSQL test container, database volumes, and local test
@@ -39,13 +39,15 @@ Last verified: 2026-09-28
   deployment verification: passed.
 - Terraform 1.10.5 initialization, formatting, and validation with AWS provider 6.66.0: passed.
 - GitHub Actions static validation with actionlint 1.7.12: passed.
-- Mypy: passed across 114 source files.
+- Mypy: passed across 115 source files.
 - Dependency check: passed.
 - Bandit medium/high scan: passed with no findings.
 - Installed dependency audit: passed with no known vulnerabilities after updating the local virtual
   environment's `pip` installer to 26.2.1.
 - Publishable-file credential-pattern scan: passed. `.env` is ignored and untracked.
-- GitHub remote read access and dry-run push permission: passed; the remote remains empty.
+- GitHub remote verification passed; `codex-build` now tracks the private origin branch.
+- GitHub-hosted CI passed on commit `2606fb0`: Quality, Security, PostgreSQL, Container, and
+  Terraform jobs all completed successfully.
 - One understood third-party Starlette deprecation warning remains.
 
 ## Packet 13 decisions to preserve
@@ -127,10 +129,9 @@ The user does not want paid infrastructure. Keep the validated AWS Terraform and
 workflow as reference architecture, but do not create AWS resources. Finish the portfolio in this
 order:
 
-1. review, commit, and push the prepared working tree to the private repository so GitHub CI runs;
-2. deploy the working demonstration with free Render compute and free Supabase PostgreSQL;
-3. run the controlled cloud workload, analyze real failures, and rerun regressions; and
-4. finish the recruiter README, screenshots, walkthrough, ADRs, interview notes, public release,
+1. deploy the working demonstration with free Render compute and free Supabase PostgreSQL;
+2. run the controlled cloud workload, analyze real failures, and rerun regressions; and
+3. finish the recruiter README, screenshots, walkthrough, ADRs, interview notes, public release,
    and profile pin.
 
 The free-tier Gemini proof is complete. On 2026-09-28, `gemini-3.5-flash-lite` passed all 3 synthetic
@@ -154,8 +155,9 @@ pretend that simulator records are live vendor integrations. See `docs/OPERATOR_
 The repository security and GitHub-readiness packet is complete locally. CI now has a dedicated
 security job, pinned third-party Action revisions, and Dependabot coverage. Local Actionlint,
 Compose, Terraform, credential, Bandit, dependency, evaluation, and test gates pass. The corrected
-local `.env` remains ignored and untracked. No commit or push was made because the standing project
-rule forbids automatic commits; GitHub-hosted CI therefore has not run yet.
+local `.env` remains ignored and untracked. The reviewed work was committed and pushed only after
+explicit user authorization. The first hosted run exposed a Linux-only test import issue; commit
+`2606fb0` fixed the package boundary, and the complete hosted CI matrix then passed.
 
 ## Safety rules to preserve
 
