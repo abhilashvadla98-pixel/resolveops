@@ -143,7 +143,17 @@ def test_workflow_approval_can_be_listed_and_resumed(
     assert events.status_code == 200
     assert [event["event_type"] for event in events.json()] == [
         "started",
+        "customer_verified",
+        "order_loaded",
+        "payment_evidence_loaded",
+        "policy_retrieved",
+        "advisory_assessed",
+        "decision_recorded",
         "approval_requested",
         "approval_approved",
+        "safety_gate_evaluated",
+        "action_executed",
+        "action_verified",
+        "final_response_created",
         "completed",
     ]

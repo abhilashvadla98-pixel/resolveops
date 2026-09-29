@@ -109,7 +109,9 @@ class WorkflowLifecycleStore:
             if case_id is not None:
                 statement = statement.where(WorkflowRunRecord.case_id == case_id)
             records = session.scalars(
-                statement.order_by(WorkflowRunRecord.created_at.desc(), WorkflowRunRecord.workflow_id)
+                statement.order_by(
+                    WorkflowRunRecord.created_at.desc(), WorkflowRunRecord.workflow_id
+                )
             )
             return [self._run_from_record(record) for record in records]
 
@@ -322,6 +324,45 @@ class WorkflowLifecycleStore:
                 .order_by(WorkflowEventRecord.sequence_number)
             )
             return [self._event_from_record(record) for record in records]
+
+    def record_event_once(
+        self,
+        workflow_id: str,
+        event_type: WorkflowEventType,
+        *,
+        actor_id: str | None = None,
+        actor_role: ActorRole | None = None,
+        details: dict[str, object] | None = None,
+    ) -> WorkflowEvent:
+        """Persist one replay-safe lifecycle event for a completed graph stage."""
+        with self.session_factory.begin() as session:
+            run = self._required_run(session, workflow_id, for_update=True)
+            existing = session.scalar(
+                select(WorkflowEventRecord).where(
+                    WorkflowEventRecord.workflow_id == workflow_id,
+                    WorkflowEventRecord.event_type == event_type,
+                )
+            )
+            if existing is not None:
+                return self._event_from_record(existing)
+            self._add_event(
+                session,
+                run,
+                event_type,
+                actor_id=actor_id,
+                actor_role=actor_role,
+                details=details,
+            )
+            session.flush()
+            created = session.scalar(
+                select(WorkflowEventRecord).where(
+                    WorkflowEventRecord.workflow_id == workflow_id,
+                    WorkflowEventRecord.event_type == event_type,
+                )
+            )
+            if created is None:
+                raise RuntimeError("workflow event was not persisted")
+            return self._event_from_record(created)
 
     @staticmethod
     def request_fingerprint(request: WorkflowRequest) -> str:

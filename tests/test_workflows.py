@@ -433,11 +433,14 @@ def test_durable_workflow_pauses_and_resumes_after_service_restart(
         WorkflowLifecycleStatus.WAITING_APPROVAL
     )
     with factory() as session:
-        assert session.scalar(
-            select(func.count()).select_from(RefundRecord).where(
-                RefundRecord.order_id == "ORD-48391"
+        assert (
+            session.scalar(
+                select(func.count())
+                .select_from(RefundRecord)
+                .where(RefundRecord.order_id == "ORD-48391")
             )
-        ) == 1
+            == 1
+        )
         assert session.scalar(select(func.count()).select_from(WorkflowApprovalRecord)) == 1
 
     restarted_lifecycle = WorkflowLifecycleStore(
@@ -474,16 +477,37 @@ def test_durable_workflow_pauses_and_resumes_after_service_restart(
         event.event_type for event in restarted_lifecycle.list_events(initial_request.workflow_id)
     ] == [
         WorkflowEventType.STARTED,
+        WorkflowEventType.CUSTOMER_VERIFIED,
+        WorkflowEventType.ORDER_LOADED,
+        WorkflowEventType.PAYMENT_EVIDENCE_LOADED,
+        WorkflowEventType.POLICY_RETRIEVED,
+        WorkflowEventType.ADVISORY_ASSESSED,
+        WorkflowEventType.DECISION_RECORDED,
         WorkflowEventType.APPROVAL_REQUESTED,
         WorkflowEventType.APPROVAL_APPROVED,
+        WorkflowEventType.SAFETY_GATE_EVALUATED,
+        WorkflowEventType.ACTION_EXECUTED,
+        WorkflowEventType.ACTION_VERIFIED,
+        WorkflowEventType.FINAL_RESPONSE_CREATED,
         WorkflowEventType.COMPLETED,
     ]
+    action_event = restarted_lifecycle.list_events(initial_request.workflow_id)[10]
+    assert action_event.details == {
+        "status": "completed",
+        "operation_type": "issue_refund",
+        "resource_id": result.operation.resource_id,
+        "error_code": None,
+        "recovery_planned": False,
+    }
     with factory() as session:
-        assert session.scalar(
-            select(func.count()).select_from(RefundRecord).where(
-                RefundRecord.order_id == "ORD-48391"
+        assert (
+            session.scalar(
+                select(func.count())
+                .select_from(RefundRecord)
+                .where(RefundRecord.order_id == "ORD-48391")
             )
-        ) == 2
+            == 2
+        )
         assert session.scalar(select(func.count()).select_from(WorkflowApprovalRecord)) == 1
 
     assert restarted.resume(approval_decision) == result
@@ -524,9 +548,11 @@ def test_durable_workflow_rejection_finishes_without_refund(
         WorkflowLifecycleStatus.ESCALATED
     )
     assert [event.event_type for event in lifecycle.list_events(initial_request.workflow_id)][
-        -2:
+        -4:
     ] == [
         WorkflowEventType.APPROVAL_REJECTED,
+        WorkflowEventType.SAFETY_GATE_EVALUATED,
+        WorkflowEventType.FINAL_RESPONSE_CREATED,
         WorkflowEventType.ESCALATED,
     ]
     with factory() as session:

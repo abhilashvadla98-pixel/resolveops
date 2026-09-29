@@ -34,11 +34,17 @@ from resolveops.operations.errors import (
     ResourceNotFoundError,
     VerificationError,
 )
-from resolveops.operations.models import Actor, OperationStatus, Permission
+from resolveops.operations.models import (
+    Actor,
+    ActorRole,
+    OperationResult,
+    OperationStatus,
+    Permission,
+)
 from resolveops.operations.reads import OperationsReadTools
 from resolveops.reasoning.agent import CaseReasoner
 from resolveops.reasoning.errors import ReasoningError
-from resolveops.reasoning.models import ReasoningDisposition, ReasoningPolicyExcerpt
+from resolveops.reasoning.models import ReasoningDisposition, ReasoningPolicyExcerpt, ReasoningTrace
 from resolveops.reasoning.providers import ReasoningProvider
 from resolveops.responses.customer import CustomerResponseComposer
 from resolveops.workflows.lifecycle import WorkflowLifecycleStore
@@ -48,6 +54,7 @@ from resolveops.workflows.models import (
     WorkflowApproval,
     WorkflowApprovalDecision,
     WorkflowDecision,
+    WorkflowEventType,
     WorkflowOutcome,
     WorkflowPause,
     WorkflowRequest,
@@ -214,7 +221,7 @@ class CustomerIssueWorkflow:
             policy_citations=final["policy_citations"],
             generated_at=self.clock(),
         )
-        return WorkflowResult(
+        result = WorkflowResult(
             workflow_id=final["workflow_id"],
             case_id=final["case_id"],
             issue_id=final["issue_id"],
@@ -234,6 +241,16 @@ class CustomerIssueWorkflow:
             error_message=final.get("error_message"),
             node_history=final["node_history"],
         )
+        self._record_event_once(
+            final["workflow_id"],
+            WorkflowEventType.FINAL_RESPONSE_CREATED,
+            details={
+                "outcome": result.outcome.value,
+                "verified_fact_count": len(result.final_response.verified_fact_ids),
+                "policy_citation_count": len(result.final_response.policy_citation_ids),
+            },
+        )
+        return result
 
     def _execution_from_snapshot(self, config: RunnableConfig) -> WorkflowResult | WorkflowPause:
         lifecycle = self._required_lifecycle()
@@ -358,12 +375,161 @@ class CustomerIssueWorkflow:
                 sink=self.observability_sink,
             ) as span:
                 result = node(state)
+                self._record_node_events(name, state, result)
                 status_value = result.get("status")
                 if isinstance(status_value, WorkflowStatus):
                     span.set_attribute("status", status_value.value)
                 return result
 
         return RunnableLambda(invoke, name=name)
+
+    def _record_node_events(
+        self,
+        name: str,
+        state: WorkflowState,
+        result: dict[str, object],
+    ) -> None:
+        workflow_id = state["workflow_id"]
+        if name == "load_case":
+            self._record_event_once(
+                workflow_id,
+                WorkflowEventType.CUSTOMER_VERIFIED,
+                details={"customer_id": result["customer_id"], "case_id": state["case_id"]},
+            )
+            self._record_event_once(
+                workflow_id,
+                WorkflowEventType.ORDER_LOADED,
+                details={"order_id": result["order_id"], "issue_id": state["issue_id"]},
+            )
+        elif name == "investigate_duplicate":
+            self._record_event_once(
+                workflow_id,
+                WorkflowEventType.PAYMENT_EVIDENCE_LOADED,
+                details={
+                    "payment_ids": list(state["payment_ids"]),
+                    "existing_refund_id": result.get("existing_refund_id"),
+                },
+            )
+        elif name == "investigate_return":
+            self._record_event_once(
+                workflow_id,
+                WorkflowEventType.RETURN_EVIDENCE_LOADED,
+                details={
+                    "return_id": state.get("return_id"),
+                    "existing_refund_id": result.get("existing_refund_id"),
+                },
+            )
+        elif name == "retrieve_policy":
+            citations = result.get("policy_citations", [])
+            self._record_event_once(
+                workflow_id,
+                WorkflowEventType.POLICY_RETRIEVED,
+                details={
+                    "citation_count": len(citations) if isinstance(citations, list) else 0,
+                    "document_ids": [item.document_id for item in citations]
+                    if isinstance(citations, list)
+                    else [],
+                },
+            )
+        elif name == "reason_case":
+            reasoning = result.get("reasoning")
+            self._record_event_once(
+                workflow_id,
+                WorkflowEventType.ADVISORY_ASSESSED,
+                details=(
+                    {
+                        "status": "completed",
+                        "provider": reasoning.provider_name,
+                        "model": reasoning.model_name,
+                        "prompt_version": reasoning.prompt_version,
+                        "conclusion": reasoning.assessment.conclusion.value,
+                        "recommended_disposition": (
+                            reasoning.assessment.recommended_disposition.value
+                        ),
+                    }
+                    if isinstance(reasoning, ReasoningTrace)
+                    else {
+                        "status": "failed"
+                        if result.get("error_code") is not None
+                        else "not_configured"
+                    }
+                ),
+            )
+        elif name == "decide":
+            decision = result.get("decision")
+            self._record_event_once(
+                workflow_id,
+                WorkflowEventType.DECISION_RECORDED,
+                details={
+                    "decision": decision.value if isinstance(decision, WorkflowDecision) else None,
+                    "error_code": result.get("error_code"),
+                },
+            )
+        elif name == "approval_gate":
+            self._record_event_once(
+                workflow_id,
+                WorkflowEventType.SAFETY_GATE_EVALUATED,
+                actor_id=state["actor"].actor_id,
+                actor_role=state["actor"].role,
+                details={
+                    "controls": ["permission", "refund_limit", "approval"],
+                    "status": "blocked" if result.get("error_code") is not None else "passed",
+                },
+            )
+        elif name == "execute_refund":
+            operation = result.get("operation")
+            self._record_event_once(
+                workflow_id,
+                WorkflowEventType.ACTION_EXECUTED,
+                actor_id=state["actor"].actor_id,
+                actor_role=state["actor"].role,
+                details={
+                    "status": (
+                        operation.status.value
+                        if isinstance(operation, OperationResult)
+                        else "not_completed"
+                    ),
+                    "operation_type": (
+                        operation.operation_type.value
+                        if isinstance(operation, OperationResult)
+                        else None
+                    ),
+                    "resource_id": (
+                        operation.resource_id if isinstance(operation, OperationResult) else None
+                    ),
+                    "error_code": result.get("error_code"),
+                    "recovery_planned": result.get("status") == WorkflowStatus.WAITING_EXTERNAL,
+                },
+            )
+        elif name == "verify_action":
+            self._record_event_once(
+                workflow_id,
+                WorkflowEventType.ACTION_VERIFIED,
+                details={
+                    "verified": result.get("verified_resource_id") is not None,
+                    "resource_id": result.get("verified_resource_id"),
+                    "error_code": result.get("error_code"),
+                },
+            )
+
+    def _record_event_once(
+        self,
+        workflow_id: str,
+        event_type: WorkflowEventType,
+        *,
+        actor_id: str | None = None,
+        actor_role: ActorRole | None = None,
+        details: dict[str, object] | None = None,
+    ) -> None:
+        if self.lifecycle_store is None:
+            return
+        self.lifecycle_store.record_event_once(
+            workflow_id,
+            event_type,
+            actor_id=actor_id,
+            actor_role=actor_role,
+            details=details,
+        )
 
     @staticmethod
     def _set_execution_attributes(span: Span, result: WorkflowResult | WorkflowPause) -> None:
