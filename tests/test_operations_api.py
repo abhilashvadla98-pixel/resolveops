@@ -123,9 +123,7 @@ def test_workflow_approval_can_be_listed_and_resumed(
     assert pause["status"] == "waiting_approval", started.text
     approvals = client.get("/api/v1/approvals?status=pending")
     assert approvals.status_code == 200
-    assert [item["approval_id"] for item in approvals.json()] == [
-        pause["approval"]["approval_id"]
-    ]
+    assert [item["approval_id"] for item in approvals.json()] == [pause["approval"]["approval_id"]]
 
     role["value"] = ActorRole.APPROVER
     decided = client.post(
@@ -156,4 +154,19 @@ def test_workflow_approval_can_be_listed_and_resumed(
         "action_verified",
         "final_response_created",
         "completed",
+    ]
+    reliability = client.get("/api/v1/reliability/summary")
+    assert reliability.status_code == 200
+    summary = reliability.json()
+    assert summary["total_operations"] == 1
+    assert summary["outcomes"] == {"completed": 1}
+    assert summary["latency_sample_count"] == 1
+    assert summary["p50_latency_ms"] is not None
+    assert summary["p95_latency_ms"] is not None
+    assert summary["failed_operation_count"] == 0
+    assert summary["recent_operations"][0]["operation_type"] == "issue_refund"
+    assert [event["event_type"] for event in summary["recent_operations"][0]["events"]] == [
+        "attempt_started",
+        "attempt_succeeded",
+        "verification_attempted",
     ]

@@ -11,6 +11,7 @@ from resolveops.api.employee_it import router as employee_it_router
 from resolveops.api.events import router as events_router
 from resolveops.api.metrics import router as metrics_router
 from resolveops.api.operations import router as operations_router
+from resolveops.api.reliability import router as reliability_router
 from resolveops.api.simulator import router as simulator_router
 from resolveops.config import (
     get_traffic_protection_settings,
@@ -38,6 +39,7 @@ app.include_router(employee_it_router)
 app.include_router(events_router)
 app.include_router(metrics_router)
 app.include_router(operations_router)
+app.include_router(reliability_router)
 app.include_router(console_router)
 
 traffic_settings = get_traffic_protection_settings()

@@ -148,9 +148,9 @@ h3 { font-size: 13px; }
 .status-badge::before { width: 5px; height: 5px; border-radius: 50%; background: currentcolor; content: ""; }
 .status-badge.neutral { color: var(--muted); border-color: var(--line); background: rgb(142 162 185 / 6%); }
 .status-badge.active, .status-badge.in_progress, .status-badge.approved { color: var(--blue); border-color: rgb(101 167 255 / 25%); background: rgb(101 167 255 / 8%); }
-.status-badge.resolved, .status-badge.fulfilled, .status-badge.captured, .status-badge.ready { color: var(--teal); border-color: rgb(63 224 189 / 25%); background: rgb(63 224 189 / 8%); }
+.status-badge.resolved, .status-badge.fulfilled, .status-badge.captured, .status-badge.ready, .status-badge.completed { color: var(--teal); border-color: rgb(63 224 189 / 25%); background: rgb(63 224 189 / 8%); }
 .status-badge.pending, .status-badge.pending_approval, .status-badge.investigating { color: var(--amber); border-color: rgb(244 189 98 / 25%); background: rgb(244 189 98 / 8%); }
-.status-badge.failed, .status-badge.escalated { color: var(--red); border-color: rgb(255 125 135 / 25%); background: rgb(255 125 135 / 8%); }
+.status-badge.failed, .status-badge.verification_failed, .status-badge.escalated { color: var(--red); border-color: rgb(255 125 135 / 25%); background: rgb(255 125 135 / 8%); }
 .shield { width: 30px; height: 30px; display: grid; place-items: center; border-radius: 50% 50% 45% 45%; color: var(--teal); background: rgb(63 224 189 / 10%); font-weight: 800; }
 
 .case-banner { display: grid; grid-template-columns: 1.2fr 1fr 1fr 1.4fr; gap: 12px; padding: 13px 14px; border: 1px solid var(--line-soft); border-radius: 10px; background: rgb(8 18 31 / 55%); }
@@ -205,6 +205,8 @@ h3 { font-size: 13px; }
 .record { padding: 12px; border: 1px solid var(--line-soft); border-radius: 10px; background: rgb(8 18 31 / 48%); }
 .record-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .record strong { font-size: 11px; }.record p { margin: 5px 0 0; color: var(--muted); font-size: 9px; }.record-meta { display: flex; gap: 12px; margin-top: 8px; color: var(--muted-2); font-size: 8px; }
+.reliability-operation { width: 100%; color: inherit; text-align: left; cursor: pointer; font: inherit; }
+.reliability-operation:hover, .reliability-operation.selected { border-color: var(--blue); background: rgb(15 97 254 / 9%); }
 .profile-large { display: grid; justify-items: center; padding: 8px 0 4px; text-align: center; }.profile-large strong { margin-top: 10px; }.profile-large small { color: var(--muted); font-size: 10px; }
 
 .access-path { display: grid; grid-template-columns: 1fr 25px 1fr 25px 1fr; align-items: center; margin: 6px 0 21px; }

@@ -20,6 +20,12 @@ same authenticated APIs and persistence used by programmatic clients.
 8. Use scenario G for the simulated Employee/IT evidence and scenario H for verification recovery.
 9. Choose **Reset demo** to rebuild only the synthetic demo records.
 
+The Reliability view calculates operation outcomes and p50/p95 lifecycle duration from persisted
+operation records. It also counts real retry, wait, recovery, failure, and manual-review events. The
+recent-operation list drills into the stored execution sequence, while the latest HTTP trace ID is a
+separate correlation key for structured server logs. Empty datasets display no samples instead of
+inventing history.
+
 The demo session represents separate synthetic duties: workflow submissions use `DEMO-OPERATOR`,
 while approval decisions use `DEMO-APPROVER`. This makes the approval pause visible without granting
 arbitrary tenant or real-system access. Normal authenticated requests continue to use the actor and
