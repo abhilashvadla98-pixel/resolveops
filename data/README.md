@@ -1,7 +1,13 @@
 # ResolveOps synthetic operational data
 
-This directory contains the small, reviewable data contract for the project. Large generated
-datasets are deliberately not committed.
+This directory contains the small, reviewable data contract for the project. The checked-in demo
+contains 325 relationally connected records across customer operations and employee IT. Large
+generated datasets are deliberately not committed.
+
+The records use realistic fictional names, varied products, customer-written complaint narratives,
+policy language, approvals, failures and recovery states. They are generated deterministically;
+realistic presentation does not mean real customer data. Reserved identifiers, non-production
+contacts and the manifest's `source` field preserve that boundary.
 
 ## Reproducible workflow
 
@@ -25,6 +31,8 @@ records the actual row counts, labels, seed, version, files, and checksums.
 These sizes are configurable. A profile is not described as tested until its checked-in
 benchmark artifact shows a completed run.
 
-Generated records use reserved synthetic identifiers and `example.test` email addresses. They
-must never be mixed with production data. Validation reports exact failures and refuses to load
+Generated records use reserved synthetic identifiers and `example.test` email addresses. The
+interactive Pydantic fixtures use the equally fictional `example.com` domain because its strict
+email validator rejects reserved top-level domains. They must never be mixed with production data.
+Validation reports exact failures and refuses to load
 an invalid dataset; it does not silently repair records.

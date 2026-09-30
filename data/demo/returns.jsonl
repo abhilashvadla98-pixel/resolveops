@@ -1,6 +1,4 @@
 {"created_at": "2026-01-06T09:21:00Z", "customer_id": "CUS-000003", "order_id": "ORD-000003", "received_at": "2026-01-08T09:21:00Z", "return_id": "RET-000003", "status": "received", "workspace_id": "demo-west"}
 {"created_at": "2026-01-06T09:42:00Z", "customer_id": "CUS-000006", "order_id": "ORD-000006", "received_at": "2026-01-08T09:42:00Z", "return_id": "RET-000006", "status": "received", "workspace_id": "demo-west"}
-{"created_at": "2026-01-06T10:03:00Z", "customer_id": "CUS-000009", "order_id": "ORD-000009", "received_at": "2026-01-08T10:03:00Z", "return_id": "RET-000009", "status": "received", "workspace_id": "demo-west"}
 {"created_at": "2026-01-06T10:24:00Z", "customer_id": "CUS-000012", "order_id": "ORD-000012", "received_at": "2026-01-08T10:24:00Z", "return_id": "RET-000012", "status": "received", "workspace_id": "demo-west"}
 {"created_at": "2026-01-06T10:45:00Z", "customer_id": "CUS-000015", "order_id": "ORD-000015", "received_at": "2026-01-08T10:45:00Z", "return_id": "RET-000015", "status": "received", "workspace_id": "demo-west"}
-{"created_at": "2026-01-06T11:06:00Z", "customer_id": "CUS-000018", "order_id": "ORD-000018", "received_at": "2026-01-08T11:06:00Z", "return_id": "RET-000018", "status": "received", "workspace_id": "demo-west"}

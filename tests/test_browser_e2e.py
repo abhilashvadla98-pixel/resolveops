@@ -96,6 +96,9 @@ def test_operator_completes_demo_approval_workflow(running_demo: str, tmp_path: 
         page.locator("#try-demo").click()
         expect(page.locator("#sidebar-connection")).to_have_text("Connected")
         expect(page.locator("#case-table")).to_contain_text("CASE-1001")
+        expect(page.locator("#overview-cases")).to_have_text("7")
+        expect(page.locator("#overview-attention")).to_contain_text("Evidence review")
+        page.locator('[data-view="cases"]').click()
 
         page.locator("#new-case-button").click()
         page.locator("#complaint-text").fill(
@@ -126,7 +129,7 @@ def test_operator_completes_demo_approval_workflow(running_demo: str, tmp_path: 
         expect(page.locator("#detail-issues")).to_contain_text("Resolved")
         expect(page.locator("#workflow-summary")).to_contain_text("Action Verified")
         expect(page.locator("#workflow-summary")).to_contain_text("Passed")
-        expect(page.locator("#detail-evidence")).to_contain_text("Trusted workflow fact")
+        expect(page.locator("#detail-evidence")).to_contain_text("Verified case fact")
         expect(page.locator("#detail-evidence")).to_contain_text("POLICY-DUPLICATE-CHARGE")
         expect(page.locator("#case-timeline")).to_contain_text("Completed")
         expect(page.locator("#final-response")).to_be_visible()
@@ -176,7 +179,7 @@ def test_operator_completes_demo_approval_workflow(running_demo: str, tmp_path: 
         expect(page.locator("#it-result")).to_contain_text("No new access was granted")
 
         page.locator("#reset-demo").click()
-        expect(page.locator("#toast")).to_contain_text("Demo data reset")
+        expect(page.locator("#toast")).to_contain_text("restored to its baseline")
         page.locator('[data-it-case="ITCASE-2002"]').click()
         expect(page.locator("#run-it-workflow")).to_have_text("Approval required")
         expect(page.locator("#it-step-grant")).to_have_text("Not granted")

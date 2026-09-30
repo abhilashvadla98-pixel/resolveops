@@ -1,13 +1,13 @@
-{"employee_id": "MGR-000001", "manager_employee_id": null, "name": "Synthetic Manager 1", "status": "active", "work_email": "manager1@example.test", "workspace_id": "demo-west"}
-{"employee_id": "MGR-000002", "manager_employee_id": null, "name": "Synthetic Manager 2", "status": "active", "work_email": "manager2@example.test", "workspace_id": "demo-west"}
-{"employee_id": "MGR-000003", "manager_employee_id": null, "name": "Synthetic Manager 3", "status": "active", "work_email": "manager3@example.test", "workspace_id": "demo-west"}
-{"employee_id": "MGR-000004", "manager_employee_id": null, "name": "Synthetic Manager 4", "status": "active", "work_email": "manager4@example.test", "workspace_id": "demo-west"}
-{"employee_id": "MGR-000005", "manager_employee_id": null, "name": "Synthetic Manager 5", "status": "active", "work_email": "manager5@example.test", "workspace_id": "demo-west"}
-{"employee_id": "EMP-000001", "manager_employee_id": "MGR-000002", "name": "Synthetic Employee 1", "status": "active", "work_email": "employee1@example.test", "workspace_id": "demo-west"}
-{"employee_id": "EMP-000002", "manager_employee_id": "MGR-000003", "name": "Synthetic Employee 2", "status": "active", "work_email": "employee2@example.test", "workspace_id": "demo-west"}
-{"employee_id": "EMP-000003", "manager_employee_id": "MGR-000004", "name": "Synthetic Employee 3", "status": "active", "work_email": "employee3@example.test", "workspace_id": "demo-west"}
-{"employee_id": "EMP-000004", "manager_employee_id": "MGR-000005", "name": "Synthetic Employee 4", "status": "active", "work_email": "employee4@example.test", "workspace_id": "demo-west"}
-{"employee_id": "EMP-000005", "manager_employee_id": "MGR-000001", "name": "Synthetic Employee 5", "status": "active", "work_email": "employee5@example.test", "workspace_id": "demo-west"}
-{"employee_id": "EMP-000006", "manager_employee_id": "MGR-000002", "name": "Synthetic Employee 6", "status": "active", "work_email": "employee6@example.test", "workspace_id": "demo-west"}
-{"employee_id": "EMP-000007", "manager_employee_id": "MGR-000003", "name": "Synthetic Employee 7", "status": "active", "work_email": "employee7@example.test", "workspace_id": "demo-west"}
-{"employee_id": "EMP-000008", "manager_employee_id": "MGR-000004", "name": "Synthetic Employee 8", "status": "active", "work_email": "employee8@example.test", "workspace_id": "demo-west"}
+{"employee_id": "MGR-000001", "manager_employee_id": null, "name": "Anika Rao", "status": "active", "work_email": "anika.rao.manager1@example.test", "workspace_id": "demo-west"}
+{"employee_id": "MGR-000002", "manager_employee_id": null, "name": "Caleb Morgan", "status": "active", "work_email": "caleb.morgan.manager2@example.test", "workspace_id": "demo-west"}
+{"employee_id": "MGR-000003", "manager_employee_id": null, "name": "Mei Tan", "status": "active", "work_email": "mei.tan.manager3@example.test", "workspace_id": "demo-west"}
+{"employee_id": "MGR-000004", "manager_employee_id": null, "name": "Owen Price", "status": "active", "work_email": "owen.price.manager4@example.test", "workspace_id": "demo-west"}
+{"employee_id": "MGR-000005", "manager_employee_id": null, "name": "Zara Ahmed", "status": "active", "work_email": "zara.ahmed.manager5@example.test", "workspace_id": "demo-west"}
+{"employee_id": "EMP-000001", "manager_employee_id": "MGR-000002", "name": "Amelia Foster", "status": "active", "work_email": "amelia.foster.employee1@example.test", "workspace_id": "demo-west"}
+{"employee_id": "EMP-000002", "manager_employee_id": "MGR-000003", "name": "Ben Carter", "status": "active", "work_email": "ben.carter.employee2@example.test", "workspace_id": "demo-west"}
+{"employee_id": "EMP-000003", "manager_employee_id": "MGR-000004", "name": "Chloe Singh", "status": "active", "work_email": "chloe.singh.employee3@example.test", "workspace_id": "demo-west"}
+{"employee_id": "EMP-000004", "manager_employee_id": "MGR-000005", "name": "Diego Morales", "status": "active", "work_email": "diego.morales.employee4@example.test", "workspace_id": "demo-west"}
+{"employee_id": "EMP-000005", "manager_employee_id": "MGR-000001", "name": "Erin Wallace", "status": "active", "work_email": "erin.wallace.employee5@example.test", "workspace_id": "demo-west"}
+{"employee_id": "EMP-000006", "manager_employee_id": "MGR-000002", "name": "Felix Brown", "status": "active", "work_email": "felix.brown.employee6@example.test", "workspace_id": "demo-west"}
+{"employee_id": "EMP-000007", "manager_employee_id": "MGR-000003", "name": "Gina Patel", "status": "active", "work_email": "gina.patel.employee7@example.test", "workspace_id": "demo-west"}
+{"employee_id": "EMP-000008", "manager_employee_id": "MGR-000004", "name": "Henry Adams", "status": "active", "work_email": "henry.adams.employee8@example.test", "workspace_id": "demo-west"}

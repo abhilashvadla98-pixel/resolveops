@@ -15,11 +15,12 @@ def test_operator_console_serves_secure_shell_and_local_assets() -> None:
     assert "default-src 'self'" in page.headers["content-security-policy"]
     assert "ResolveOps | Operations Console" in page.text
     assert ">Cases<" in page.text
+    assert ">Overview<" in page.text
     assert ">Approvals<" in page.text
     assert ">IT Requests<" in page.text
     assert ">Audit<" in page.text
-    assert ">Try demo<" in page.text
-    assert 'src="/console/app.js?v=20260929e"' in page.text
+    assert ">Open workspace<" in page.text
+    assert 'src="/console/app.js?v=20260930a"' in page.text
     assert 'role="dialog"' in page.text
     assert 'aria-modal="true"' in page.text
     assert styles.status_code == 200
@@ -39,7 +40,7 @@ def test_operator_console_serves_secure_shell_and_local_assets() -> None:
     assert 'apiFetch("/api/v1/reliability/summary"' in script.text
     assert "Run multi-agent analysis" not in page.text
     assert 'apiFetch("/api/v1/agent-workflows/jobs"' not in script.text
-    assert "Integrated investigation · advisory only" in page.text
+    assert "Specialist review · decision support only" in page.text
     assert "CSS.escape" in script.text
 
 

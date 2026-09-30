@@ -1,23 +1,25 @@
 # Operator console
 
 The ResolveOps console is served by FastAPI at `/console`. It is a compact operations workspace for
-Cases, Approvals, IT Requests, Reliability, and Audit. Business records and timelines come from the
-same authenticated APIs and persistence used by programmatic clients.
+Overview, Cases, Approvals, IT Requests, Reliability, and Audit. Business records and timelines
+come from the same authenticated APIs and persistence used by programmatic clients.
 
 The default light theme uses a compact sidebar, dense tables, thin borders, small radii, and one
 restrained blue accent. Dark mode is optional. The layout intentionally avoids a marketing hero,
 neon/glow styling, gradients, oversized cards, and invented fields such as owner, priority, or SLA.
 Cases use server-side query/status filters and pagination. A selected case opens a three-pane
-workspace for operational context, complaint/activity/timeline/final response, and evidence/AI
-assessment/operator correction. Audit works globally and can be narrowed to a case.
+workspace for operational context, complaint/activity/timeline/final response, and evidence,
+automated assessment, and operator correction. Audit works globally and can be narrowed to a case.
+The overview summarizes workload and attention items from the same live API state; it contains no
+invented KPI values.
 
 ## Demo flow
 
 1. Run migrations and `python -m resolveops.database.seed`. The seed command also creates the
    deterministic 128-dimension demo policy index.
 2. Start the API and open `http://127.0.0.1:8000/console`.
-3. Choose **Try demo**. No API key is needed; the signed session can access only the synthetic demo
-   tenant and expires after the configured short lifetime.
+3. Choose **Open workspace**. No API key is needed; the signed session can access only the
+   fictional demo tenant and expires after the configured short lifetime.
 4. Submit a natural-language complaint and inspect its persisted classification. Intake never
    authorizes an action.
 5. Select scenario D, start the investigation, and inspect the pending refund approval.
@@ -31,7 +33,7 @@ assessment/operator correction. Audit works globally and can be narrowed to a ca
    manager approval, Git identity, and active policy before granting access, then reloads repository,
    group, ticket, and notification state for verification. Replaying it performs no duplicate grant.
    Use scenario H for verification recovery.
-9. Choose **Reset demo** to remove prior customer workflows, IT grants, approval decisions,
+9. Choose **Reset workspace** to remove prior customer workflows, IT grants, approval decisions,
    feedback, audit/reliability records, and event cursors before rebuilding the synthetic records.
 
 Pending IT requests show **Approval required** instead of attempting execution. Use **Review

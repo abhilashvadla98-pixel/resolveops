@@ -80,61 +80,71 @@ from resolveops.models.returns import Return, ReturnItem, ReturnStatus
 SCENARIO_ROWS = (
     (
         "A",
-        "Duplicate payment before delivery",
+        "Pre-delivery duplicate capture",
         "customer",
         "CASE-DEMO-A",
-        "Two captured payments exist while the order is not delivered.",
+        "Two card captures exist for an order that has not shipped.",
     ),
     (
         "B",
-        "Missing return refund",
+        "Returned item, refund absent",
         "customer",
         "CASE-DEMO-B",
-        "A received return has no completed refund.",
+        "The warehouse received the return, but no refund exists.",
     ),
     (
         "C",
-        "Two issues in one complaint",
+        "Combined billing and return complaint",
         "customer",
         "CASE-1001",
-        "Duplicate payment and missing return refund remain independent issues.",
+        "One complaint contains two issues that require separate evidence and actions.",
     ),
     (
         "D",
-        "Approval-required refund",
+        "High-value refund approval",
         "customer",
         "CASE-DEMO-D",
-        "A confirmed refund exceeds the operator limit and must pause.",
+        "A confirmed duplicate charge exceeds the operator's refund authority.",
     ),
     (
         "E",
-        "Insufficient evidence",
+        "Authorization mistaken for a charge",
         "customer",
         "CASE-DEMO-E",
-        "The available records do not prove a duplicate capture.",
+        "The second card entry is only an authorization, so the workflow must stop safely.",
     ),
     (
         "F",
-        "Existing external refund",
+        "Refund already in progress",
         "customer",
         "CASE-DEMO-F",
-        "A refund already exists, so another side effect is forbidden.",
+        "A provider refund already exists, so another refund must not be created.",
     ),
     (
         "G",
-        "Repository access request",
+        "Approved repository access",
         "employee_it",
         "ITCASE-2001",
-        "Identity, manager approval, access, ticket, and notification evidence.",
+        "An employee request exercises identity, approval, directory and repository controls.",
     ),
     (
         "H",
-        "Verification recovery",
+        "Post-action verification recovery",
         "customer",
         "CASE-DEMO-H",
-        "Execution exists while independent verification requires recovery.",
+        "The refund was submitted, but its independent status check timed out.",
     ),
 )
+
+
+SCENARIO_CUSTOMERS = {
+    "A": ("Taylor Bennett", "taylor.bennett@example.com", "Noise-cancelling headphones"),
+    "B": ("Sofia Martinez", "sofia.martinez@example.com", "Wireless headphones"),
+    "D": ("Aaron Blake", "aaron.blake@example.com", "Home theater receiver"),
+    "E": ("Nina Shah", "nina.shah@example.com", "Mechanical keyboard"),
+    "F": ("Marcus Thompson", "marcus.thompson@example.com", "Ultrawide monitor"),
+    "H": ("Grace Kim", "grace.kim@example.com", "Smart speaker pair"),
+}
 
 
 def seed_demo_scenarios(session: Session) -> bool:
@@ -294,11 +304,12 @@ def _seed_customer_scenario(
     case_id = f"CASE-DEMO-{scenario_id}"
     issue_id = f"ISSUE-DEMO-{scenario_id}"
     amount = Decimal("650.00") if scenario_id == "D" else Decimal("120.00")
+    customer_name, customer_email, product_name = SCENARIO_CUSTOMERS[scenario_id]
     store.add_customer(
         Customer(
             customer_id=customer_id,
-            name=f"Demo Customer {scenario_id}",
-            email=f"demo.{scenario_id.lower()}@example.com",
+            name=customer_name,
+            email=customer_email,
             tier=CustomerTier.STANDARD,
             status=CustomerStatus.ACTIVE,
         )
@@ -315,7 +326,7 @@ def _seed_customer_scenario(
                     order_item_id=f"ITEM-DEMO-{scenario_id}",
                     order_id=order_id,
                     sku=f"SKU-DEMO-{scenario_id}",
-                    name="Wireless headphones",
+                    name=product_name,
                     quantity=1,
                     unit_price=amount,
                     currency="USD",
@@ -413,7 +424,7 @@ def _seed_customer_scenario(
             issues=[issue],
             complaint_text=complaint,
             intake_status=CaseIntakeStatus.CLASSIFIED,
-            intake_summary="Detected a supported issue from the demo complaint.",
+            intake_summary="Complaint classified for evidence-led investigation.",
             opened_at=base + timedelta(days=7),
             updated_at=base + timedelta(days=7, minutes=2)
             if scenario_id == "H"
@@ -440,10 +451,28 @@ def _seed_customer_scenario(
 
 def _complaint_for(scenario_id: str) -> str:
     return {
-        "A": "I placed my order recently and see two completed charges before delivery.",
-        "B": "I returned my headphones last week and still have not received my refund.",
-        "D": "I was charged twice for my order and need the extra charge reviewed.",
-        "E": "I see a payment authorization and another charge. I am not sure whether both completed.",
-        "F": "I was charged twice, but support told me a refund may already be processing.",
-        "H": "My duplicate-charge refund was submitted, but its verification has not finished.",
+        "A": (
+            "My card shows two completed charges for this order, but the delivery has not even "
+            "shipped. Please check whether I was billed twice."
+        ),
+        "B": (
+            "Tracking says you received my return five days ago. I still cannot see the refund "
+            "on my card, and I would like an update."
+        ),
+        "D": (
+            "The same purchase appears twice on my statement. Both entries have posted, so please "
+            "review the extra charge."
+        ),
+        "E": (
+            "I see one completed charge and another pending card entry for the same order. Can you "
+            "confirm whether I was actually charged twice?"
+        ),
+        "F": (
+            "Support confirmed the duplicate payment yesterday and said a refund was started. I "
+            "want to make sure a second refund request is not opened."
+        ),
+        "H": (
+            "I was told the duplicate charge was refunded, but nobody could confirm its current "
+            "status. Please verify the existing refund instead of submitting another one."
+        ),
     }[scenario_id]

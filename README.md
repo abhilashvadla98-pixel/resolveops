@@ -43,6 +43,7 @@ verification are all checked independently.
 | Live single-reasoner Gemini check | 3/3 | Provider integration worked for that recorded run |
 | Reviewed-memory ablation | 8 paired cases | Tenant/policy-scoped memory path and token/routing comparison |
 | Human response review | 0/24 | Owner labels are intentionally still pending |
+| Demo data contract | 325 connected records | Repeatable customer, payment, return, IT, approval and audit state |
 
 See [docs/EVALUATION.md](docs/EVALUATION.md) for datasets, checksums, commands and limitations.
 The 10-task × 3-trial live multi-agent runner is included but must not run until the exposed demo
@@ -59,8 +60,8 @@ Copy-Item .env.example .env
 .\.venv\Scripts\python.exe -m uvicorn resolveops.main:app --host 127.0.0.1 --port 8000
 ```
 
-Open `http://127.0.0.1:8000/console`, choose **Try demo**, and use the synthetic workspace. The
-complete deterministic demo needs no paid service or model key.
+Open `http://127.0.0.1:8000/console`, choose **Open workspace**, and use the isolated fictional
+workspace. The complete deterministic demo needs no paid service or model key.
 
 Run the required checks:
 

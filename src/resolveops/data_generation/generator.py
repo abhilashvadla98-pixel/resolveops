@@ -23,6 +23,115 @@ CUSTOMER_LABELS = (
 )
 IT_LABELS = ("access_conflict", "approval_required", "verification_failure")
 
+CUSTOMER_NAMES = (
+    "Avery Johnson",
+    "Camila Nguyen",
+    "Daniel Okafor",
+    "Elena Rossi",
+    "Farah Khan",
+    "Gabriel Silva",
+    "Hannah Brooks",
+    "Isaac Mensah",
+    "Julia Park",
+    "Karim Haddad",
+    "Leah Williams",
+    "Mateo Garcia",
+    "Noor Rahman",
+    "Olivia Chen",
+    "Priya Nair",
+    "Rafael Santos",
+    "Samantha Reed",
+    "Theo Martin",
+    "Valerie Cooper",
+    "William Kim",
+)
+EMPLOYEE_NAMES = (
+    "Amelia Foster",
+    "Ben Carter",
+    "Chloe Singh",
+    "Diego Morales",
+    "Erin Wallace",
+    "Felix Brown",
+    "Gina Patel",
+    "Henry Adams",
+    "Imani Clarke",
+    "Jonas Weber",
+    "Keira Murphy",
+    "Luis Romero",
+)
+MANAGER_NAMES = (
+    "Anika Rao",
+    "Caleb Morgan",
+    "Mei Tan",
+    "Owen Price",
+    "Zara Ahmed",
+)
+PRODUCTS = (
+    ("SKU-AUDIO-014", "Noise-cancelling headphones"),
+    ("SKU-HOME-022", "Smart speaker pair"),
+    ("SKU-OFFICE-031", "Mechanical keyboard"),
+    ("SKU-DISPLAY-008", "27-inch monitor"),
+    ("SKU-NETWORK-017", "Mesh Wi-Fi router"),
+    ("SKU-KITCHEN-009", "Coffee grinder"),
+)
+
+
+def _person_name(names: tuple[str, ...], index: int) -> str:
+    """Return realistic, deterministic names while keeping large datasets collision-safe."""
+    base = names[(index - 1) % len(names)]
+    cycle = (index - 1) // len(names)
+    return base if cycle == 0 else f"{base} {cycle + 1}"
+
+
+def _safe_email(name: str, index: int, *, prefix: str) -> str:
+    local = name.lower().replace(" ", ".")
+    return f"{local}.{prefix}{index}@example.test"
+
+
+def _complaint_text(scenario: str, *, order_id: str) -> str:
+    complaints = {
+        "authorization_hold": (
+            f"My bank shows a second pending entry for {order_id}. Please confirm whether it is "
+            "only an authorization before taking any action."
+        ),
+        "duplicate_capture": (
+            f"Two completed charges for {order_id} appear on my statement. Please investigate "
+            "the extra charge."
+        ),
+        "missing_return_refund": (
+            f"The carrier shows my return for {order_id} was received, but the refund has not "
+            "reached my card."
+        ),
+        "external_refund": (
+            f"Support said the refund for {order_id} was already submitted. Please verify that "
+            "refund instead of creating another one."
+        ),
+        "insufficient_evidence": (
+            f"I may have been charged twice for {order_id}, although one entry still looks "
+            "pending. Can you check the payment records?"
+        ),
+        "expired_policy": (
+            f"I need help with a duplicate payment on {order_id}. The earlier support guidance "
+            "did not explain which refund policy applies."
+        ),
+        "verification_failure": (
+            f"A refund for {order_id} was submitted, but its current status could not be "
+            "confirmed. Please verify it without repeating the refund."
+        ),
+        "duplicate_webhook": (
+            f"I received two updates about {order_id} and want to confirm that only one refund "
+            "was processed."
+        ),
+        "approval_required": (
+            f"The duplicate charge on {order_id} has posted. Please review the extra payment and "
+            "let me know when it can be reversed."
+        ),
+        "standard_resolution": (
+            f"I need an update on the payment or return issue associated with {order_id}."
+        ),
+    }
+    return complaints[scenario]
+
 
 class JsonlDatasetWriter:
     def __init__(self, output_dir: Path) -> None:
@@ -84,7 +193,6 @@ def _customer_rows(
         if rng.random() < anomaly_rate
         else "standard_resolution"
     )
-    is_return = scenario in {"missing_return_refund", "external_refund"} or index % 3 == 0
     needs_approval = scenario == "approval_required" or index % 5 == 0
     verification_failed = scenario == "verification_failure"
     resolved = (
@@ -94,22 +202,33 @@ def _customer_rows(
         and scenario != "authorization_hold"
     )
     amount = Decimal("79.00") + Decimal(index % 25)
-    second_payment = scenario == "duplicate_capture"
+    issue_type = (
+        "missing_return_refund"
+        if scenario in {"missing_return_refund", "external_refund"}
+        or (scenario == "standard_resolution" and index % 3 == 0)
+        else "duplicate_charge"
+    )
+    is_return = issue_type == "missing_return_refund"
+    second_payment = issue_type == "duplicate_charge" and scenario not in {
+        "authorization_hold",
+        "insufficient_evidence",
+    }
+    customer_name = _person_name(CUSTOMER_NAMES, index)
+    customer_email = _safe_email(customer_name, index, prefix="customer")
+    product_sku, product_name = PRODUCTS[(index - 1) % len(PRODUCTS)]
     case_status = (
         "resolved" if resolved else "pending_approval" if needs_approval else "in_progress"
     )
     issue_status = (
         "resolved" if resolved else "action_pending" if needs_approval else "investigating"
     )
-    issue_type = "missing_return_refund" if is_return else "duplicate_charge"
-
     yield (
         "customers",
         {
             "workspace_id": workspace_id,
             "customer_id": customer_id,
-            "name": f"Synthetic Customer {index}",
-            "email": f"customer{index}@example.test",
+            "name": customer_name,
+            "email": customer_email,
             "tier": ["standard", "gold", "enterprise"][index % 3],
             "status": "active",
         },
@@ -133,8 +252,8 @@ def _customer_rows(
             "workspace_id": workspace_id,
             "order_item_id": item_id,
             "order_id": order_id,
-            "sku": f"SKU-{index % 40:03d}",
-            "name": f"Synthetic product {index % 40}",
+            "sku": product_sku,
+            "name": product_name,
             "quantity": 1,
             "unit_price": amount,
             "currency": "USD",
@@ -202,7 +321,7 @@ def _customer_rows(
             "customer_id": customer_id,
             "order_id": order_id,
             "status": case_status,
-            "complaint_text": "Customer reports a payment or return issue requiring investigation.",
+            "complaint_text": _complaint_text(scenario, order_id=order_id),
             "intake_status": "classified",
             "intake_summary": scenario.replace("_", " "),
             "opened_at": opened_at,
@@ -234,6 +353,16 @@ def _customer_rows(
             "order_id": order_id,
         },
     )
+    if second_payment:
+        yield (
+            "case_issue_payments",
+            {
+                "workspace_id": workspace_id,
+                "issue_id": issue_id,
+                "payment_id": f"{payment_id}-DUP",
+                "order_id": order_id,
+            },
+        )
     yield (
         "case_issue_evidence",
         {
@@ -243,7 +372,11 @@ def _customer_rows(
             "source": "payment_provider",
             "reference_id": payment_id,
             "policy_id": "POLICY-RETURN" if is_return else "POLICY-PAYMENT",
-            "summary": "Synthetic provider evidence captured for evaluation.",
+            "summary": (
+                "Warehouse receipt confirms the returned item was accepted."
+                if is_return
+                else "Payment ledger records the current authorization and capture states."
+            ),
             "collected_at": opened_at + timedelta(minutes=4),
         },
     )
@@ -262,7 +395,7 @@ def _customer_rows(
             if needs_approval
             else "running",
             "outcome": "action_verified" if resolved else None,
-            "requested_by": "synthetic-operator",
+            "requested_by": "demo.operations",
             "requested_role": "operator",
             "created_at": opened_at + timedelta(minutes=5),
             "updated_at": opened_at + timedelta(minutes=30),
@@ -277,7 +410,7 @@ def _customer_rows(
             "workflow_id": workflow_id,
             "sequence_number": 1,
             "event_type": "started",
-            "actor_id": "synthetic-operator",
+            "actor_id": "demo.operations",
             "actor_role": "operator",
             "details": {"scenario_label": scenario},
             "occurred_at": opened_at + timedelta(minutes=5),
@@ -297,8 +430,8 @@ def _customer_rows(
                 "payment_id": payment_id,
                 "amount": amount,
                 "currency": "USD",
-                "reason": "Synthetic approval threshold reached",
-                "requested_by": "synthetic-operator",
+                "reason": "Refund amount exceeds the operator's delegated authority.",
+                "requested_by": "demo.operations",
                 "requested_role": "operator",
                 "requested_at": opened_at + timedelta(minutes=12),
                 "decided_by": None,
@@ -326,17 +459,19 @@ def _customer_rows(
             {
                 "workspace_id": workspace_id,
                 "operation_id": operation_id,
-                "idempotency_key": f"synthetic-{operation_id}",
+                "idempotency_key": f"demo-{operation_id}",
                 "operation_type": "issue_refund",
                 "payload_hash": f"{index + 7:064x}"[-64:],
                 "status": "verification_failed" if verification_failed else "completed",
-                "actor_id": "synthetic-operator",
+                "actor_id": "demo.operations",
                 "actor_role": "operator",
                 "case_id": case_id,
                 "issue_id": issue_id,
                 "result_resource_id": None if verification_failed else _id("REF", index),
-                "error_code": "SYNTHETIC_VERIFICATION_FAILURE" if verification_failed else None,
-                "error_message": "Injected labelled failure" if verification_failed else None,
+                "error_code": "REFUND_STATUS_UNAVAILABLE" if verification_failed else None,
+                "error_message": "Refund provider status check timed out"
+                if verification_failed
+                else None,
                 "attempt_count": 1,
                 "verification_attempt_count": 1,
                 "max_attempts": 3,
@@ -357,7 +492,7 @@ def _customer_rows(
                 "workspace_id": workspace_id,
                 "issue_id": issue_id,
                 "status": "failed" if verification_failed else "passed",
-                "summary": "Injected verification failure"
+                "summary": "Refund status could not be read; execution was not repeated"
                 if verification_failed
                 else "Fresh provider state confirms completion",
                 "checked_at": verification_time,
@@ -371,7 +506,7 @@ def _customer_rows(
                 "operation_id": operation_id,
                 "sequence_number": 1,
                 "event_type": "verification_failed" if verification_failed else "verified",
-                "actor_id": "synthetic-system",
+                "actor_id": "workflow.control-plane",
                 "actor_role": "system",
                 "case_id": case_id,
                 "issue_id": issue_id,
@@ -411,7 +546,7 @@ def _customer_rows(
                     "currency": "USD",
                     "status": "completed",
                     "kind": "return" if return_id else "duplicate_charge",
-                    "reason": "Verified synthetic resolution",
+                    "reason": "Verified resolution for the confirmed case issue",
                     "created_at": refund_time,
                     "completed_at": refund_time + timedelta(minutes=1),
                 },
@@ -433,8 +568,11 @@ def _customer_rows(
             "case_id": case_id,
             "customer_id": customer_id,
             "channel": "email",
-            "recipient": f"customer{index}@example.test",
-            "message": "Your case is being reviewed.",
+            "recipient": customer_email,
+            "message": (
+                f"We are reviewing case {case_id}. We will confirm the outcome after the "
+                "payment or return records are verified."
+            ),
             "status": "sent",
             "created_at": opened_at + timedelta(minutes=35),
             "sent_at": opened_at + timedelta(minutes=36),
@@ -460,13 +598,15 @@ def _it_rows(
     pending = scenario == "approval_required" or index % 3 == 1
     request_status = "fulfilled" if fulfilled else "pending_approval" if pending else "approved"
     case_status = "resolved" if fulfilled else "action_pending" if pending else "investigating"
+    employee_name = _person_name(EMPLOYEE_NAMES, index)
+    employee_email = _safe_email(employee_name, index, prefix="employee")
     yield (
         "employees",
         {
             "workspace_id": workspace_id,
             "employee_id": employee_id,
-            "name": f"Synthetic Employee {index}",
-            "work_email": f"employee{index}@example.test",
+            "name": employee_name,
+            "work_email": employee_email,
             "manager_employee_id": manager_id,
             "status": "active",
         },
@@ -516,7 +656,9 @@ def _it_rows(
             "target_team_id": "TEAM-PLATFORM",
             "repository_id": "REPO-RESOLVEOPS",
             "requested_level": "write",
-            "justification": "Requires repository access for assigned work",
+            "justification": (
+                "Repository access is required for the employee's assigned platform rotation."
+            ),
             "status": request_status,
             "requested_at": opened_at,
             "approved_by": manager_id if not pending else None,
@@ -567,8 +709,11 @@ def _it_rows(
                 "notification_id": _id("ITNOTIF", index),
                 "case_id": case_id,
                 "employee_id": employee_id,
-                "recipient": f"employee{index}@example.test",
-                "message": "Repository access is verified and available.",
+            "recipient": employee_email,
+            "message": (
+                "Repository access has been granted and independently verified against the "
+                "current directory membership."
+            ),
                 "status": "sent",
                 "sent_at": opened_at + timedelta(minutes=30),
             },
@@ -592,13 +737,16 @@ def generate_dataset(
     labels: set[str] = set()
     with JsonlDatasetWriter(output_dir) as writer:
         for manager_index in range(1, 6):
+            manager_name = MANAGER_NAMES[manager_index - 1]
             writer.write(
                 "employees",
                 {
                     "workspace_id": "demo-west",
                     "employee_id": _id("MGR", manager_index),
-                    "name": f"Synthetic Manager {manager_index}",
-                    "work_email": f"manager{manager_index}@example.test",
+                    "name": manager_name,
+                    "work_email": _safe_email(
+                        manager_name, manager_index, prefix="manager"
+                    ),
                     "manager_employee_id": None,
                     "status": "active",
                 },
@@ -644,7 +792,15 @@ def generate_dataset(
                     "title": title,
                     "version": 1,
                     "status": "active",
-                    "content": "Synthetic policy fixture used for data and scale testing.",
+                    "content": (
+                        "Confirm two distinct captured payments for the same order, amount, and "
+                        "currency. Check for an existing refund before proposing a new refund. "
+                        "Amounts above delegated authority require independent approval."
+                        if issue_type == "duplicate_charge"
+                        else "Confirm warehouse receipt, the returned item, the paid amount, and "
+                        "any existing refund. Do not combine a return refund with an unrelated "
+                        "duplicate-payment adjustment."
+                    ),
                     "source": "synthetic://resolveops/policies",
                     "effective_at": base - timedelta(days=365),
                     "expires_at": None,

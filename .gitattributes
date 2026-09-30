@@ -1,0 +1,2 @@
+# Evaluation manifests hash exact bytes. Keep their JSONL datasets stable across platforms.
+evals/**/*.jsonl text eol=lf
