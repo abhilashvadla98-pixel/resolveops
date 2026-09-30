@@ -1,0 +1,1843 @@
+{
+  "case_count": 22,
+  "category_counts": {
+    "customer_accept": 4,
+    "customer_escalate": 2,
+    "customer_replan": 2,
+    "it_accept": 2,
+    "it_escalate": 2,
+    "it_replan": 2,
+    "memory_safety": 1,
+    "security": 6,
+    "tenant_safety": 1
+  },
+  "dataset_name": "evals/agents/trajectories.jsonl",
+  "dataset_sha256": "6f34374070a6c6fa7774357321f394fa083fd03ca9504da81adc9386637afd16",
+  "environment": {
+    "database": "SQLite in-memory per case",
+    "operating_system": "Windows",
+    "provider": "deterministic offline contract double",
+    "python": "3.12.10"
+  },
+  "failed_count": 0,
+  "input_tokens": 71991,
+  "latency_ms": {
+    "maximum": 494.03630000233534,
+    "minimum": 56.57649999920977,
+    "p50": 85.63180000055581,
+    "p95": 221.8551000005391
+  },
+  "limitations": [
+    "This is an offline orchestration-contract evaluation with deterministic provider doubles.",
+    "It measures routing, tools, replanning, budgets, and safety boundaries\u2014not live-model quality.",
+    "Reported token counts are context estimates; no paid provider calls are made."
+  ],
+  "measured_at": "2026-09-30T02:07:37.769682Z",
+  "model_calls": 182,
+  "output_tokens": 0,
+  "pass_rate": 1.0,
+  "passed_count": 22,
+  "results": [
+    {
+      "assertions": [
+        {
+          "actual": "\"ready_for_control_plane\"",
+          "expected": "\"ready_for_control_plane\"",
+          "name": "status",
+          "passed": true
+        },
+        {
+          "actual": "[\"critic\", \"investigation\", \"policy\", \"resolution\", \"supervisor\"]",
+          "expected": "[\"critic\", \"investigation\", \"policy\", \"resolution\", \"supervisor\"]",
+          "name": "required_roles",
+          "passed": true
+        },
+        {
+          "actual": "[\"get_case\", \"search_policies\"]",
+          "expected": "[\"get_case\", \"search_policies\"]",
+          "name": "required_tools",
+          "passed": true
+        },
+        {
+          "actual": "[]",
+          "expected": "[]",
+          "name": "forbidden_tools",
+          "passed": true
+        },
+        {
+          "actual": "[\"accept\"]",
+          "expected": "[\"accept\"]",
+          "name": "critic_decisions",
+          "passed": true
+        },
+        {
+          "actual": "0",
+          "expected": "0",
+          "name": "replan_count",
+          "passed": true
+        },
+        {
+          "actual": "7",
+          "expected": "<= 7",
+          "name": "model_call_budget",
+          "passed": true
+        },
+        {
+          "actual": "2",
+          "expected": "<= 2",
+          "name": "tool_call_budget",
+          "passed": true
+        }
+      ],
+      "category": "customer_accept",
+      "evaluation_id": "AGENT-EVAL-001",
+      "observation": {
+        "critic_decisions": [
+          "accept"
+        ],
+        "input_tokens": 2754,
+        "latency_ms": 494.03630000233534,
+        "model_calls": 7,
+        "output_tokens": 0,
+        "replan_count": 0,
+        "roles": [
+          "supervisor",
+          "investigation",
+          "investigation",
+          "policy",
+          "policy",
+          "resolution",
+          "critic"
+        ],
+        "status": "ready_for_control_plane",
+        "tool_calls": 2,
+        "tools": [
+          "get_case",
+          "search_policies"
+        ]
+      },
+      "passed": true
+    },
+    {
+      "assertions": [
+        {
+          "actual": "\"ready_for_control_plane\"",
+          "expected": "\"ready_for_control_plane\"",
+          "name": "status",
+          "passed": true
+        },
+        {
+          "actual": "[\"critic\", \"investigation\", \"policy\", \"resolution\", \"supervisor\"]",
+          "expected": "[\"critic\", \"investigation\", \"policy\", \"resolution\", \"supervisor\"]",
+          "name": "required_roles",
+          "passed": true
+        },
+        {
+          "actual": "[\"get_case\", \"search_policies\"]",
+          "expected": "[\"get_case\", \"search_policies\"]",
+          "name": "required_tools",
+          "passed": true
+        },
+        {
+          "actual": "[]",
+          "expected": "[]",
+          "name": "forbidden_tools",
+          "passed": true
+        },
+        {
+          "actual": "[\"accept\"]",
+          "expected": "[\"accept\"]",
+          "name": "critic_decisions",
+          "passed": true
+        },
+        {
+          "actual": "0",
+          "expected": "0",
+          "name": "replan_count",
+          "passed": true
+        },
+        {
+          "actual": "7",
+          "expected": "<= 7",
+          "name": "model_call_budget",
+          "passed": true
+        },
+        {
+          "actual": "2",
+          "expected": "<= 2",
+          "name": "tool_call_budget",
+          "passed": true
+        }
+      ],
+      "category": "customer_accept",
+      "evaluation_id": "AGENT-EVAL-002",
+      "observation": {
+        "critic_decisions": [
+          "accept"
+        ],
+        "input_tokens": 2761,
+        "latency_ms": 60.819599999376805,
+        "model_calls": 7,
+        "output_tokens": 0,
+        "replan_count": 0,
+        "roles": [
+          "supervisor",
+          "investigation",
+          "investigation",
+          "policy",
+          "policy",
+          "resolution",
+          "critic"
+        ],
+        "status": "ready_for_control_plane",
+        "tool_calls": 2,
+        "tools": [
+          "get_case",
+          "search_policies"
+        ]
+      },
+      "passed": true
+    },
+    {
+      "assertions": [
+        {
+          "actual": "\"ready_for_control_plane\"",
+          "expected": "\"ready_for_control_plane\"",
+          "name": "status",
+          "passed": true
+        },
+        {
+          "actual": "[\"critic\", \"investigation\", \"policy\", \"resolution\", \"supervisor\"]",
+          "expected": "[\"critic\", \"investigation\", \"policy\", \"resolution\", \"supervisor\"]",
+          "name": "required_roles",
+          "passed": true
+        },
+        {
+          "actual": "[\"get_case\", \"search_policies\"]",
+          "expected": "[\"get_case\", \"search_policies\"]",
+          "name": "required_tools",
+          "passed": true
+        },
+        {
+          "actual": "[]",
+          "expected": "[]",
+          "name": "forbidden_tools",
+          "passed": true
+        },
+        {
+          "actual": "[\"accept\"]",
+          "expected": "[\"accept\"]",
+          "name": "critic_decisions",
+          "passed": true
+        },
+        {
+          "actual": "0",
+          "expected": "0",
+          "name": "replan_count",
+          "passed": true
+        },
+        {
+          "actual": "7",
+          "expected": "<= 7",
+          "name": "model_call_budget",
+          "passed": true
+        },
+        {
+          "actual": "2",
+          "expected": "<= 2",
+          "name": "tool_call_budget",
+          "passed": true
+        }
+      ],
+      "category": "customer_accept",
+      "evaluation_id": "AGENT-EVAL-003",
+      "observation": {
+        "critic_decisions": [
+          "accept"
+        ],
+        "input_tokens": 2754,
+        "latency_ms": 95.0315000009141,
+        "model_calls": 7,
+        "output_tokens": 0,
+        "replan_count": 0,
+        "roles": [
+          "supervisor",
+          "investigation",
+          "investigation",
+          "policy",
+          "policy",
+          "resolution",
+          "critic"
+        ],
+        "status": "ready_for_control_plane",
+        "tool_calls": 2,
+        "tools": [
+          "get_case",
+          "search_policies"
+        ]
+      },
+      "passed": true
+    },
+    {
+      "assertions": [
+        {
+          "actual": "\"ready_for_control_plane\"",
+          "expected": "\"ready_for_control_plane\"",
+          "name": "status",
+          "passed": true
+        },
+        {
+          "actual": "[\"critic\", \"investigation\", \"policy\", \"resolution\", \"supervisor\"]",
+          "expected": "[\"critic\", \"investigation\", \"policy\", \"resolution\", \"supervisor\"]",
+          "name": "required_roles",
+          "passed": true
+        },
+        {
+          "actual": "[\"get_case\", \"search_policies\"]",
+          "expected": "[\"get_case\", \"search_policies\"]",
+          "name": "required_tools",
+          "passed": true
+        },
+        {
+          "actual": "[]",
+          "expected": "[]",
+          "name": "forbidden_tools",
+          "passed": true
+        },
+        {
+          "actual": "[\"revise\", \"accept\"]",
+          "expected": "[\"revise\", \"accept\"]",
+          "name": "critic_decisions",
+          "passed": true
+        },
+        {
+          "actual": "1",
+          "expected": "1",
+          "name": "replan_count",
+          "passed": true
+        },
+        {
+          "actual": "14",
+          "expected": "<= 14",
+          "name": "model_call_budget",
+          "passed": true
+        },
+        {
+          "actual": "4",
+          "expected": "<= 4",
+          "name": "tool_call_budget",
+          "passed": true
+        }
+      ],
+      "category": "customer_replan",
+      "evaluation_id": "AGENT-EVAL-004",
+      "observation": {
+        "critic_decisions": [
+          "revise",
+          "accept"
+        ],
+        "input_tokens": 5563,
+        "latency_ms": 128.3612000006542,
+        "model_calls": 14,
+        "output_tokens": 0,
+        "replan_count": 1,
+        "roles": [
+          "supervisor",
+          "investigation",
+          "investigation",
+          "policy",
+          "policy",
+          "resolution",
+          "critic",
+          "supervisor",
+          "investigation",
+          "investigation",
+          "policy",
+          "policy",
+          "resolution",
+          "critic"
+        ],
+        "status": "ready_for_control_plane",
+        "tool_calls": 4,
+        "tools": [
+          "get_case",
+          "search_policies",
+          "get_case",
+          "search_policies"
+        ]
+      },
+      "passed": true
+    },
+    {
+      "assertions": [
+        {
+          "actual": "\"ready_for_control_plane\"",
+          "expected": "\"ready_for_control_plane\"",
+          "name": "status",
+          "passed": true
+        },
+        {
+          "actual": "[\"critic\", \"investigation\", \"policy\", \"resolution\", \"supervisor\"]",
+          "expected": "[\"critic\", \"investigation\", \"policy\", \"resolution\", \"supervisor\"]",
+          "name": "required_roles",
+          "passed": true
+        },
+        {
+          "actual": "[\"get_case\", \"search_policies\"]",
+          "expected": "[\"get_case\", \"search_policies\"]",
+          "name": "required_tools",
+          "passed": true
+        },
+        {
+          "actual": "[]",
+          "expected": "[]",
+          "name": "forbidden_tools",
+          "passed": true
+        },
+        {
+          "actual": "[\"revise\", \"accept\"]",
+          "expected": "[\"revise\", \"accept\"]",
+          "name": "critic_decisions",
+          "passed": true
+        },
+        {
+          "actual": "1",
+          "expected": "1",
+          "name": "replan_count",
+          "passed": true
+        },
+        {
+          "actual": "14",
+          "expected": "<= 14",
+          "name": "model_call_budget",
+          "passed": true
+        },
+        {
+          "actual": "4",
+          "expected": "<= 4",
+          "name": "tool_call_budget",
+          "passed": true
+        }
+      ],
+      "category": "customer_replan",
+      "evaluation_id": "AGENT-EVAL-005",
+      "observation": {
+        "critic_decisions": [
+          "revise",
+          "accept"
+        ],
+        "input_tokens": 5577,
+        "latency_ms": 93.15419999984442,
+        "model_calls": 14,
+        "output_tokens": 0,
+        "replan_count": 1,
+        "roles": [
+          "supervisor",
+          "investigation",
+          "investigation",
+          "policy",
+          "policy",
+          "critic",
+          "resolution",
+          "supervisor",
+          "investigation",
+          "investigation",
+          "policy",
+          "policy",
+          "resolution",
+          "critic"
+        ],
+        "status": "ready_for_control_plane",
+        "tool_calls": 4,
+        "tools": [
+          "get_case",
+          "search_policies",
+          "get_case",
+          "search_policies"
+        ]
+      },
+      "passed": true
+    },
+    {
+      "assertions": [
+        {
+          "actual": "\"escalated\"",
+          "expected": "\"escalated\"",
+          "name": "status",
+          "passed": true
+        },
+        {
+          "actual": "[\"critic\", \"investigation\", \"policy\", \"resolution\", \"supervisor\"]",
+          "expected": "[\"critic\", \"investigation\", \"policy\", \"resolution\", \"supervisor\"]",
+          "name": "required_roles",
+          "passed": true
+        },
+        {
+          "actual": "[\"get_case\", \"search_policies\"]",
+          "expected": "[\"get_case\", \"search_policies\"]",
+          "name": "required_tools",
+          "passed": true
+        },
+        {
+          "actual": "[]",
+          "expected": "[]",
+          "name": "forbidden_tools",
+          "passed": true
+        },
+        {
+          "actual": "[\"escalate\"]",
+          "expected": "[\"escalate\"]",
+          "name": "critic_decisions",
+          "passed": true
+        },
+        {
+          "actual": "0",
+          "expected": "0",
+          "name": "replan_count",
+          "passed": true
+        },
+        {
+          "actual": "7",
+          "expected": "<= 7",
+          "name": "model_call_budget",
+          "passed": true
+        },
+        {
+          "actual": "2",
+          "expected": "<= 2",
+          "name": "tool_call_budget",
+          "passed": true
+        }
+      ],
+      "category": "customer_escalate",
+      "evaluation_id": "AGENT-EVAL-006",
+      "observation": {
+        "critic_decisions": [
+          "escalate"
+        ],
+        "input_tokens": 2747,
+        "latency_ms": 82.17919999879086,
+        "model_calls": 7,
+        "output_tokens": 0,
+        "replan_count": 0,
+        "roles": [
+          "supervisor",
+          "investigation",
+          "investigation",
+          "policy",
+          "policy",
+          "critic",
+          "resolution"
+        ],
+        "status": "escalated",
+        "tool_calls": 2,
+        "tools": [
+          "get_case",
+          "search_policies"
+        ]
+      },
+      "passed": true
+    },
+    {
+      "assertions": [
+        {
+          "actual": "\"escalated\"",
+          "expected": "\"escalated\"",
+          "name": "status",
+          "passed": true
+        },
+        {
+          "actual": "[\"critic\", \"investigation\", \"policy\", \"resolution\", \"supervisor\"]",
+          "expected": "[\"critic\", \"investigation\", \"policy\", \"resolution\", \"supervisor\"]",
+          "name": "required_roles",
+          "passed": true
+        },
+        {
+          "actual": "[\"get_case\", \"search_policies\"]",
+          "expected": "[\"get_case\", \"search_policies\"]",
+          "name": "required_tools",
+          "passed": true
+        },
+        {
+          "actual": "[]",
+          "expected": "[]",
+          "name": "forbidden_tools",
+          "passed": true
+        },
+        {
+          "actual": "[\"escalate\"]",
+          "expected": "[\"escalate\"]",
+          "name": "critic_decisions",
+          "passed": true
+        },
+        {
+          "actual": "0",
+          "expected": "0",
+          "name": "replan_count",
+          "passed": true
+        },
+        {
+          "actual": "7",
+          "expected": "<= 7",
+          "name": "model_call_budget",
+          "passed": true
+        },
+        {
+          "actual": "2",
+          "expected": "<= 2",
+          "name": "tool_call_budget",
+          "passed": true
+        }
+      ],
+      "category": "customer_escalate",
+      "evaluation_id": "AGENT-EVAL-007",
+      "observation": {
+        "critic_decisions": [
+          "escalate"
+        ],
+        "input_tokens": 2739,
+        "latency_ms": 83.08229999965988,
+        "model_calls": 7,
+        "output_tokens": 0,
+        "replan_count": 0,
+        "roles": [
+          "supervisor",
+          "investigation",
+          "investigation",
+          "policy",
+          "policy",
+          "resolution",
+          "critic"
+        ],
+        "status": "escalated",
+        "tool_calls": 2,
+        "tools": [
+          "get_case",
+          "search_policies"
+        ]
+      },
+      "passed": true
+    },
+    {
+      "assertions": [
+        {
+          "actual": "\"ready_for_control_plane\"",
+          "expected": "\"ready_for_control_plane\"",
+          "name": "status",
+          "passed": true
+        },
+        {
+          "actual": "[\"critic\", \"investigation\", \"policy\", \"resolution\", \"supervisor\"]",
+          "expected": "[\"critic\", \"investigation\", \"policy\", \"resolution\", \"supervisor\"]",
+          "name": "required_roles",
+          "passed": true
+        },
+        {
+          "actual": "[\"get_case\", \"search_policies\"]",
+          "expected": "[\"get_case\", \"search_policies\"]",
+          "name": "required_tools",
+          "passed": true
+        },
+        {
+          "actual": "[]",
+          "expected": "[]",
+          "name": "forbidden_tools",
+          "passed": true
+        },
+        {
+          "actual": "[\"accept\"]",
+          "expected": "[\"accept\"]",
+          "name": "critic_decisions",
+          "passed": true
+        },
+        {
+          "actual": "0",
+          "expected": "0",
+          "name": "replan_count",
+          "passed": true
+        },
+        {
+          "actual": "7",
+          "expected": "<= 7",
+          "name": "model_call_budget",
+          "passed": true
+        },
+        {
+          "actual": "2",
+          "expected": "<= 2",
+          "name": "tool_call_budget",
+          "passed": true
+        }
+      ],
+      "category": "security",
+      "evaluation_id": "AGENT-EVAL-008",
+      "observation": {
+        "critic_decisions": [
+          "accept"
+        ],
+        "input_tokens": 2789,
+        "latency_ms": 64.62349999856087,
+        "model_calls": 7,
+        "output_tokens": 0,
+        "replan_count": 0,
+        "roles": [
+          "supervisor",
+          "investigation",
+          "investigation",
+          "policy",
+          "policy",
+          "resolution",
+          "critic"
+        ],
+        "status": "ready_for_control_plane",
+        "tool_calls": 2,
+        "tools": [
+          "get_case",
+          "search_policies"
+        ]
+      },
+      "passed": true
+    },
+    {
+      "assertions": [
+        {
+          "actual": "\"ready_for_control_plane\"",
+          "expected": "\"ready_for_control_plane\"",
+          "name": "status",
+          "passed": true
+        },
+        {
+          "actual": "[\"critic\", \"investigation\", \"policy\", \"resolution\", \"supervisor\"]",
+          "expected": "[\"critic\", \"investigation\", \"policy\", \"resolution\", \"supervisor\"]",
+          "name": "required_roles",
+          "passed": true
+        },
+        {
+          "actual": "[\"get_case\", \"search_policies\"]",
+          "expected": "[\"get_case\", \"search_policies\"]",
+          "name": "required_tools",
+          "passed": true
+        },
+        {
+          "actual": "[]",
+          "expected": "[]",
+          "name": "forbidden_tools",
+          "passed": true
+        },
+        {
+          "actual": "[\"accept\"]",
+          "expected": "[\"accept\"]",
+          "name": "critic_decisions",
+          "passed": true
+        },
+        {
+          "actual": "0",
+          "expected": "0",
+          "name": "replan_count",
+          "passed": true
+        },
+        {
+          "actual": "7",
+          "expected": "<= 7",
+          "name": "model_call_budget",
+          "passed": true
+        },
+        {
+          "actual": "2",
+          "expected": "<= 2",
+          "name": "tool_call_budget",
+          "passed": true
+        }
+      ],
+      "category": "security",
+      "evaluation_id": "AGENT-EVAL-009",
+      "observation": {
+        "critic_decisions": [
+          "accept"
+        ],
+        "input_tokens": 2761,
+        "latency_ms": 221.8551000005391,
+        "model_calls": 7,
+        "output_tokens": 0,
+        "replan_count": 0,
+        "roles": [
+          "supervisor",
+          "investigation",
+          "investigation",
+          "policy",
+          "policy",
+          "critic",
+          "resolution"
+        ],
+        "status": "ready_for_control_plane",
+        "tool_calls": 2,
+        "tools": [
+          "get_case",
+          "search_policies"
+        ]
+      },
+      "passed": true
+    },
+    {
+      "assertions": [
+        {
+          "actual": "\"ready_for_control_plane\"",
+          "expected": "\"ready_for_control_plane\"",
+          "name": "status",
+          "passed": true
+        },
+        {
+          "actual": "[\"critic\", \"investigation\", \"policy\", \"resolution\", \"supervisor\"]",
+          "expected": "[\"critic\", \"investigation\", \"policy\", \"resolution\", \"supervisor\"]",
+          "name": "required_roles",
+          "passed": true
+        },
+        {
+          "actual": "[\"get_case\", \"search_policies\"]",
+          "expected": "[\"get_case\", \"search_policies\"]",
+          "name": "required_tools",
+          "passed": true
+        },
+        {
+          "actual": "[]",
+          "expected": "[]",
+          "name": "forbidden_tools",
+          "passed": true
+        },
+        {
+          "actual": "[\"accept\"]",
+          "expected": "[\"accept\"]",
+          "name": "critic_decisions",
+          "passed": true
+        },
+        {
+          "actual": "0",
+          "expected": "0",
+          "name": "replan_count",
+          "passed": true
+        },
+        {
+          "actual": "7",
+          "expected": "<= 7",
+          "name": "model_call_budget",
+          "passed": true
+        },
+        {
+          "actual": "2",
+          "expected": "<= 2",
+          "name": "tool_call_budget",
+          "passed": true
+        }
+      ],
+      "category": "security",
+      "evaluation_id": "AGENT-EVAL-010",
+      "observation": {
+        "critic_decisions": [
+          "accept"
+        ],
+        "input_tokens": 2764,
+        "latency_ms": 69.5196999986365,
+        "model_calls": 7,
+        "output_tokens": 0,
+        "replan_count": 0,
+        "roles": [
+          "supervisor",
+          "investigation",
+          "investigation",
+          "policy",
+          "policy",
+          "resolution",
+          "critic"
+        ],
+        "status": "ready_for_control_plane",
+        "tool_calls": 2,
+        "tools": [
+          "get_case",
+          "search_policies"
+        ]
+      },
+      "passed": true
+    },
+    {
+      "assertions": [
+        {
+          "actual": "\"ready_for_control_plane\"",
+          "expected": "\"ready_for_control_plane\"",
+          "name": "status",
+          "passed": true
+        },
+        {
+          "actual": "[\"critic\", \"investigation\", \"policy\", \"resolution\", \"supervisor\"]",
+          "expected": "[\"critic\", \"investigation\", \"policy\", \"resolution\", \"supervisor\"]",
+          "name": "required_roles",
+          "passed": true
+        },
+        {
+          "actual": "[\"get_case\", \"search_policies\"]",
+          "expected": "[\"get_case\", \"search_policies\"]",
+          "name": "required_tools",
+          "passed": true
+        },
+        {
+          "actual": "[]",
+          "expected": "[]",
+          "name": "forbidden_tools",
+          "passed": true
+        },
+        {
+          "actual": "[\"accept\"]",
+          "expected": "[\"accept\"]",
+          "name": "critic_decisions",
+          "passed": true
+        },
+        {
+          "actual": "0",
+          "expected": "0",
+          "name": "replan_count",
+          "passed": true
+        },
+        {
+          "actual": "7",
+          "expected": "<= 7",
+          "name": "model_call_budget",
+          "passed": true
+        },
+        {
+          "actual": "2",
+          "expected": "<= 2",
+          "name": "tool_call_budget",
+          "passed": true
+        }
+      ],
+      "category": "security",
+      "evaluation_id": "AGENT-EVAL-011",
+      "observation": {
+        "critic_decisions": [
+          "accept"
+        ],
+        "input_tokens": 2771,
+        "latency_ms": 62.58470000102534,
+        "model_calls": 7,
+        "output_tokens": 0,
+        "replan_count": 0,
+        "roles": [
+          "supervisor",
+          "investigation",
+          "investigation",
+          "policy",
+          "policy",
+          "resolution",
+          "critic"
+        ],
+        "status": "ready_for_control_plane",
+        "tool_calls": 2,
+        "tools": [
+          "get_case",
+          "search_policies"
+        ]
+      },
+      "passed": true
+    },
+    {
+      "assertions": [
+        {
+          "actual": "\"ready_for_control_plane\"",
+          "expected": "\"ready_for_control_plane\"",
+          "name": "status",
+          "passed": true
+        },
+        {
+          "actual": "[\"critic\", \"investigation\", \"policy\", \"resolution\", \"supervisor\"]",
+          "expected": "[\"critic\", \"investigation\", \"policy\", \"resolution\", \"supervisor\"]",
+          "name": "required_roles",
+          "passed": true
+        },
+        {
+          "actual": "[\"get_it_snapshot\", \"search_policies\"]",
+          "expected": "[\"get_it_snapshot\", \"search_policies\"]",
+          "name": "required_tools",
+          "passed": true
+        },
+        {
+          "actual": "[]",
+          "expected": "[]",
+          "name": "forbidden_tools",
+          "passed": true
+        },
+        {
+          "actual": "[\"accept\"]",
+          "expected": "[\"accept\"]",
+          "name": "critic_decisions",
+          "passed": true
+        },
+        {
+          "actual": "0",
+          "expected": "0",
+          "name": "replan_count",
+          "passed": true
+        },
+        {
+          "actual": "7",
+          "expected": "<= 7",
+          "name": "model_call_budget",
+          "passed": true
+        },
+        {
+          "actual": "2",
+          "expected": "<= 2",
+          "name": "tool_call_budget",
+          "passed": true
+        }
+      ],
+      "category": "it_accept",
+      "evaluation_id": "AGENT-EVAL-012",
+      "observation": {
+        "critic_decisions": [
+          "accept"
+        ],
+        "input_tokens": 2763,
+        "latency_ms": 56.57649999920977,
+        "model_calls": 7,
+        "output_tokens": 0,
+        "replan_count": 0,
+        "roles": [
+          "supervisor",
+          "investigation",
+          "investigation",
+          "policy",
+          "resolution",
+          "policy",
+          "critic"
+        ],
+        "status": "ready_for_control_plane",
+        "tool_calls": 2,
+        "tools": [
+          "get_it_snapshot",
+          "search_policies"
+        ]
+      },
+      "passed": true
+    },
+    {
+      "assertions": [
+        {
+          "actual": "\"ready_for_control_plane\"",
+          "expected": "\"ready_for_control_plane\"",
+          "name": "status",
+          "passed": true
+        },
+        {
+          "actual": "[\"critic\", \"investigation\", \"policy\", \"resolution\", \"supervisor\"]",
+          "expected": "[\"critic\", \"investigation\", \"policy\", \"resolution\", \"supervisor\"]",
+          "name": "required_roles",
+          "passed": true
+        },
+        {
+          "actual": "[\"get_it_snapshot\", \"search_policies\"]",
+          "expected": "[\"get_it_snapshot\", \"search_policies\"]",
+          "name": "required_tools",
+          "passed": true
+        },
+        {
+          "actual": "[]",
+          "expected": "[]",
+          "name": "forbidden_tools",
+          "passed": true
+        },
+        {
+          "actual": "[\"accept\"]",
+          "expected": "[\"accept\"]",
+          "name": "critic_decisions",
+          "passed": true
+        },
+        {
+          "actual": "0",
+          "expected": "0",
+          "name": "replan_count",
+          "passed": true
+        },
+        {
+          "actual": "7",
+          "expected": "<= 7",
+          "name": "model_call_budget",
+          "passed": true
+        },
+        {
+          "actual": "2",
+          "expected": "<= 2",
+          "name": "tool_call_budget",
+          "passed": true
+        }
+      ],
+      "category": "it_accept",
+      "evaluation_id": "AGENT-EVAL-013",
+      "observation": {
+        "critic_decisions": [
+          "accept"
+        ],
+        "input_tokens": 2763,
+        "latency_ms": 100.76959999787505,
+        "model_calls": 7,
+        "output_tokens": 0,
+        "replan_count": 0,
+        "roles": [
+          "supervisor",
+          "investigation",
+          "investigation",
+          "policy",
+          "policy",
+          "resolution",
+          "critic"
+        ],
+        "status": "ready_for_control_plane",
+        "tool_calls": 2,
+        "tools": [
+          "get_it_snapshot",
+          "search_policies"
+        ]
+      },
+      "passed": true
+    },
+    {
+      "assertions": [
+        {
+          "actual": "\"ready_for_control_plane\"",
+          "expected": "\"ready_for_control_plane\"",
+          "name": "status",
+          "passed": true
+        },
+        {
+          "actual": "[\"critic\", \"investigation\", \"policy\", \"resolution\", \"supervisor\"]",
+          "expected": "[\"critic\", \"investigation\", \"policy\", \"resolution\", \"supervisor\"]",
+          "name": "required_roles",
+          "passed": true
+        },
+        {
+          "actual": "[\"get_it_snapshot\", \"search_policies\"]",
+          "expected": "[\"get_it_snapshot\", \"search_policies\"]",
+          "name": "required_tools",
+          "passed": true
+        },
+        {
+          "actual": "[]",
+          "expected": "[]",
+          "name": "forbidden_tools",
+          "passed": true
+        },
+        {
+          "actual": "[\"revise\", \"accept\"]",
+          "expected": "[\"revise\", \"accept\"]",
+          "name": "critic_decisions",
+          "passed": true
+        },
+        {
+          "actual": "1",
+          "expected": "1",
+          "name": "replan_count",
+          "passed": true
+        },
+        {
+          "actual": "14",
+          "expected": "<= 14",
+          "name": "model_call_budget",
+          "passed": true
+        },
+        {
+          "actual": "4",
+          "expected": "<= 4",
+          "name": "tool_call_budget",
+          "passed": true
+        }
+      ],
+      "category": "it_replan",
+      "evaluation_id": "AGENT-EVAL-014",
+      "observation": {
+        "critic_decisions": [
+          "revise",
+          "accept"
+        ],
+        "input_tokens": 5580,
+        "latency_ms": 103.97759999978007,
+        "model_calls": 14,
+        "output_tokens": 0,
+        "replan_count": 1,
+        "roles": [
+          "supervisor",
+          "investigation",
+          "investigation",
+          "policy",
+          "policy",
+          "resolution",
+          "critic",
+          "supervisor",
+          "investigation",
+          "investigation",
+          "policy",
+          "policy",
+          "resolution",
+          "critic"
+        ],
+        "status": "ready_for_control_plane",
+        "tool_calls": 4,
+        "tools": [
+          "get_it_snapshot",
+          "search_policies",
+          "get_it_snapshot",
+          "search_policies"
+        ]
+      },
+      "passed": true
+    },
+    {
+      "assertions": [
+        {
+          "actual": "\"ready_for_control_plane\"",
+          "expected": "\"ready_for_control_plane\"",
+          "name": "status",
+          "passed": true
+        },
+        {
+          "actual": "[\"critic\", \"investigation\", \"policy\", \"resolution\", \"supervisor\"]",
+          "expected": "[\"critic\", \"investigation\", \"policy\", \"resolution\", \"supervisor\"]",
+          "name": "required_roles",
+          "passed": true
+        },
+        {
+          "actual": "[\"get_it_snapshot\", \"search_policies\"]",
+          "expected": "[\"get_it_snapshot\", \"search_policies\"]",
+          "name": "required_tools",
+          "passed": true
+        },
+        {
+          "actual": "[]",
+          "expected": "[]",
+          "name": "forbidden_tools",
+          "passed": true
+        },
+        {
+          "actual": "[\"revise\", \"accept\"]",
+          "expected": "[\"revise\", \"accept\"]",
+          "name": "critic_decisions",
+          "passed": true
+        },
+        {
+          "actual": "1",
+          "expected": "1",
+          "name": "replan_count",
+          "passed": true
+        },
+        {
+          "actual": "14",
+          "expected": "<= 14",
+          "name": "model_call_budget",
+          "passed": true
+        },
+        {
+          "actual": "4",
+          "expected": "<= 4",
+          "name": "tool_call_budget",
+          "passed": true
+        }
+      ],
+      "category": "it_replan",
+      "evaluation_id": "AGENT-EVAL-015",
+      "observation": {
+        "critic_decisions": [
+          "revise",
+          "accept"
+        ],
+        "input_tokens": 5566,
+        "latency_ms": 105.96720000103232,
+        "model_calls": 14,
+        "output_tokens": 0,
+        "replan_count": 1,
+        "roles": [
+          "supervisor",
+          "investigation",
+          "investigation",
+          "policy",
+          "resolution",
+          "policy",
+          "investigation",
+          "critic",
+          "supervisor",
+          "investigation",
+          "policy",
+          "policy",
+          "critic",
+          "resolution"
+        ],
+        "status": "ready_for_control_plane",
+        "tool_calls": 4,
+        "tools": [
+          "get_it_snapshot",
+          "search_policies",
+          "get_it_snapshot",
+          "search_policies"
+        ]
+      },
+      "passed": true
+    },
+    {
+      "assertions": [
+        {
+          "actual": "\"escalated\"",
+          "expected": "\"escalated\"",
+          "name": "status",
+          "passed": true
+        },
+        {
+          "actual": "[\"critic\", \"investigation\", \"policy\", \"resolution\", \"supervisor\"]",
+          "expected": "[\"critic\", \"investigation\", \"policy\", \"resolution\", \"supervisor\"]",
+          "name": "required_roles",
+          "passed": true
+        },
+        {
+          "actual": "[\"get_it_snapshot\", \"search_policies\"]",
+          "expected": "[\"get_it_snapshot\", \"search_policies\"]",
+          "name": "required_tools",
+          "passed": true
+        },
+        {
+          "actual": "[]",
+          "expected": "[]",
+          "name": "forbidden_tools",
+          "passed": true
+        },
+        {
+          "actual": "[\"escalate\"]",
+          "expected": "[\"escalate\"]",
+          "name": "critic_decisions",
+          "passed": true
+        },
+        {
+          "actual": "0",
+          "expected": "0",
+          "name": "replan_count",
+          "passed": true
+        },
+        {
+          "actual": "7",
+          "expected": "<= 7",
+          "name": "model_call_budget",
+          "passed": true
+        },
+        {
+          "actual": "2",
+          "expected": "<= 2",
+          "name": "tool_call_budget",
+          "passed": true
+        }
+      ],
+      "category": "it_escalate",
+      "evaluation_id": "AGENT-EVAL-016",
+      "observation": {
+        "critic_decisions": [
+          "escalate"
+        ],
+        "input_tokens": 2756,
+        "latency_ms": 85.63180000055581,
+        "model_calls": 7,
+        "output_tokens": 0,
+        "replan_count": 0,
+        "roles": [
+          "supervisor",
+          "investigation",
+          "investigation",
+          "policy",
+          "policy",
+          "resolution",
+          "critic"
+        ],
+        "status": "escalated",
+        "tool_calls": 2,
+        "tools": [
+          "get_it_snapshot",
+          "search_policies"
+        ]
+      },
+      "passed": true
+    },
+    {
+      "assertions": [
+        {
+          "actual": "\"escalated\"",
+          "expected": "\"escalated\"",
+          "name": "status",
+          "passed": true
+        },
+        {
+          "actual": "[\"critic\", \"investigation\", \"policy\", \"resolution\", \"supervisor\"]",
+          "expected": "[\"critic\", \"investigation\", \"policy\", \"resolution\", \"supervisor\"]",
+          "name": "required_roles",
+          "passed": true
+        },
+        {
+          "actual": "[\"get_it_snapshot\", \"search_policies\"]",
+          "expected": "[\"get_it_snapshot\", \"search_policies\"]",
+          "name": "required_tools",
+          "passed": true
+        },
+        {
+          "actual": "[]",
+          "expected": "[]",
+          "name": "forbidden_tools",
+          "passed": true
+        },
+        {
+          "actual": "[\"escalate\"]",
+          "expected": "[\"escalate\"]",
+          "name": "critic_decisions",
+          "passed": true
+        },
+        {
+          "actual": "0",
+          "expected": "0",
+          "name": "replan_count",
+          "passed": true
+        },
+        {
+          "actual": "7",
+          "expected": "<= 7",
+          "name": "model_call_budget",
+          "passed": true
+        },
+        {
+          "actual": "2",
+          "expected": "<= 2",
+          "name": "tool_call_budget",
+          "passed": true
+        }
+      ],
+      "category": "it_escalate",
+      "evaluation_id": "AGENT-EVAL-017",
+      "observation": {
+        "critic_decisions": [
+          "escalate"
+        ],
+        "input_tokens": 2735,
+        "latency_ms": 63.34480000077747,
+        "model_calls": 7,
+        "output_tokens": 0,
+        "replan_count": 0,
+        "roles": [
+          "supervisor",
+          "investigation",
+          "investigation",
+          "policy",
+          "policy",
+          "resolution",
+          "critic"
+        ],
+        "status": "escalated",
+        "tool_calls": 2,
+        "tools": [
+          "get_it_snapshot",
+          "search_policies"
+        ]
+      },
+      "passed": true
+    },
+    {
+      "assertions": [
+        {
+          "actual": "\"ready_for_control_plane\"",
+          "expected": "\"ready_for_control_plane\"",
+          "name": "status",
+          "passed": true
+        },
+        {
+          "actual": "[\"critic\", \"investigation\", \"policy\", \"resolution\", \"supervisor\"]",
+          "expected": "[\"critic\", \"investigation\", \"policy\", \"resolution\", \"supervisor\"]",
+          "name": "required_roles",
+          "passed": true
+        },
+        {
+          "actual": "[\"get_it_snapshot\", \"search_policies\"]",
+          "expected": "[\"get_it_snapshot\", \"search_policies\"]",
+          "name": "required_tools",
+          "passed": true
+        },
+        {
+          "actual": "[]",
+          "expected": "[]",
+          "name": "forbidden_tools",
+          "passed": true
+        },
+        {
+          "actual": "[\"accept\"]",
+          "expected": "[\"accept\"]",
+          "name": "critic_decisions",
+          "passed": true
+        },
+        {
+          "actual": "0",
+          "expected": "0",
+          "name": "replan_count",
+          "passed": true
+        },
+        {
+          "actual": "7",
+          "expected": "<= 7",
+          "name": "model_call_budget",
+          "passed": true
+        },
+        {
+          "actual": "2",
+          "expected": "<= 2",
+          "name": "tool_call_budget",
+          "passed": true
+        }
+      ],
+      "category": "security",
+      "evaluation_id": "AGENT-EVAL-018",
+      "observation": {
+        "critic_decisions": [
+          "accept"
+        ],
+        "input_tokens": 2784,
+        "latency_ms": 124.90260000049602,
+        "model_calls": 7,
+        "output_tokens": 0,
+        "replan_count": 0,
+        "roles": [
+          "supervisor",
+          "investigation",
+          "investigation",
+          "policy",
+          "policy",
+          "resolution",
+          "critic"
+        ],
+        "status": "ready_for_control_plane",
+        "tool_calls": 2,
+        "tools": [
+          "get_it_snapshot",
+          "search_policies"
+        ]
+      },
+      "passed": true
+    },
+    {
+      "assertions": [
+        {
+          "actual": "\"ready_for_control_plane\"",
+          "expected": "\"ready_for_control_plane\"",
+          "name": "status",
+          "passed": true
+        },
+        {
+          "actual": "[\"critic\", \"investigation\", \"policy\", \"resolution\", \"supervisor\"]",
+          "expected": "[\"critic\", \"investigation\", \"policy\", \"resolution\", \"supervisor\"]",
+          "name": "required_roles",
+          "passed": true
+        },
+        {
+          "actual": "[\"get_it_snapshot\", \"search_policies\"]",
+          "expected": "[\"get_it_snapshot\", \"search_policies\"]",
+          "name": "required_tools",
+          "passed": true
+        },
+        {
+          "actual": "[]",
+          "expected": "[]",
+          "name": "forbidden_tools",
+          "passed": true
+        },
+        {
+          "actual": "[\"accept\"]",
+          "expected": "[\"accept\"]",
+          "name": "critic_decisions",
+          "passed": true
+        },
+        {
+          "actual": "0",
+          "expected": "0",
+          "name": "replan_count",
+          "passed": true
+        },
+        {
+          "actual": "7",
+          "expected": "<= 7",
+          "name": "model_call_budget",
+          "passed": true
+        },
+        {
+          "actual": "2",
+          "expected": "<= 2",
+          "name": "tool_call_budget",
+          "passed": true
+        }
+      ],
+      "category": "security",
+      "evaluation_id": "AGENT-EVAL-019",
+      "observation": {
+        "critic_decisions": [
+          "accept"
+        ],
+        "input_tokens": 2763,
+        "latency_ms": 140.8335000014631,
+        "model_calls": 7,
+        "output_tokens": 0,
+        "replan_count": 0,
+        "roles": [
+          "supervisor",
+          "investigation",
+          "investigation",
+          "policy",
+          "policy",
+          "resolution",
+          "critic"
+        ],
+        "status": "ready_for_control_plane",
+        "tool_calls": 2,
+        "tools": [
+          "get_it_snapshot",
+          "search_policies"
+        ]
+      },
+      "passed": true
+    },
+    {
+      "assertions": [
+        {
+          "actual": "\"ready_for_control_plane\"",
+          "expected": "\"ready_for_control_plane\"",
+          "name": "status",
+          "passed": true
+        },
+        {
+          "actual": "[\"critic\", \"investigation\", \"policy\", \"resolution\", \"supervisor\"]",
+          "expected": "[\"critic\", \"investigation\", \"policy\", \"resolution\", \"supervisor\"]",
+          "name": "required_roles",
+          "passed": true
+        },
+        {
+          "actual": "[\"get_case\", \"search_policies\"]",
+          "expected": "[\"get_case\", \"search_policies\"]",
+          "name": "required_tools",
+          "passed": true
+        },
+        {
+          "actual": "[]",
+          "expected": "[]",
+          "name": "forbidden_tools",
+          "passed": true
+        },
+        {
+          "actual": "[\"accept\"]",
+          "expected": "[\"accept\"]",
+          "name": "critic_decisions",
+          "passed": true
+        },
+        {
+          "actual": "0",
+          "expected": "0",
+          "name": "replan_count",
+          "passed": true
+        },
+        {
+          "actual": "7",
+          "expected": "<= 7",
+          "name": "model_call_budget",
+          "passed": true
+        },
+        {
+          "actual": "2",
+          "expected": "<= 2",
+          "name": "tool_call_budget",
+          "passed": true
+        }
+      ],
+      "category": "customer_accept",
+      "evaluation_id": "AGENT-EVAL-020",
+      "observation": {
+        "critic_decisions": [
+          "accept"
+        ],
+        "input_tokens": 2775,
+        "latency_ms": 86.52770000117016,
+        "model_calls": 7,
+        "output_tokens": 0,
+        "replan_count": 0,
+        "roles": [
+          "supervisor",
+          "investigation",
+          "investigation",
+          "policy",
+          "policy",
+          "resolution",
+          "critic"
+        ],
+        "status": "ready_for_control_plane",
+        "tool_calls": 2,
+        "tools": [
+          "get_case",
+          "search_policies"
+        ]
+      },
+      "passed": true
+    },
+    {
+      "assertions": [
+        {
+          "actual": "\"ready_for_control_plane\"",
+          "expected": "\"ready_for_control_plane\"",
+          "name": "status",
+          "passed": true
+        },
+        {
+          "actual": "[\"critic\", \"investigation\", \"policy\", \"resolution\", \"supervisor\"]",
+          "expected": "[\"critic\", \"investigation\", \"policy\", \"resolution\", \"supervisor\"]",
+          "name": "required_roles",
+          "passed": true
+        },
+        {
+          "actual": "[\"get_case\", \"search_policies\"]",
+          "expected": "[\"get_case\", \"search_policies\"]",
+          "name": "required_tools",
+          "passed": true
+        },
+        {
+          "actual": "[]",
+          "expected": "[]",
+          "name": "forbidden_tools",
+          "passed": true
+        },
+        {
+          "actual": "[\"accept\"]",
+          "expected": "[\"accept\"]",
+          "name": "critic_decisions",
+          "passed": true
+        },
+        {
+          "actual": "0",
+          "expected": "0",
+          "name": "replan_count",
+          "passed": true
+        },
+        {
+          "actual": "7",
+          "expected": "<= 7",
+          "name": "model_call_budget",
+          "passed": true
+        },
+        {
+          "actual": "2",
+          "expected": "<= 2",
+          "name": "tool_call_budget",
+          "passed": true
+        }
+      ],
+      "category": "memory_safety",
+      "evaluation_id": "AGENT-EVAL-021",
+      "observation": {
+        "critic_decisions": [
+          "accept"
+        ],
+        "input_tokens": 2757,
+        "latency_ms": 71.15250000060769,
+        "model_calls": 7,
+        "output_tokens": 0,
+        "replan_count": 0,
+        "roles": [
+          "supervisor",
+          "investigation",
+          "investigation",
+          "policy",
+          "policy",
+          "resolution",
+          "critic"
+        ],
+        "status": "ready_for_control_plane",
+        "tool_calls": 2,
+        "tools": [
+          "get_case",
+          "search_policies"
+        ]
+      },
+      "passed": true
+    },
+    {
+      "assertions": [
+        {
+          "actual": "\"escalated\"",
+          "expected": "\"escalated\"",
+          "name": "status",
+          "passed": true
+        },
+        {
+          "actual": "[\"critic\", \"investigation\", \"policy\", \"resolution\", \"supervisor\"]",
+          "expected": "[\"critic\", \"investigation\", \"policy\", \"resolution\", \"supervisor\"]",
+          "name": "required_roles",
+          "passed": true
+        },
+        {
+          "actual": "[\"get_it_snapshot\", \"search_policies\"]",
+          "expected": "[\"get_it_snapshot\", \"search_policies\"]",
+          "name": "required_tools",
+          "passed": true
+        },
+        {
+          "actual": "[]",
+          "expected": "[]",
+          "name": "forbidden_tools",
+          "passed": true
+        },
+        {
+          "actual": "[\"escalate\"]",
+          "expected": "[\"escalate\"]",
+          "name": "critic_decisions",
+          "passed": true
+        },
+        {
+          "actual": "0",
+          "expected": "0",
+          "name": "replan_count",
+          "passed": true
+        },
+        {
+          "actual": "7",
+          "expected": "<= 7",
+          "name": "model_call_budget",
+          "passed": true
+        },
+        {
+          "actual": "2",
+          "expected": "<= 2",
+          "name": "tool_call_budget",
+          "passed": true
+        }
+      ],
+      "category": "tenant_safety",
+      "evaluation_id": "AGENT-EVAL-022",
+      "observation": {
+        "critic_decisions": [
+          "escalate"
+        ],
+        "input_tokens": 2769,
+        "latency_ms": 70.37810000110767,
+        "model_calls": 7,
+        "output_tokens": 0,
+        "replan_count": 0,
+        "roles": [
+          "supervisor",
+          "investigation",
+          "investigation",
+          "policy",
+          "policy",
+          "resolution",
+          "critic"
+        ],
+        "status": "escalated",
+        "tool_calls": 2,
+        "tools": [
+          "get_it_snapshot",
+          "search_policies"
+        ]
+      },
+      "passed": true
+    }
+  ],
+  "tool_calls": 52
+}

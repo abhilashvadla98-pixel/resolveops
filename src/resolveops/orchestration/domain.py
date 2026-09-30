@@ -50,6 +50,11 @@ def build_domain_subgraph(
         }
 
     def resolve(state: HierarchicalAgentState) -> dict[str, object]:
+        memory_results = runtime.reviewed_memory_context(
+            tenant_id=state["tenant_id"],
+            investigation_results=list(state.get("investigation_results", [])),
+            policy=state["policy"],
+        )
         context = runtime.context_builder.build(
             role=AgentRole.RESOLUTION,
             workflow_id=state["workflow_id"],
@@ -64,6 +69,7 @@ def build_domain_subgraph(
             policy_results=[
                 item.model_dump(mode="json") for item in state.get("policy_results", [])
             ],
+            memory_results=memory_results,
         )
         proposal, run_id = runtime.invoker.invoke(
             tenant_id=state["tenant_id"],

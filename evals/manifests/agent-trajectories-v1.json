@@ -1,0 +1,13 @@
+{
+  "dataset_id": "resolveops.agents.trajectories",
+  "version": "1.0.0",
+  "description": "Offline multi-agent routing, replanning, tool-boundary, and escalation contract cases.",
+  "source": "hand-authored synthetic orchestration fixtures",
+  "creation_method": "Operational scenarios labelled with expected roles, read tools, critic decisions, replans, status, and hard call budgets.",
+  "path": "evals/agents/trajectories.jsonl",
+  "labels": ["expected_status", "required_roles", "required_tools", "forbidden_tools", "critic_decisions", "replan_count", "call_budgets"],
+  "case_categories": ["customer_accept", "customer_replan", "customer_escalate", "it_accept", "it_replan", "it_escalate", "security", "memory_safety", "tenant_safety"],
+  "record_count": 22,
+  "sha256": "6f34374070a6c6fa7774357321f394fa083fd03ca9504da81adc9386637afd16",
+  "created_date": "2026-09-29"
+}

@@ -104,7 +104,7 @@ class MultiAgentReasoningRuntime:
             parent_run_id=supervisor_run,
         )
         run_ids.extend(policy_runs)
-        memory_results = self._reviewed_memory_context(
+        memory_results = self.reviewed_memory_context(
             tenant_id=tenant_id,
             investigation_results=investigation_results,
             policy=policy,
@@ -369,7 +369,7 @@ class MultiAgentReasoningRuntime:
             parent_agent_run_id=parent_run_id,
         )
 
-    def _reviewed_memory_context(
+    def reviewed_memory_context(
         self,
         *,
         tenant_id: str,

@@ -359,6 +359,44 @@ def test_runtime_passes_only_matching_reviewed_memory_to_resolution_role() -> No
     assert selected["source"] == "human_reviewed_resolution_memory"
 
 
+def test_hierarchical_orchestrator_passes_reviewed_memory_to_resolution_role() -> None:
+    engine = create_engine("sqlite:///:memory:")
+    Base.metadata.create_all(engine)
+    factory = sessionmaker(engine, expire_on_commit=False)
+    store = AgentRunStore(factory, clock=lambda: NOW)
+    memory_store = ReviewedResolutionMemoryStore(factory, clock=lambda: NOW)
+    memory_store.promote(
+        tenant_id="TENANT-A",
+        issue_type="duplicate_charge",
+        evidence_pattern=["two captured payments"],
+        policy_versions={"POLICY-1": 1},
+        approved_resolution={"action": "refund_duplicate"},
+        verification_outcome="The approved refund was independently verified.",
+        reviewed_by="REVIEWER-1",
+    )
+    provider = ScriptedProvider()
+    ledger = BudgetLedger(AgentBudget(max_model_calls=8, max_agent_steps=8), datetime.now(UTC))
+    runtime = MultiAgentReasoningRuntime(
+        invoker=AgentInvoker(provider=provider, store=store, ledger=ledger),
+        tools=MemoryAwareScriptedTools(),
+        run_store=store,
+        ledger=ledger,
+        memory_retriever=memory_store,
+    )
+
+    HierarchicalAgentOrchestrator(runtime).run(
+        workflow_id="WF-MEMORY-GRAPH-1",
+        case_id="CASE-1",
+        tenant_id="TENANT-A",
+        domain=AgentDomain.CUSTOMER_OPERATIONS,
+        objective="Resolve a suspected duplicate payment.",
+        trace_id="e" * 32,
+    )
+
+    assert len(provider.resolution_memory_results) == 1
+    assert provider.resolution_memory_results[0]["advisory_only"] is True
+
+
 def test_context_builder_rejects_cross_tenant_evidence() -> None:
     with pytest.raises(ValueError, match="different tenant"):
         AgentContextBuilder().build(

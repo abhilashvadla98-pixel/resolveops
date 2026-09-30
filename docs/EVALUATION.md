@@ -6,8 +6,19 @@ case resolution.
 
 Every evaluation set has a manifest under `evals/manifests/` with a stable dataset ID, semantic
 version, exact record count, SHA-256 hash, task type, split, creation method, and review status. The
-five manifests currently cover 115 records. Tests verify every hash so a changed dataset cannot be
+six manifests currently cover 137 records. Tests verify every hash so a changed dataset cannot be
 mistaken for the previous baseline.
+
+## Multi-agent trajectory contracts
+
+`python scripts/run_agent_evaluation.py` runs 22 hand-authored synthetic scenarios through the real
+hierarchical orchestrator with a deterministic offline provider double. Together with the 24
+customer and 14 employee-IT workflow cases, the repository contains 60 versioned operational
+workflow/trajectory cases. The agent suite checks all five roles, bounded read tools, critic
+decisions, replanning, escalation, forbidden writes, call budgets, and both domains. It makes no
+paid model calls and does not claim live-model quality or human labels. The stored report includes
+the dataset checksum, environment, measured local latency, estimated context tokens, and explicit
+limitations.
 
 ## Retrieval evaluation
 

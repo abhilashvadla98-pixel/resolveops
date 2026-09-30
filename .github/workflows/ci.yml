@@ -29,6 +29,7 @@ jobs:
       - run: uv run pytest -m "not postgres and not browser" -q
       - run: uv run python -m resolveops.evaluation.run
       - run: uv run python -m resolveops.evaluation.run_employee
+      - run: uv run python scripts/run_agent_evaluation.py --output evals/agents/ci-report.json
       - run: uv run python -m pip check
 
   security:

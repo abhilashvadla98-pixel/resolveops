@@ -121,6 +121,16 @@ class AgentRunStore:
             ).all()
             return [self._agent_model(item) for item in records]
 
+    def list_tool_calls_for_workflow(self, workflow_id: str) -> list[ToolCallRecord]:
+        with self.session_factory() as session:
+            records = session.scalars(
+                select(AgentToolCallRecord)
+                .join(AgentRunRecord)
+                .where(AgentRunRecord.workflow_id == workflow_id)
+                .order_by(AgentToolCallRecord.started_at, AgentToolCallRecord.tool_call_id)
+            ).all()
+            return [self._tool_model(item) for item in records]
+
     def start_tool_call(
         self,
         *,
