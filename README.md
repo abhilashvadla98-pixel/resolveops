@@ -15,7 +15,7 @@ The public demo opens with populated synthetic data and two distinct paths:
   least-privilege grant → fresh verification.
 
 [Live synthetic demo](https://resolveops-demo.onrender.com/console) *(free host: allow about one minute for the first wake-up)*
-· [42-second product teaser](https://github.com/abhilashvadla98-pixel/resolveops/releases/download/recruiter-demo-v1/resolveops-recruiter-demo.webm)
+· [42-second product teaser](https://github.com/abhilashvadla98-pixel/resolveops/releases/download/v1.0.0/resolveops-product-demo.webm)
 · [evaluation evidence](docs/EVALUATION.md) · [engineering case study](docs/CASE_STUDY.md)
 · [public-demo deployment](docs/PUBLIC_DEMO.md)
 

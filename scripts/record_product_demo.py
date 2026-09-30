@@ -1,4 +1,4 @@
-"""Record a synthetic recruiter walkthrough without exposing local secrets."""
+"""Record a synthetic product walkthrough without exposing local secrets."""
 
 from __future__ import annotations
 
@@ -33,10 +33,10 @@ def pause(page: Page, milliseconds: int = 2200) -> None:
 def caption(page: Page, title: str, detail: str, milliseconds: int = 3300) -> None:
     page.evaluate(
         """([title, detail]) => {
-            let card = document.querySelector('#recruiter-demo-caption');
+            let card = document.querySelector('#product-demo-caption');
             if (!card) {
                 card = document.createElement('div');
-                card.id = 'recruiter-demo-caption';
+                card.id = 'product-demo-caption';
                 card.style.cssText = [
                     'position:fixed', 'left:50%', 'bottom:24px', 'transform:translateX(-50%)',
                     'z-index:99999', 'width:min(760px,calc(100vw - 48px))',
@@ -52,7 +52,7 @@ def caption(page: Page, title: str, detail: str, milliseconds: int = 3300) -> No
         [title, detail],
     )
     pause(page, milliseconds)
-    page.evaluate("document.querySelector('#recruiter-demo-caption')?.remove()")
+    page.evaluate("document.querySelector('#product-demo-caption')?.remove()")
 
 
 def run_walkthrough(page: Page, base_url: str) -> None:
@@ -155,7 +155,7 @@ def main() -> None:
         prefix="resolveops-demo-", ignore_cleanup_errors=True
     ) as temp_directory:
         temp = Path(temp_directory)
-        database_url = f"sqlite:///{(temp / 'recruiter-demo.db').as_posix()}"
+        database_url = f"sqlite:///{(temp / 'product-demo.db').as_posix()}"
         port = available_port()
         environment = os.environ.copy()
         environment.update(
@@ -164,11 +164,11 @@ def main() -> None:
                 "RESOLVEOPS_DATABASE_URL": database_url,
                 "RESOLVEOPS_DEFAULT_TENANT_ID": "TENANT-DEMO",
                 "RESOLVEOPS_TENANT_DATABASE_URLS_JSON": json.dumps({"TENANT-DEMO": database_url}),
-                "RESOLVEOPS_WEBHOOK_SECRET": "recruiter-demo-webhook-secret-32-characters",
+                "RESOLVEOPS_WEBHOOK_SECRET": "product-demo-webhook-secret-32-characters",
                 "RESOLVEOPS_DEMO_ENABLED": "true",
                 "RESOLVEOPS_DEMO_TENANT_ID": "TENANT-DEMO",
                 "RESOLVEOPS_DEMO_SESSION_SECRET": (
-                    "recruiter-demo-session-secret-more-than-32-characters"
+                    "product-demo-session-secret-more-than-32-characters"
                 ),
                 "RESOLVEOPS_AGENT_QUEUE_ENABLED": "false",
                 "RESOLVEOPS_INTEGRATED_AGENTS_ENABLED": "true",
@@ -238,7 +238,7 @@ def main() -> None:
                 server.kill()
                 server.wait(timeout=5)
 
-    print(f"Recruiter demo recorded: {OUTPUT}")
+    print(f"Product demo recorded: {OUTPUT}")
 
 
 if __name__ == "__main__":
