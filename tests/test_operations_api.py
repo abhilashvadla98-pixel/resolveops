@@ -5,15 +5,19 @@ from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
+from pydantic import SecretStr
 from sqlalchemy import Engine, create_engine
 from sqlalchemy.orm import Session
 from sqlalchemy.pool import StaticPool
 
 from resolveops.api.dependencies import get_principal, get_tenant_session
 from resolveops.api.main import app
+from resolveops.config import Settings
 from resolveops.database.base import Base
 from resolveops.database.records import CaseIssueRecord
 from resolveops.database.seed import seed_additional_it_cases, seed_all
+from resolveops.database.session import create_session_factory
+from resolveops.jobs.store import AgentJobStore
 from resolveops.knowledge.embeddings import FeatureHashEmbeddingProvider
 from resolveops.knowledge.ingestion import ingest_directory
 from resolveops.models.case import CaseIssueStatus, IssueFinding
@@ -102,6 +106,47 @@ def test_agent_run_trace_endpoint_is_tenant_scoped(
     response = client.get("/api/v1/agent-workflows/WF-NOT-RUN/runs")
     assert response.status_code == 200
     assert response.json() == []
+
+
+def test_agent_job_api_is_idempotent_tenant_scoped_and_streams_terminal_events(
+    operations_api: tuple[TestClient, dict[str, ActorRole], Engine],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    client, _role, engine = operations_api
+    configured = Settings(
+        database_url=SecretStr("sqlite://"),
+        gemini_api_key=SecretStr("synthetic-test-key"),
+        agent_queue_enabled=True,
+        agent_job_max_attempts=1,
+    )
+    monkeypatch.setattr("resolveops.api.agents.get_settings", lambda: configured)
+    payload = {
+        "workflow_id": "AGENT-JOB-API",
+        "case_id": "CASE-1001",
+        "domain": "customer_operations",
+        "objective": "Investigate the case using trusted evidence.",
+        "idempotency_key": "AGENT-JOB-API-KEY",
+    }
+
+    created = client.post("/api/v1/agent-workflows/jobs", json=payload)
+    replay = client.post("/api/v1/agent-workflows/jobs", json=payload)
+
+    assert created.status_code == replay.status_code == 202
+    assert created.json()["job_id"] == replay.json()["job_id"]
+    job_id = created.json()["job_id"]
+    store = AgentJobStore(create_session_factory(engine))
+    claimed = store.claim_next("TEST-WORKER")
+    assert claimed is not None
+    store.fail(job_id, "TEST-WORKER", "synthetic_provider_failure")
+
+    saved = client.get(f"/api/v1/agent-workflows/jobs/{job_id}")
+    streamed = client.get(f"/api/v1/agent-workflows/jobs/{job_id}/events")
+
+    assert saved.status_code == 200
+    assert saved.json()["status"] == "dead_letter"
+    assert streamed.status_code == 200
+    assert "event: queued" in streamed.text
+    assert "event: dead_lettered" in streamed.text
 
 
 def test_operator_queues_audit_and_feedback_use_persisted_records(

@@ -1,10 +1,12 @@
+import logging
+from collections.abc import Callable
 from time import perf_counter
 from typing import TypeVar
 
 from pydantic import BaseModel
 
 from resolveops.agents.budgets import AgentBudgetExceeded, BudgetLedger
-from resolveops.agents.models import AgentRole, AgentRunStatus
+from resolveops.agents.models import AgentInvocationRecord, AgentRole, AgentRunStatus
 from resolveops.agents.persistence import AgentRunStore, safe_context_hash
 from resolveops.agents.prompts import PROMPT_VERSIONS, ROLE_PROMPTS, SCHEMA_VERSIONS
 from resolveops.agents.providers import (
@@ -17,6 +19,7 @@ from resolveops.observability.tracing import observed_span
 from resolveops.reasoning.errors import ReasoningProviderError
 
 OutputT = TypeVar("OutputT", bound=BaseModel)
+LOGGER = logging.getLogger(__name__)
 
 
 class AgentInvoker:
@@ -27,11 +30,13 @@ class AgentInvoker:
         store: AgentRunStore,
         ledger: BudgetLedger,
         observability_sink: TraceSink | None = None,
+        on_status: Callable[[AgentInvocationRecord], None] | None = None,
     ) -> None:
         self.provider = provider
         self.store = store
         self.ledger = ledger
         self.observability_sink = observability_sink or DEFAULT_TRACE_SINK
+        self.on_status = on_status
 
     def invoke(
         self,
@@ -59,6 +64,7 @@ class AgentInvoker:
             trace_id=trace_id,
             parent_agent_run_id=parent_agent_run_id,
         )
+        self._notify(run)
         started = perf_counter()
         try:
             with observed_span(
@@ -92,15 +98,16 @@ class AgentInvoker:
                 output_tokens=output_tokens,
                 reserved_input_tokens=estimated_tokens,
             )
-            self.store.finish(
+            finished = self.store.finish(
                 run.agent_run_id,
                 output=output,
                 input_tokens=input_tokens,
                 output_tokens=output_tokens,
             )
+            self._notify(finished)
             return output, run.agent_run_id
         except AgentBudgetExceeded as exc:
-            self.store.finish(
+            finished = self.store.finish(
                 run.agent_run_id,
                 output={"error": exc.code},
                 input_tokens=None,
@@ -108,9 +115,10 @@ class AgentInvoker:
                 status=AgentRunStatus.BUDGET_EXCEEDED,
                 error_classification=exc.code,
             )
+            self._notify(finished)
             raise
         except ReasoningProviderError as exc:
-            self.store.finish(
+            finished = self.store.finish(
                 run.agent_run_id,
                 output={"error": exc.code},
                 input_tokens=None,
@@ -118,7 +126,18 @@ class AgentInvoker:
                 status=AgentRunStatus.FAILED,
                 error_classification=exc.code,
             )
+            self._notify(finished)
             raise
+
+    def _notify(self, record: AgentInvocationRecord) -> None:
+        if self.on_status is None:
+            return
+        try:
+            self.on_status(record)
+        except Exception:  # noqa: BLE001 - progress reporting must not alter agent decisions
+            LOGGER.warning(
+                "agent progress callback failed", extra={"agent_run_id": record.agent_run_id}
+            )
 
 
 def _estimated_tokens(context: BaseModel | dict[str, object]) -> int:

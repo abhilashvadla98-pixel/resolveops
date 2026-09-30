@@ -11,6 +11,7 @@ from alembic.config import Config
 from sqlalchemy import Engine, create_engine, func, select
 from sqlalchemy.orm import Session, sessionmaker
 
+from resolveops.agents.models import AgentDomain
 from resolveops.database.action_records import OperationRecord
 from resolveops.database.event_records import InboundEventRecord, ResourceEventCursorRecord
 from resolveops.database.records import CaseIssueRecord, RefundRecord
@@ -19,6 +20,7 @@ from resolveops.database.session import create_session_factory
 from resolveops.database.workflow_records import WorkflowEventRecord
 from resolveops.events.models import RefundStatusChangedData, RefundStatusChangedEvent
 from resolveops.events.processor import RefundEventProcessor
+from resolveops.jobs.store import AgentJobStore
 from resolveops.models.case import CaseIssueStatus, IssueFinding
 from resolveops.models.refund import RefundKind, RefundStatus
 from resolveops.operations.actions import ActionTools
@@ -114,6 +116,40 @@ def test_simultaneous_refund_requests_create_one_side_effect(
             )
             == 1
         )
+
+
+@pytest.mark.postgres
+def test_two_workers_cannot_claim_the_same_agent_job(
+    postgres_database: tuple[Engine, sessionmaker[Session]],
+) -> None:
+    _, factory = postgres_database
+    store = AgentJobStore(factory)
+    queued = store.enqueue(
+        tenant_id="TENANT-TEST",
+        workflow_id="WF-CONCURRENT-AGENT",
+        case_id="CASE-1001",
+        domain=AgentDomain.CUSTOMER_OPERATIONS,
+        objective="Prove that only one worker owns the job.",
+        idempotency_key="CONCURRENT-AGENT-KEY",
+    )
+    barrier = Barrier(2)
+
+    def claim(worker_id: str) -> str | None:
+        barrier.wait(timeout=5)
+        claimed = store.claim_next(worker_id)
+        return None if claimed is None else claimed.job_id
+
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        claims = [
+            future.result(timeout=15)
+            for future in [
+                executor.submit(claim, "WORKER-A"),
+                executor.submit(claim, "WORKER-B"),
+            ]
+        ]
+
+    assert claims.count(queued.job_id) == 1
+    assert claims.count(None) == 1
 
 
 @pytest.mark.postgres

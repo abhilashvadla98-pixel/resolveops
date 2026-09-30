@@ -48,6 +48,12 @@ class Settings(BaseSettings):
     gemini_max_attempts: int = Field(default=2, ge=1, le=3)
     gemini_max_input_characters: int = Field(default=24_000, ge=1_000, le=100_000)
     gemini_max_output_tokens: int = Field(default=800, ge=100, le=4_096)
+    agent_queue_enabled: bool = False
+    agent_queue_capacity: int = Field(default=500, ge=10, le=100_000)
+    agent_job_lease_seconds: int = Field(default=120, ge=30, le=3_600)
+    agent_job_max_attempts: int = Field(default=2, ge=1, le=5)
+    agent_worker_poll_seconds: int = Field(default=5, ge=1, le=60)
+    redis_url: str | None = None
 
     model_config = SettingsConfigDict(
         env_file=".env",
@@ -98,6 +104,7 @@ class TrafficProtectionSettings(BaseSettings):
     rate_limit_period_seconds: int = Field(default=60, ge=1, le=3_600)
     rate_limit_max_buckets: int = Field(default=10_000, ge=100, le=1_000_000)
     rate_limit_idle_ttl_seconds: int = Field(default=900, ge=60, le=86_400)
+    redis_url: str | None = None
 
     model_config = SettingsConfigDict(
         env_file=".env",

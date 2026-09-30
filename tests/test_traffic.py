@@ -4,7 +4,13 @@ import pytest
 from fastapi import FastAPI, Request
 from fastapi.testclient import TestClient
 
-from resolveops.security.traffic import TokenBucketRateLimiter, TrafficProtectionMiddleware
+from resolveops.security.traffic import (
+    FailoverRateLimiter,
+    RateLimitDecision,
+    RedisTokenBucketRateLimiter,
+    TokenBucketRateLimiter,
+    TrafficProtectionMiddleware,
+)
 
 
 def limiter(
@@ -130,3 +136,52 @@ def test_health_probe_is_exempt_from_rate_limit() -> None:
 def test_invalid_rate_limit_configuration_fails_closed(kwargs: dict[str, int]) -> None:
     with pytest.raises(ValueError):
         TokenBucketRateLimiter(**kwargs)
+
+
+class FakeRedisRateClient:
+    def __init__(self, result: list[int] | None = None, *, unavailable: bool = False) -> None:
+        self.result = result or [1, 4, 12, 0]
+        self.unavailable = unavailable
+        self.arguments: tuple[object, ...] = ()
+
+    def eval(self, script: str, numkeys: int, *keys_and_args: object) -> list[int]:
+        self.arguments = (script, numkeys, *keys_and_args)
+        if self.unavailable:
+            raise ConnectionError("synthetic Redis outage")
+        return self.result
+
+
+def test_distributed_limiter_uses_namespaced_hashed_keys() -> None:
+    client = FakeRedisRateClient()
+    shared = RedisTokenBucketRateLimiter(
+        client,
+        requests=5,
+        period_seconds=60,
+        idle_ttl_seconds=120,
+    )
+
+    decision = shared.consume(["network:already-hashed"])
+
+    assert decision.allowed and decision.remaining == 4
+    assert client.arguments[1] == 1
+    assert client.arguments[2] == "resolveops:rate:network:already-hashed"
+
+
+def test_distributed_limiter_falls_back_during_redis_outage() -> None:
+    fallback_decision = RateLimitDecision(True, 3, 2, 1)
+
+    class Fallback:
+        def consume(self, keys: object) -> RateLimitDecision:
+            return fallback_decision
+
+    limiter = FailoverRateLimiter(
+        RedisTokenBucketRateLimiter(
+            FakeRedisRateClient(unavailable=True),
+            requests=5,
+            period_seconds=60,
+            idle_ttl_seconds=120,
+        ),
+        Fallback(),
+    )
+
+    assert limiter.consume(["network:test"]) == fallback_decision

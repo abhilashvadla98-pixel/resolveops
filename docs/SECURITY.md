@@ -124,11 +124,12 @@ prevents multiple callers behind one address from bypassing their credential lim
 receive HTTP 429 with `Retry-After` and rate-limit metadata. API keys are hashed before they become
 in-memory bucket identifiers and never appear in responses or metrics.
 
-The default is 120 requests per 60 seconds, with at most 10,000 in-memory buckets and a 15-minute
-idle lifetime. `/health`, `/health/live`, and `/health/ready` are exempt from rate limiting so
-orchestrator probes remain reliable; the request-size limit still applies. The current limiter is
-process-local and intentionally matches the single-worker container. A scaled deployment must move
-the limiter to a shared atomic store or enforce an equivalent limit at a trusted gateway.
+The default is 120 requests per 60 seconds. Without Redis, the bounded fallback keeps at most 10,000
+in-memory buckets with a 15-minute idle lifetime. With `RESOLVEOPS_REDIS_URL`, one Lua operation
+atomically checks and consumes every privacy-safe identity key in the shared token bucket.
+`/health`, `/health/live`, and `/health/ready` are exempt so orchestrator probes remain reliable;
+the request-size limit still applies. A Redis outage uses the local limiter to preserve availability,
+so a scaled deployment must alert on that fallback or enforce an equivalent gateway limit.
 
 Do not trust arbitrary forwarded-client headers. The container no longer enables Uvicorn's wildcard
 proxy trust. A deployment behind a reverse proxy must configure only that proxy's exact trusted
@@ -143,7 +144,8 @@ addresses before using forwarded identity for network rate limits.
 - PII masking covers the current customer, employee, identity, Git-account, and notification read
   models. New PII-bearing models must add an explicit redaction policy and adversarial test before
   exposure.
-- TLS, network segmentation, database encryption, backups, web-application firewall rules, shared
-  distributed quotas, and cloud secret-manager policy remain deployment responsibilities.
+- TLS, network segmentation, database encryption, backups, web-application firewall rules and cloud
+  secret-manager policy remain deployment responsibilities. Shared quotas require configured Redis
+  or an equivalent trusted gateway; the local fallback is intentionally limited.
 - The ingestion guard reduces known prompt-injection forms; it does not make arbitrary external
   content trustworthy.

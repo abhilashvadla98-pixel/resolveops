@@ -3,7 +3,7 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from resolveops.security.tenancy import TenantSessionRegistry
 
-CURRENT_SCHEMA_REVISION = "0017_reviewed_resolution_memory"
+CURRENT_SCHEMA_REVISION = "0018_agent_workflow_jobs"
 
 
 class DatabaseReadinessError(RuntimeError):

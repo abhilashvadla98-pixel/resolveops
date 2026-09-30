@@ -27,7 +27,13 @@ from resolveops.observability.models import TraceComponent
 from resolveops.observability.sinks import DEFAULT_TRACE_SINK
 from resolveops.observability.tracing import observed_span, trace_context
 from resolveops.security.tenancy import TenantSessionRegistry
-from resolveops.security.traffic import TokenBucketRateLimiter, TrafficProtectionMiddleware
+from resolveops.security.traffic import (
+    FailoverRateLimiter,
+    RateLimiter,
+    RedisTokenBucketRateLimiter,
+    TokenBucketRateLimiter,
+    TrafficProtectionMiddleware,
+)
 
 validate_startup_environment()
 
@@ -51,15 +57,27 @@ app.include_router(reliability_router)
 app.include_router(console_router)
 
 traffic_settings = get_traffic_protection_settings()
+local_rate_limiter = TokenBucketRateLimiter(
+    requests=traffic_settings.rate_limit_requests,
+    period_seconds=traffic_settings.rate_limit_period_seconds,
+    max_buckets=traffic_settings.rate_limit_max_buckets,
+    idle_ttl_seconds=traffic_settings.rate_limit_idle_ttl_seconds,
+)
+rate_limiter: RateLimiter = local_rate_limiter
+if traffic_settings.redis_url:
+    rate_limiter = FailoverRateLimiter(
+        RedisTokenBucketRateLimiter.from_url(
+            traffic_settings.redis_url,
+            requests=traffic_settings.rate_limit_requests,
+            period_seconds=traffic_settings.rate_limit_period_seconds,
+            idle_ttl_seconds=traffic_settings.rate_limit_idle_ttl_seconds,
+        ),
+        local_rate_limiter,
+    )
 app.add_middleware(
     TrafficProtectionMiddleware,
     max_body_bytes=traffic_settings.max_request_body_bytes,
-    rate_limiter=TokenBucketRateLimiter(
-        requests=traffic_settings.rate_limit_requests,
-        period_seconds=traffic_settings.rate_limit_period_seconds,
-        max_buckets=traffic_settings.rate_limit_max_buckets,
-        idle_ttl_seconds=traffic_settings.rate_limit_idle_ttl_seconds,
-    ),
+    rate_limiter=rate_limiter,
     exempt_paths=frozenset({"/health", "/health/live", "/health/ready"}),
 )
 

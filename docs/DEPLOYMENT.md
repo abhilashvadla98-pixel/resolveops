@@ -53,6 +53,20 @@ checks both database connectivity and the exact Alembic revision. The optional r
 docker compose --env-file .env.compose --profile demo run --rm seed
 ```
 
+For production-like background analysis, set `RESOLVEOPS_AGENT_QUEUE_ENABLED=true`, set
+`RESOLVEOPS_REDIS_URL=redis://redis:6379/0`, keep the Gemini key only in the local environment file,
+and start the optional profile:
+
+```powershell
+docker compose --env-file .env.compose --profile worker up --build -d database redis migrate api worker
+```
+
+The API writes durable jobs before attempting the Redis wake-up. A worker claims one job at a time,
+retries within the configured limit, and records a dead-letter outcome rather than looping forever.
+Inspect `GET /api/v1/agent-workflows/jobs/health` with an operations identity for backlog state. Stop
+new submissions before worker maintenance, allow running leases to finish, then stop the worker.
+After an unexpected worker exit, the next worker recovers the expired lease automatically.
+
 Stop the stack without deleting PostgreSQL data:
 
 ```powershell
@@ -72,7 +86,8 @@ runtime container:
 - enables `no-new-privileges` in Compose;
 - stores no credentials or `.env` files in the image;
 - contains migrations and versioned domain policies;
-- enforces the configured request-size and process-local rate limits;
+- enforces configured request-size limits and shared Redis rate limits when configured, with a
+  bounded local fallback;
 - exposes authenticated Prometheus-compatible metrics at `/metrics` for operations roles;
 - does not trust forwarded client addresses from every source; and
 - exposes liveness at `/health/live` and migration-aware readiness at `/health/ready`.
@@ -156,8 +171,8 @@ Do not put an API key in an image, Compose file, screenshot, URL, or repository.
 
 - `/health` remains the original compatibility endpoint.
 - `/health/live` proves the process can answer HTTP without depending on the database.
-- `/health/ready` verifies every configured tenant database is reachable and at revision
-  `0008_employee_it_domain`. It returns 503 without exposing a tenant ID or database error.
+- `/health/ready` verifies every configured tenant database is reachable and at the repository's
+  required Alembic revision. It returns 503 without exposing a tenant ID or database error.
 - `scripts/verify_deployment.py` checks liveness, readiness, and the OpenAPI document with retries.
 
 After deployment, also inspect the ECS deployment, target health, migration task exit code,
@@ -185,6 +200,8 @@ requires an explicit reviewed change; Terraform should not be forced through tho
   targets, but production provisioning for additional tenants needs a reviewed module strategy.
 - The deployment has no WAF, private API, cross-region recovery, canary traffic shifting, or
   automated database restore drill yet.
+- The Compose worker/Redis profile is implemented locally, but AWS Terraform does not yet provision
+  ElastiCache, a worker ECS service, worker autoscaling or backlog alarms.
 - The one-shot migration task supports normal forward migrations. It does not implement online
   expand/contract coordination for a breaking schema change.
 - Alarm thresholds are operational starting points, not measured production SLOs.

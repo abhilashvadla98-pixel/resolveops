@@ -39,6 +39,12 @@ services:
       RESOLVEOPS_RATE_LIMIT_PERIOD_SECONDS: ${RESOLVEOPS_RATE_LIMIT_PERIOD_SECONDS:-60}
       RESOLVEOPS_RATE_LIMIT_MAX_BUCKETS: ${RESOLVEOPS_RATE_LIMIT_MAX_BUCKETS:-10000}
       RESOLVEOPS_RATE_LIMIT_IDLE_TTL_SECONDS: ${RESOLVEOPS_RATE_LIMIT_IDLE_TTL_SECONDS:-900}
+      RESOLVEOPS_REDIS_URL: ${RESOLVEOPS_REDIS_URL:-}
+      RESOLVEOPS_AGENT_QUEUE_ENABLED: ${RESOLVEOPS_AGENT_QUEUE_ENABLED:-false}
+      RESOLVEOPS_AGENT_QUEUE_CAPACITY: ${RESOLVEOPS_AGENT_QUEUE_CAPACITY:-500}
+      RESOLVEOPS_AGENT_JOB_LEASE_SECONDS: ${RESOLVEOPS_AGENT_JOB_LEASE_SECONDS:-120}
+      RESOLVEOPS_AGENT_JOB_MAX_ATTEMPTS: ${RESOLVEOPS_AGENT_JOB_MAX_ATTEMPTS:-2}
+      RESOLVEOPS_AGENT_WORKER_POLL_SECONDS: ${RESOLVEOPS_AGENT_WORKER_POLL_SECONDS:-5}
       RESOLVEOPS_DEMO_ENABLED: ${RESOLVEOPS_DEMO_ENABLED:-true}
       RESOLVEOPS_DEMO_TENANT_ID: ${RESOLVEOPS_DEMO_TENANT_ID:-TENANT-LOCAL}
       RESOLVEOPS_DEMO_SESSION_SECRET: ${RESOLVEOPS_DEMO_SESSION_SECRET:-local-demo-session-secret-at-least-32-chars}
@@ -81,6 +87,47 @@ services:
         condition: service_completed_successfully
     profiles: ["demo"]
     restart: "no"
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+
+  redis:
+    image: redis:7-alpine
+    user: redis
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+    profiles: ["worker"]
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+
+  worker:
+    image: resolveops:${RESOLVEOPS_IMAGE_TAG:-local}
+    command: ["resolveops-worker"]
+    environment:
+      <<: *app-environment
+      RESOLVEOPS_REDIS_URL: redis://redis:6379/0
+      RESOLVEOPS_AGENT_QUEUE_ENABLED: "true"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    profiles: ["worker"]
+    init: true
+    healthcheck:
+      disable: true
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m,mode=1777
+    restart: unless-stopped
     security_opt:
       - no-new-privileges:true
     cap_drop:

@@ -19,7 +19,7 @@ def test_operator_console_serves_secure_shell_and_local_assets() -> None:
     assert ">IT Requests<" in page.text
     assert ">Audit<" in page.text
     assert ">Try demo<" in page.text
-    assert 'src="/console/app.js?v=20260929d"' in page.text
+    assert 'src="/console/app.js?v=20260929e"' in page.text
     assert 'role="dialog"' in page.text
     assert 'aria-modal="true"' in page.text
     assert styles.status_code == 200
@@ -37,6 +37,9 @@ def test_operator_console_serves_secure_shell_and_local_assets() -> None:
     assert "apiFetch(`/api/v1/case-queue?" in script.text
     assert 'apiFetch("/api/v1/approvals"' in script.text
     assert 'apiFetch("/api/v1/reliability/summary"' in script.text
+    assert 'apiFetch("/api/v1/agent-workflows/jobs"' in script.text
+    assert 'Accept: "text/event-stream"' in script.text
+    assert "Agent progress stream unavailable; polling continues." in script.text
     assert "CSS.escape" in script.text
 
 

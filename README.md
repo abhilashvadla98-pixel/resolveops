@@ -20,6 +20,11 @@ reliability evidence, browser automation, deployment infrastructure, and recover
 checked-in business data is synthetic. No live payment, CRM, identity, Git, ticketing, or cloud
 account is connected.
 
+Long multi-agent analysis also has an optional background path: PostgreSQL owns durable jobs and
+events, a leased worker executes them, Redis carries wake-up markers and shared rate-limit state,
+and the console receives safe role progress over authenticated SSE. The normal local demo still
+works without Redis.
+
 ## What the product does
 
 ### Customer Operations
@@ -333,7 +338,9 @@ uv run --locked python -m pytest -m postgres
 
 - Enterprise systems are simulators, not live vendor integrations.
 - SQLite demo checkpoints are process-local; durable restart uses PostgreSQL.
-- Rate limiting is process-local and must move to a gateway or shared store before horizontal scale.
-- There is no enterprise SSO, customer-facing portal, background worker, or public cloud instance.
+- Rate limiting uses Redis when configured and a bounded process-local fallback during an outage;
+  that fallback is not a substitute for distributed quota enforcement at sustained scale.
+- There is no enterprise SSO, customer-facing portal, or public cloud instance. The background
+  worker is locally implemented but not cloud deployed or load/soak proven.
 - The retrieval corpus is deliberately small, and the measured scores must not be generalized.
 - Human review of the 24 customer-response candidates is still pending.

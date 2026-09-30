@@ -25,6 +25,7 @@ resolveops-evaluate = "resolveops.evaluation.run:main"
 resolveops-observe = "resolveops.observability.benchmark:main"
 resolveops-evaluate-employee = "resolveops.evaluation.run_employee:main"
 resolveops-evaluate-live-reasoning = "resolveops.evaluation.live_reasoning:main"
+resolveops-worker = "resolveops.jobs.worker:main"
 
 [project.optional-dependencies]
 embeddings = [
@@ -39,6 +40,9 @@ interfaces = [
 ]
 workflow = [
     "langgraph-checkpoint-postgres>=3.0,<4.0",
+]
+worker = [
+    "redis>=5,<6",
 ]
 dev = [
     "bandit>=1.9,<2.0",

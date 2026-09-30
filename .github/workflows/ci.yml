@@ -95,18 +95,22 @@ jobs:
       RESOLVEOPS_WEBHOOK_SECRET: compose-integration-webhook-secret-123456
       RESOLVEOPS_IMAGE_TAG: ci
       RESOLVEOPS_API_PORT: "18080"
+      RESOLVEOPS_AGENT_QUEUE_ENABLED: "true"
+      RESOLVEOPS_REDIS_URL: redis://redis:6379/0
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
         with:
           python-version: "3.12"
-      - run: docker compose config --quiet
-      - run: docker compose up --build -d database migrate api
+      - run: docker compose --profile worker config --quiet
+      - run: docker compose --profile worker up --build -d database redis migrate api worker
       - run: python scripts/verify_deployment.py --base-url http://127.0.0.1:18080 --attempts 30 --delay-seconds 2
+      - run: docker compose --profile worker exec -T redis redis-cli ping | grep -qx PONG
+      - run: docker compose --profile worker ps --status running --services | grep -qx worker
       - if: always()
-        run: docker compose logs --no-color
+        run: docker compose --profile worker logs --no-color
       - if: always()
-        run: docker compose down --volumes --remove-orphans
+        run: docker compose --profile worker down --volumes --remove-orphans
 
   terraform:
     runs-on: ubuntu-latest

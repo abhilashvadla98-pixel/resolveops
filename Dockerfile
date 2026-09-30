@@ -12,7 +12,7 @@ RUN python -m pip install "uv==0.12.20"
 COPY pyproject.toml uv.lock README.md ./
 COPY src ./src
 RUN uv sync --locked --no-dev --no-editable \
-    --extra interfaces --extra llm --extra workflow
+    --extra interfaces --extra llm --extra workflow --extra worker
 
 FROM ${PYTHON_IMAGE} AS runtime
 

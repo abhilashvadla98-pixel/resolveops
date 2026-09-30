@@ -1,12 +1,14 @@
 from __future__ import annotations
 
+import logging
 from collections.abc import Iterable
 from dataclasses import dataclass
 from hashlib import sha256
+from importlib import import_module
 from math import ceil, floor
 from threading import Lock
-from time import monotonic
-from typing import Protocol
+from time import monotonic, time
+from typing import Protocol, cast
 
 from starlette.datastructures import Headers, MutableHeaders
 from starlette.responses import JSONResponse
@@ -17,6 +19,10 @@ from resolveops.observability.metrics import record_http_rejection
 
 class Clock(Protocol):
     def __call__(self) -> float: ...
+
+
+class RateLimiter(Protocol):
+    def consume(self, keys: Iterable[str]) -> RateLimitDecision: ...
 
 
 @dataclass(frozen=True)
@@ -129,13 +135,124 @@ class TokenBucketRateLimiter:
             del self._buckets[key]
 
 
+class _RedisRateClient(Protocol):
+    def eval(self, script: str, numkeys: int, *keys_and_args: object) -> list[int]: ...
+
+
+_REDIS_TOKEN_BUCKET_SCRIPT = """
+local now = tonumber(ARGV[1])
+local capacity = tonumber(ARGV[2])
+local refill = tonumber(ARGV[3])
+local ttl = tonumber(ARGV[4])
+local minimum = capacity
+local buckets = {}
+for index, key in ipairs(KEYS) do
+  local values = redis.call('HMGET', key, 'tokens', 'updated')
+  local tokens = tonumber(values[1]) or capacity
+  local updated = tonumber(values[2]) or now
+  tokens = math.min(capacity, tokens + math.max(now - updated, 0) * refill)
+  buckets[index] = tokens
+  minimum = math.min(minimum, tokens)
+end
+if minimum < 1 then
+  local retry = math.ceil((1 - minimum) / refill / 1000)
+  local reset = math.ceil((capacity - minimum) / refill / 1000)
+  return {0, 0, reset, math.max(retry, 1)}
+end
+minimum = capacity
+for index, key in ipairs(KEYS) do
+  local tokens = buckets[index] - 1
+  redis.call('HSET', key, 'tokens', tokens, 'updated', now)
+  redis.call('PEXPIRE', key, ttl)
+  minimum = math.min(minimum, tokens)
+end
+local reset = math.ceil((capacity - minimum) / refill / 1000)
+return {1, math.floor(minimum), reset, 0}
+"""
+
+
+class RedisTokenBucketRateLimiter:
+    def __init__(
+        self,
+        client: _RedisRateClient,
+        *,
+        requests: int,
+        period_seconds: int,
+        idle_ttl_seconds: int,
+        namespace: str = "resolveops",
+    ) -> None:
+        if requests < 1 or period_seconds < 1 or idle_ttl_seconds < period_seconds:
+            raise ValueError("invalid distributed rate-limit configuration")
+        self._client = client
+        self._capacity = requests
+        self._refill_per_millisecond = requests / (period_seconds * 1000)
+        self._ttl_milliseconds = idle_ttl_seconds * 1000
+        self._prefix = f"{namespace}:rate:"
+
+    @classmethod
+    def from_url(
+        cls,
+        redis_url: str,
+        *,
+        requests: int,
+        period_seconds: int,
+        idle_ttl_seconds: int,
+    ) -> RedisTokenBucketRateLimiter:
+        redis_module = import_module("redis")
+        client = cast(_RedisRateClient, redis_module.Redis.from_url(redis_url))
+        return cls(
+            client,
+            requests=requests,
+            period_seconds=period_seconds,
+            idle_ttl_seconds=idle_ttl_seconds,
+        )
+
+    def consume(self, keys: Iterable[str]) -> RateLimitDecision:
+        unique_keys = tuple(dict.fromkeys(keys))
+        if not unique_keys:
+            raise ValueError("at least one rate-limit key is required")
+        redis_keys = [f"{self._prefix}{key}" for key in unique_keys]
+        result = self._client.eval(
+            _REDIS_TOKEN_BUCKET_SCRIPT,
+            len(redis_keys),
+            *redis_keys,
+            int(time() * 1000),
+            self._capacity,
+            self._refill_per_millisecond,
+            self._ttl_milliseconds,
+        )
+        return RateLimitDecision(
+            allowed=bool(result[0]),
+            limit=self._capacity,
+            remaining=max(int(result[1]), 0),
+            reset_after_seconds=max(int(result[2]), 0),
+            retry_after_seconds=max(int(result[3]), 1) if not result[0] else None,
+        )
+
+
+class FailoverRateLimiter:
+    """Use the local bounded limiter only while shared coordination is unavailable."""
+
+    def __init__(self, primary: RateLimiter, fallback: RateLimiter) -> None:
+        self._primary = primary
+        self._fallback = fallback
+
+    def consume(self, keys: Iterable[str]) -> RateLimitDecision:
+        stable_keys = tuple(keys)
+        try:
+            return self._primary.consume(stable_keys)
+        except Exception:  # noqa: BLE001 - third-party clients expose backend-specific errors
+            logging.getLogger(__name__).warning("shared rate limiter unavailable; using fallback")
+            return self._fallback.consume(stable_keys)
+
+
 class TrafficProtectionMiddleware:
     def __init__(
         self,
         app: ASGIApp,
         *,
         max_body_bytes: int,
-        rate_limiter: TokenBucketRateLimiter,
+        rate_limiter: RateLimiter,
         exempt_paths: frozenset[str] = frozenset(),
     ) -> None:
         if max_body_bytes < 1:

@@ -60,10 +60,27 @@ that cost earns better outcomes.
 
 Migration `0016_agent_execution_records` adds `agent_runs` and `agent_tool_calls`. Migration
 `0017_reviewed_resolution_memory` adds tenant-scoped, expiring memory that can contain only reviewed
-resolution patterns. Raw arguments, secrets and arbitrary model histories are not memory.
+resolution patterns. Migration `0018_agent_workflow_jobs` adds durable jobs and a reconnectable event
+projection. Raw arguments, secrets and arbitrary model histories are not memory.
 
-## Current limitation
+## Background execution and live progress
 
-The guarded multi-agent path currently runs in the API process. Redis-backed background execution,
-SSE delivery, role-specific gold evaluations, retrieval/reranking experiments, public hosting and
-cloud worker deployment remain planned work and must not be claimed as implemented.
+The synchronous endpoint remains available as a compatibility path. When
+`RESOLVEOPS_AGENT_QUEUE_ENABLED=true`, the console submits an idempotent job to PostgreSQL and a
+separate worker claims it with a time-limited lease. Capacity limits reject new work before an
+unbounded backlog forms. Provider failures retry within a fixed attempt budget and then become a
+visible dead-letter record; an expired worker lease is recoverable by another worker.
+
+Redis does not contain the case objective, model context, output or result. It carries only a small
+wake-up marker and atomic rate-limit counters. PostgreSQL is the durable source of truth, so a Redis
+wake-up failure falls back to bounded polling. The authenticated SSE endpoint projects safe job and
+role transitions—role name, run identifier, status and token counts, never hidden reasoning. The
+console consumes this stream and keeps polling job status as a recovery path.
+
+## Current limitations
+
+The optional local worker/Redis profile and SSE path are implemented and tested, but they have not
+been load/soak tested or deployed to a public cloud. The AWS Terraform does not yet provision a
+managed Redis service or worker tasks. Role-specific gold evaluations, retrieval/reranking
+experiments, public hosting and cloud worker deployment remain planned work and must not be claimed
+as implemented.
