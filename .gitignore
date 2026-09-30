@@ -35,6 +35,7 @@ Thumbs.db
 generated-data/
 review-work/
 .benchmark/
+artifacts/
 
 # Terraform local state and provider cache
 **/.terraform/*
