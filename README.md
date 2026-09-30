@@ -4,6 +4,12 @@ ResolveOps is a production-minded AI operations system for investigating custome
 cases, grounding recommendations in versioned policy, pausing risky actions for human approval, and
 proving the final state after execution.
 
+It also includes an explicit, manually started hierarchical multi-agent analysis path with a
+Supervisor, tool-using Investigator, Policy specialist, Resolution specialist and independent
+Critic. The five roles remain advisory; the proven deterministic control plane still authorizes,
+executes and verifies every sensitive action. See
+[Hierarchical multi-agent analysis](docs/MULTI_AGENT_ARCHITECTURE.md).
+
 It is built to demonstrate a boundary that matters in real AI engineering:
 
 > The model may advise. Deterministic software authorizes, executes, audits, and verifies.
