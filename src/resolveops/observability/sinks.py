@@ -29,4 +29,33 @@ class InMemoryTraceSink:
         self.events.append(event)
 
 
-DEFAULT_TRACE_SINK: TraceSink = LoggingTraceSink()
+class CompositeTraceSink:
+    def __init__(self, sinks: list[TraceSink]) -> None:
+        if not sinks:
+            raise ValueError("composite trace sink requires at least one sink")
+        self.sinks = list(sinks)
+
+    def emit(self, event: TraceEvent) -> None:
+        for sink in self.sinks:
+            try:
+                sink.emit(event)
+            except Exception:  # noqa: BLE001 - one exporter cannot block the others
+                LOGGER.error("trace_export_failed exporter=%s", type(sink).__name__)
+
+
+class ConfigurableTraceSink:
+    def __init__(self, sink: TraceSink) -> None:
+        self._sink = sink
+
+    def configure(self, sink: TraceSink) -> None:
+        self._sink = sink
+
+    def emit(self, event: TraceEvent) -> None:
+        self._sink.emit(event)
+
+
+DEFAULT_TRACE_SINK = ConfigurableTraceSink(LoggingTraceSink())
+
+
+def configure_default_trace_sink(sink: TraceSink) -> None:
+    DEFAULT_TRACE_SINK.configure(sink)

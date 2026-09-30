@@ -89,6 +89,28 @@ def test_budget_ledger_enforces_wall_clock() -> None:
         ledger.check_time(NOW + timedelta(seconds=11))
 
 
+def test_budget_ledger_enforces_configured_cost_without_inventing_unknown_cost() -> None:
+    unknown = BudgetLedger(AgentBudget(optional_cost_limit_usd=0.01), datetime.now(UTC))
+    unknown.reserve_model_call(estimated_input_tokens=100)
+    unknown.record_model_usage(
+        actual_input_tokens=100,
+        output_tokens=10,
+        reserved_input_tokens=100,
+        estimated_cost_usd=None,
+    )
+    assert unknown.usage.estimated_cost_usd is None
+
+    priced = BudgetLedger(AgentBudget(optional_cost_limit_usd=0.01), datetime.now(UTC))
+    priced.reserve_model_call(estimated_input_tokens=100)
+    with pytest.raises(AgentBudgetExceeded, match="cost_budget_exceeded"):
+        priced.record_model_usage(
+            actual_input_tokens=100,
+            output_tokens=10,
+            reserved_input_tokens=100,
+            estimated_cost_usd=0.02,
+        )
+
+
 def test_agent_and_tool_runs_are_durable_without_raw_arguments() -> None:
     engine = create_engine("sqlite:///:memory:")
     Base.metadata.create_all(engine)

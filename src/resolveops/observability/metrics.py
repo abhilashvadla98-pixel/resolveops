@@ -13,6 +13,7 @@ from prometheus_client import (
     Counter as PrometheusCounter,
 )
 
+from resolveops.agents.models import AgentInvocationRecord
 from resolveops.observability.models import (
     LatencyDistribution,
     ObservabilitySummary,
@@ -49,6 +50,36 @@ HTTP_REJECTIONS = PrometheusCounter(
     ("reason",),
     registry=METRICS_REGISTRY,
 )
+AGENT_RUNS = PrometheusCounter(
+    "resolveops_agent_runs_total",
+    "Multi-agent role invocations completed.",
+    ("role", "status"),
+    registry=METRICS_REGISTRY,
+)
+AGENT_RUN_DURATION = Histogram(
+    "resolveops_agent_run_duration_seconds",
+    "Multi-agent role invocation duration in seconds.",
+    ("role",),
+    registry=METRICS_REGISTRY,
+)
+AGENT_TOKENS = PrometheusCounter(
+    "resolveops_agent_tokens_total",
+    "Provider tokens recorded for multi-agent role invocations.",
+    ("role", "direction"),
+    registry=METRICS_REGISTRY,
+)
+AGENT_TOOL_CALLS = PrometheusCounter(
+    "resolveops_agent_tool_calls_total",
+    "Read-only agent tool calls completed.",
+    ("tool", "status"),
+    registry=METRICS_REGISTRY,
+)
+AGENT_QUEUE_JOBS = Gauge(
+    "resolveops_agent_queue_jobs",
+    "Durable agent jobs by active or dead-letter status.",
+    ("status",),
+    registry=METRICS_REGISTRY,
+)
 
 
 def start_http_request(method: str) -> float:
@@ -76,6 +107,35 @@ def finish_http_request(
 
 def record_http_rejection(reason: str) -> None:
     HTTP_REJECTIONS.labels(reason=reason).inc()
+
+
+def record_agent_run(run: AgentInvocationRecord) -> None:
+    role = run.role.value
+    status = run.status.value
+    AGENT_RUNS.labels(role=role, status=status).inc()
+    latency_ms = run.latency_ms
+    if isinstance(latency_ms, (int, float)):
+        AGENT_RUN_DURATION.labels(role=role).observe(max(float(latency_ms) / 1_000, 0))
+    for direction, attribute in (("input", "input_tokens"), ("output", "output_tokens")):
+        value = run.input_tokens if attribute == "input_tokens" else run.output_tokens
+        if isinstance(value, int):
+            AGENT_TOKENS.labels(role=role, direction=direction).inc(value)
+
+
+def record_agent_tool_call(tool_name: str, status: str) -> None:
+    AGENT_TOOL_CALLS.labels(tool=tool_name, status=status).inc()
+
+
+def record_agent_queue_health(
+    *, pending: int, running: int, retrying: int, dead_letter: int
+) -> None:
+    for status, value in (
+        ("pending", pending),
+        ("running", running),
+        ("retrying", retrying),
+        ("dead_letter", dead_letter),
+    ):
+        AGENT_QUEUE_JOBS.labels(status=status).set(value)
 
 
 def render_metrics() -> bytes:

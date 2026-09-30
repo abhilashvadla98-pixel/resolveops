@@ -35,9 +35,19 @@ def build_agent_runtime(
         max_output_tokens=min(settings.gemini_max_output_tokens, 600),
     )
     store = AgentRunStore(session_factory)
-    ledger = BudgetLedger(AgentBudget(), datetime.now(UTC))
+    ledger = BudgetLedger(
+        AgentBudget(optional_cost_limit_usd=settings.agent_cost_limit_usd),
+        datetime.now(UTC),
+    )
     return MultiAgentReasoningRuntime(
-        invoker=AgentInvoker(provider=provider, store=store, ledger=ledger, on_status=on_status),
+        invoker=AgentInvoker(
+            provider=provider,
+            store=store,
+            ledger=ledger,
+            on_status=on_status,
+            input_cost_per_million_usd=settings.agent_input_cost_per_million_usd,
+            output_cost_per_million_usd=settings.agent_output_cost_per_million_usd,
+        ),
         tools=AgentReadToolRegistry(
             session_factory,
             FeatureHashEmbeddingProvider(dimensions=128),

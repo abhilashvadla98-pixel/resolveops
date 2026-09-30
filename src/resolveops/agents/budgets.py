@@ -33,6 +33,7 @@ class BudgetLedger:
         actual_input_tokens: int,
         output_tokens: int,
         reserved_input_tokens: int = 0,
+        estimated_cost_usd: float | None = None,
     ) -> None:
         next_usage = self.usage.model_copy(
             update={
@@ -40,6 +41,11 @@ class BudgetLedger:
                     self.usage.input_tokens - reserved_input_tokens + actual_input_tokens
                 ),
                 "output_tokens": self.usage.output_tokens + output_tokens,
+                "estimated_cost_usd": (
+                    None
+                    if estimated_cost_usd is None and self.usage.estimated_cost_usd is None
+                    else (self.usage.estimated_cost_usd or 0) + (estimated_cost_usd or 0)
+                ),
             }
         )
         self._validate(next_usage)
@@ -66,4 +72,10 @@ class BudgetLedger:
             raise AgentBudgetExceeded("input_token_budget_exceeded")
         if usage.output_tokens > self.budget.max_output_tokens:
             raise AgentBudgetExceeded("output_token_budget_exceeded")
+        if (
+            self.budget.optional_cost_limit_usd is not None
+            and usage.estimated_cost_usd is not None
+            and usage.estimated_cost_usd > self.budget.optional_cost_limit_usd
+        ):
+            raise AgentBudgetExceeded("cost_budget_exceeded")
         self.check_time()

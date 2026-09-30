@@ -30,6 +30,7 @@ from resolveops.jobs.models import (
 )
 from resolveops.jobs.store import AgentJobStore, QueueCapacityExceeded
 from resolveops.models.common import DomainModel, Identifier, NonEmptyText
+from resolveops.observability.metrics import record_agent_queue_health
 from resolveops.operations.auth import has_permission
 from resolveops.operations.models import Permission
 from resolveops.orchestration.graph import HierarchicalAgentOrchestrator
@@ -151,7 +152,14 @@ def agent_queue_health(
 ) -> QueueHealth:
     _require_access(principal)
     settings = get_settings()
-    return AgentJobStore(_factory(session), capacity=settings.agent_queue_capacity).health()
+    health = AgentJobStore(_factory(session), capacity=settings.agent_queue_capacity).health()
+    record_agent_queue_health(
+        pending=health.pending,
+        running=health.running,
+        retrying=health.retrying,
+        dead_letter=health.dead_letter,
+    )
+    return health
 
 
 @router.get("/jobs/{job_id}", response_model=AgentWorkflowJob)

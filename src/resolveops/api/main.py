@@ -18,13 +18,15 @@ from resolveops.api.operations import router as operations_router
 from resolveops.api.reliability import router as reliability_router
 from resolveops.api.simulator import router as simulator_router
 from resolveops.config import (
+    get_observability_settings,
     get_traffic_protection_settings,
     validate_startup_environment,
 )
 from resolveops.database.health import DatabaseReadinessError, verify_database_readiness
 from resolveops.observability.metrics import finish_http_request, start_http_request
 from resolveops.observability.models import TraceComponent
-from resolveops.observability.sinks import DEFAULT_TRACE_SINK
+from resolveops.observability.otel import build_configured_trace_sink
+from resolveops.observability.sinks import DEFAULT_TRACE_SINK, configure_default_trace_sink
 from resolveops.observability.tracing import observed_span, trace_context
 from resolveops.security.tenancy import TenantSessionRegistry
 from resolveops.security.traffic import (
@@ -36,6 +38,13 @@ from resolveops.security.traffic import (
 )
 
 validate_startup_environment()
+observability_settings = get_observability_settings()
+configure_default_trace_sink(
+    build_configured_trace_sink(
+        observability_settings.otlp_endpoint,
+        service_name=observability_settings.otlp_service_name,
+    )
+)
 
 app = FastAPI(
     title="ResolveOps API",

@@ -23,6 +23,7 @@ from resolveops.memory.retrieval import (
     issue_types_from_tool_results,
     select_applicable_memories,
 )
+from resolveops.observability.metrics import record_agent_tool_call
 
 
 class AgentToolExecutor(Protocol):
@@ -424,12 +425,14 @@ class MultiAgentReasoningRuntime:
                 status=ToolCallStatus.FAILED,
                 error_classification=type(exc).__name__,
             )
+            record_agent_tool_call(request.tool_name, "failed")
             raise
         self.run_store.finish_tool_call(
             record.tool_call_id,
             status=ToolCallStatus.COMPLETED,
             result_category=result.result_category,
         )
+        record_agent_tool_call(request.tool_name, "completed")
         return result
 
     def _context(self, **kwargs: object):  # type: ignore[no-untyped-def]

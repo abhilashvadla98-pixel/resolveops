@@ -13,6 +13,7 @@ from resolveops.agents.providers import (
     StructuredAgentProvider,
     UsageReportingAgentProvider,
 )
+from resolveops.observability.metrics import record_agent_run
 from resolveops.observability.models import TraceComponent
 from resolveops.observability.sinks import DEFAULT_TRACE_SINK, TraceSink
 from resolveops.observability.tracing import observed_span
@@ -31,12 +32,16 @@ class AgentInvoker:
         ledger: BudgetLedger,
         observability_sink: TraceSink | None = None,
         on_status: Callable[[AgentInvocationRecord], None] | None = None,
+        input_cost_per_million_usd: float | None = None,
+        output_cost_per_million_usd: float | None = None,
     ) -> None:
         self.provider = provider
         self.store = store
         self.ledger = ledger
         self.observability_sink = observability_sink or DEFAULT_TRACE_SINK
         self.on_status = on_status
+        self.input_cost_per_million_usd = input_cost_per_million_usd
+        self.output_cost_per_million_usd = output_cost_per_million_usd
 
     def invoke(
         self,
@@ -90,13 +95,17 @@ class AgentInvoker:
                 )
                 input_tokens = usage.input_tokens if usage else estimated_tokens
                 output_tokens = usage.output_tokens if usage else 0
+                estimated_cost_usd = self._estimated_cost(input_tokens, output_tokens)
                 span.set_attribute("input_tokens", input_tokens)
                 span.set_attribute("output_tokens", output_tokens)
+                if estimated_cost_usd is not None:
+                    span.set_attribute("cost_usd", estimated_cost_usd)
                 span.set_attribute("latency_ms", (perf_counter() - started) * 1000)
             self.ledger.record_model_usage(
                 actual_input_tokens=input_tokens,
                 output_tokens=output_tokens,
                 reserved_input_tokens=estimated_tokens,
+                estimated_cost_usd=estimated_cost_usd,
             )
             finished = self.store.finish(
                 run.agent_run_id,
@@ -105,6 +114,7 @@ class AgentInvoker:
                 output_tokens=output_tokens,
             )
             self._notify(finished)
+            record_agent_run(finished)
             return output, run.agent_run_id
         except AgentBudgetExceeded as exc:
             finished = self.store.finish(
@@ -116,6 +126,7 @@ class AgentInvoker:
                 error_classification=exc.code,
             )
             self._notify(finished)
+            record_agent_run(finished)
             raise
         except ReasoningProviderError as exc:
             finished = self.store.finish(
@@ -127,7 +138,16 @@ class AgentInvoker:
                 error_classification=exc.code,
             )
             self._notify(finished)
+            record_agent_run(finished)
             raise
+
+    def _estimated_cost(self, input_tokens: int, output_tokens: int) -> float | None:
+        if self.input_cost_per_million_usd is None or self.output_cost_per_million_usd is None:
+            return None
+        return (
+            input_tokens * self.input_cost_per_million_usd
+            + output_tokens * self.output_cost_per_million_usd
+        ) / 1_000_000
 
     def _notify(self, record: AgentInvocationRecord) -> None:
         if self.on_status is None:

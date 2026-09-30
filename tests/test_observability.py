@@ -5,7 +5,12 @@ import pytest
 from resolveops.evaluation.dataset import load_workflow_evaluation_cases
 from resolveops.evaluation.workflow import evaluate_workflow_cases
 from resolveops.observability.benchmark import measure_workflow_performance
-from resolveops.observability.metrics import summarize_trace_events
+from resolveops.observability.metrics import (
+    record_agent_queue_health,
+    record_agent_tool_call,
+    render_metrics,
+    summarize_trace_events,
+)
 from resolveops.observability.models import TraceComponent, TraceEvent, TraceStatus
 from resolveops.observability.sinks import InMemoryTraceSink
 from resolveops.observability.tracing import observed_span, trace_context
@@ -151,3 +156,14 @@ def test_performance_report_uses_real_trace_samples() -> None:
     assert workflow_metrics.latency.minimum_ms <= workflow_metrics.latency.p50_ms
     assert workflow_metrics.latency.p50_ms <= workflow_metrics.latency.p95_ms
     assert workflow_metrics.latency.p95_ms <= workflow_metrics.latency.maximum_ms
+
+
+def test_agent_tool_and_queue_prometheus_metrics_are_exposed() -> None:
+    record_agent_tool_call("get_case", "completed")
+    record_agent_queue_health(pending=2, running=1, retrying=0, dead_letter=1)
+
+    payload = render_metrics().decode("utf-8")
+
+    assert "resolveops_agent_tool_calls_total" in payload
+    assert 'tool="get_case"' in payload
+    assert 'resolveops_agent_queue_jobs{status="pending"} 2.0' in payload

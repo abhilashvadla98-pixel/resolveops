@@ -15,8 +15,10 @@ parent span ID, allowing a workflow to be reconstructed across:
 - HTTP requests.
 
 The default sink writes a single JSON object prefixed by `resolveops_trace` to the
-`resolveops.observability` logger. Tests and measurements inject an in-memory sink. This separation
-allows a later OpenTelemetry or managed telemetry exporter without changing business logic.
+`resolveops.observability` logger. Tests and measurements inject an in-memory sink. When
+`RESOLVEOPS_OTLP_ENDPOINT` is configured and the `observability` extra is installed, the same safe
+completed events are also mapped to OpenTelemetry spans and exported over OTLP/HTTP. Exporter
+startup and delivery failures fall back to local structured traces and never block business work.
 
 HTTP responses include `X-ResolveOps-Trace-ID`. API spans store the HTTP method, route template, and
 status code. They do not store query strings or request/response bodies. Workflow spans store IDs,
@@ -36,7 +38,11 @@ authentication and allows only Operator, Approver, or System roles. It exports:
 - `resolveops_http_requests_total` by method, route template, and status code;
 - `resolveops_http_request_duration_seconds` by method and route template;
 - `resolveops_http_requests_in_progress` by method; and
-- `resolveops_http_rejections_total` by bounded rejection reason.
+- `resolveops_http_rejections_total` by bounded rejection reason;
+- `resolveops_agent_runs_total` and role latency by bounded role/status labels;
+- `resolveops_agent_tokens_total` by role and input/output direction;
+- `resolveops_agent_tool_calls_total` by allowlisted tool and terminal status; and
+- `resolveops_agent_queue_jobs` by pending/running/retrying/dead-letter status.
 
 Labels deliberately exclude tenant, user, case, workflow, credential, query-string, and raw-path
 values to prevent secrets and unbounded cardinality. Prometheus can send a configured operations
@@ -47,10 +53,10 @@ successful from an engineering perspective when a child tool or model span fails
 workflow handling may correctly route the case to review. The evaluation report remains the source
 of final-state correctness; a raw tool error rate is not a task-success metric.
 
-The OpenAI reasoning adapter captures input, output, and total token counts when the Responses API
-returns usage. Offline/scripted providers have null token totals. Cost remains null unless a real
-provider call and an explicit, reviewed price are both available; ResolveOps does not guess price or
-cost from model names.
+The model adapters capture input, output, and total token counts when providers return usage.
+Cost remains null unless both input and output prices are explicitly configured. With configured
+prices, the shared ledger computes workflow cost from recorded tokens and can stop before exceeding
+`RESOLVEOPS_AGENT_COST_LIMIT_USD`; ResolveOps never guesses price from a model name.
 
 ## Reproducing the local measurement
 
@@ -69,7 +75,7 @@ construction rather than an already-running workflow.
 
 ## Current limits
 
-- The default sink is structured logging, not a durable telemetry backend.
+- OTLP is optional; this repository does not operate or claim a durable collector.
 - Prometheus counters are process-local. The checked-in container runs one API worker; a future
   multi-worker or horizontally scaled deployment must use the Prometheus multiprocess mode or a
   compatible metrics collector before aggregating these values.
@@ -78,5 +84,6 @@ construction rather than an already-running workflow.
 - The local benchmark uses in-memory SQLite, feature-hash embeddings, and an offline reasoning
   provider. It is a regression baseline, not a production capacity claim.
 - No SLO or alert threshold is declared from this small local sample.
-- Trace sampling, retention, redaction enforcement at an external collector, and cross-service
-  propagation remain deployment work.
+- Trace sampling, retention, external-collector redaction policy, and native cross-service parent
+  propagation remain deployment responsibilities. ResolveOps correlation IDs are exported as span
+  attributes, not reconstructed as remote OpenTelemetry parent contexts.

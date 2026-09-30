@@ -47,6 +47,15 @@ def test_development_allows_documented_local_defaults() -> None:
     validate_runtime_safety(local, DemoSettings())
 
 
+def test_agent_pricing_requires_both_input_and_output_prices() -> None:
+    with pytest.raises(ValueError, match="configured together"):
+        Settings(
+            environment=RuntimeEnvironment.DEVELOPMENT,
+            database_url="sqlite:///local.db",
+            agent_input_cost_per_million_usd=0.10,
+        )
+
+
 @pytest.mark.parametrize(
     "changes",
     [

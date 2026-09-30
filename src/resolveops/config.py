@@ -57,6 +57,9 @@ class Settings(BaseSettings):
     agent_reviewed_memory_enabled: bool = True
     agent_mcp_server_url: str | None = None
     agent_mcp_timeout_seconds: float = Field(default=5, gt=0, le=30)
+    agent_input_cost_per_million_usd: float | None = Field(default=None, ge=0)
+    agent_output_cost_per_million_usd: float | None = Field(default=None, ge=0)
+    agent_cost_limit_usd: float | None = Field(default=None, gt=0, le=100)
 
     model_config = SettingsConfigDict(
         env_file=".env",
@@ -79,6 +82,14 @@ class Settings(BaseSettings):
                 "database_url or database_host, database_name, database_username, "
                 "and database_password must be configured"
             )
+        return self
+
+    @model_validator(mode="after")
+    def validate_agent_pricing(self) -> "Settings":
+        if (self.agent_input_cost_per_million_usd is None) != (
+            self.agent_output_cost_per_million_usd is None
+        ):
+            raise ValueError("agent input and output pricing must be configured together")
         return self
 
     def resolved_database_url(self) -> str:
@@ -108,6 +119,17 @@ class TrafficProtectionSettings(BaseSettings):
     rate_limit_max_buckets: int = Field(default=10_000, ge=100, le=1_000_000)
     rate_limit_idle_ttl_seconds: int = Field(default=900, ge=60, le=86_400)
     redis_url: str | None = None
+
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_prefix="RESOLVEOPS_",
+        extra="ignore",
+    )
+
+
+class ObservabilitySettings(BaseSettings):
+    otlp_endpoint: str | None = None
+    otlp_service_name: str = Field(default="resolveops", min_length=1, max_length=100)
 
     model_config = SettingsConfigDict(
         env_file=".env",
@@ -249,6 +271,11 @@ def get_settings() -> Settings:
 @lru_cache
 def get_traffic_protection_settings() -> TrafficProtectionSettings:
     return TrafficProtectionSettings()
+
+
+@lru_cache
+def get_observability_settings() -> ObservabilitySettings:
+    return ObservabilitySettings()
 
 
 @lru_cache
