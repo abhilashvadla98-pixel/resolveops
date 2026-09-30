@@ -30,17 +30,23 @@ async function apiFetch(path, options = {}) {
   } finally { clearTimeout(timeout); }
 }
 
-async function checkHealth() { try { await apiFetch("/health/live", { authenticated: false }); setText("health-label", "Service healthy"); byId("health-dot").className = "ok"; } catch (_) { setText("health-label", "Service unavailable"); byId("health-dot").className = "error"; } }
+async function checkHealth() { try { await apiFetch("/health/live", { authenticated: false, timeoutMs: 90000 }); setText("health-label", "Service healthy"); byId("health-dot").className = "ok"; } catch (_) { setText("health-label", "Service unavailable"); byId("health-dot").className = "error"; } }
 function setConnected(mode) { state.mode = mode; setText("sidebar-connection", "Connected"); setText("session-label", mode === "demo" ? "Isolated sandbox session" : "Operator session"); byId("sidebar-pulse").classList.add("connected"); byId("disconnect-button").hidden = false; byId("connection-notice").classList.add("connected"); byId("overview-notice").classList.add("connected"); byId("try-demo").hidden = true; byId("reset-demo").hidden = mode !== "demo"; }
 function disconnect() { state.token = ""; state.mode = ""; state.cases = []; state.approvals = []; state.itApprovals = []; state.selectedCase = null; state.itCases = []; state.reliability = null; setText("sidebar-connection", "Not connected"); setText("session-label", "No active session"); byId("sidebar-pulse").classList.remove("connected"); byId("disconnect-button").hidden = true; byId("connection-notice").classList.remove("connected"); byId("overview-notice").classList.remove("connected"); byId("try-demo").hidden = false; byId("reset-demo").hidden = true; renderCases(); renderOverview(); showToast("Session disconnected."); }
 
 async function openDemo() {
-  const buttons = [byId("try-demo"), byId("notice-demo"), byId("overview-demo")]; buttons.forEach((button) => { button.disabled = true; });
+  const buttons = [byId("try-demo"), byId("notice-demo"), byId("overview-demo")];
+  const buttonLabels = buttons.map((button) => button.textContent);
+  buttons.forEach((button) => { button.disabled = true; button.textContent = "Starting service…"; });
+  setText("health-label", "Starting free demo · first visit can take about a minute");
+  byId("health-dot").className = "pending";
   try {
-    const session = await apiFetch("/api/v1/demo/session", { authenticated: false, method: "POST" }); state.token = session.access_token; setConnected("demo");
+    const session = await apiFetch("/api/v1/demo/session", { authenticated: false, method: "POST", timeoutMs: 90000 }); state.token = session.access_token; setConnected("demo");
+    setText("health-label", "Preparing isolated workspace");
+    buttons.forEach((button) => { button.textContent = "Loading workspace…"; });
     state.scenarios = await apiFetch("/api/v1/demo/reset", { method: "POST" });
-    await loadAll(); showToast("Operations workspace opened.");
-  } catch (error) { state.token = ""; showToast(error.message, true); } finally { buttons.forEach((button) => { button.disabled = false; }); }
+    await loadAll(); setText("health-label", "Service healthy"); byId("health-dot").className = "ok"; showToast("Operations workspace opened.");
+  } catch (error) { state.token = ""; setText("health-label", "Service unavailable"); byId("health-dot").className = "error"; showToast(error.message, true); } finally { buttons.forEach((button, index) => { button.disabled = false; button.textContent = buttonLabels[index]; }); }
 }
 async function resetDemo() { byId("reset-demo").disabled = true; try { state.scenarios = await apiFetch("/api/v1/demo/reset", { method: "POST" }); state.selectedCase = null; state.selectedITCase = ""; await loadAll(); showToast("Workspace restored to its baseline."); } catch (error) { showToast(error.message, true); } finally { byId("reset-demo").disabled = false; } }
 
@@ -143,7 +149,7 @@ function renderOverview() {
     if (button.dataset.attentionCase) await selectCase(button.dataset.attentionCase);
   }));
 }
-async function loadAll() { try { await loadApprovals(); await Promise.all([loadCases(), loadITQueue(), loadMetrics(), loadReliability(), loadScenarios(), loadAudit()]); setText("last-updated", `Updated ${formatDate(new Date().toISOString())}`); renderOverview(); } catch (error) { if (error.status === 401) disconnect(); showToast(error.message, true); } }
+async function loadAll() { try { await Promise.all([loadApprovals(), loadCases(), loadITQueue(), loadMetrics(), loadReliability(), loadScenarios(), loadAudit()]); setText("last-updated", `Updated ${formatDate(new Date().toISOString())}`); renderOverview(); } catch (error) { if (error.status === 401) disconnect(); showToast(error.message, true); } }
 
 function openCaseDrawer() { byId("case-drawer").hidden = false; byId("complaint-text").focus(); }
 function closeCaseDrawer() { byId("case-drawer").hidden = true; }
