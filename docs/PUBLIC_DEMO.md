@@ -41,14 +41,18 @@ measurements.
 
 - Public URL: https://resolveops-demo.onrender.com/console
 - Host and region: Render, Ohio
-- Git revision: `b1855e405cf35fe37ffff00df7dbb5b04d2819e9`
+- Application revision: `381718837d670433352496af904b55199e6de35d`
 - Deployment date: 2026-09-30
 - External verification: `/health/live`, `/health/ready`, and `/openapi.json` returned HTTP 200;
   the isolated workspace loaded the seeded customer and IT queues; approval, controlled execution,
   fresh-state verification, and baseline reset completed through the public console
-- Warm readiness latency: five samples of 396.6, 157.9, 149.2, 205.7, and 101.3 ms; median 157.9 ms
+- Warm console latency after the latest deployment: five samples of 158.5, 188.9, 108.5,
+  267.9, and 192.4 ms; median 188.9 ms
+- Warm workspace preparation: session creation 253 ms, deterministic baseline reset 2,086 ms,
+  and individual queue/approval/audit requests 201-397 ms
 - Cold-start measurement: not measured during this deployment; Render warns that a sleeping free
-  service can take 50 seconds or more to wake
+  service can take 50 seconds or more to wake. The console now shows explicit startup progress and
+  allows 90 seconds for the free service to resume instead of failing after 15 seconds.
 - Persistence limitation: the free PostgreSQL database expires after 30 days and must be replaced
   or upgraded to keep the public demo available
 
