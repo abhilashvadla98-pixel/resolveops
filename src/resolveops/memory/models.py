@@ -10,13 +10,19 @@ class MemoryReviewStatus(str, Enum):
     RETIRED = "retired"
 
 
+class ApprovedResolutionPattern(DomainModel):
+    action: Identifier
+    requires_approval: bool = True
+    notes: NonEmptyText | None = None
+
+
 class ReviewedResolutionMemory(DomainModel):
     memory_id: Identifier
     tenant_id: Identifier
     issue_type: Identifier
     evidence_pattern: list[NonEmptyText] = Field(min_length=1, max_length=30)
     policy_versions: dict[Identifier, int]
-    approved_resolution: dict[str, object]
+    approved_resolution: ApprovedResolutionPattern
     verification_outcome: NonEmptyText
     human_feedback_id: Identifier | None = None
     review_status: MemoryReviewStatus

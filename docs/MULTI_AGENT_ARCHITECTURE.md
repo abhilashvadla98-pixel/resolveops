@@ -63,6 +63,21 @@ Migration `0016_agent_execution_records` adds `agent_runs` and `agent_tool_calls
 resolution patterns. Migration `0018_agent_workflow_jobs` adds durable jobs and a reconnectable event
 projection. Raw arguments, secrets and arbitrary model histories are not memory.
 
+Reviewed memory is used by the Resolution role only after investigation and policy retrieval.
+Retrieval is tenant scoped, issue typed, expiry limited, and requires every stored policy version to
+exactly match the versions retrieved for the current run. The model receives only the typed action,
+evidence pattern, verification summary, and policy-version metadata. Memory is advisory context; it
+is never treated as current evidence, approval, or authorization.
+
+## Optional external evidence read
+
+`RESOLVEOPS_AGENT_MCP_SERVER_URL` can point a development or isolated demo tenant at one read-only
+MCP simulator. The consumer is created for exactly one tenant and currently allows only `get_case`.
+An unavailable simulator falls back to the trusted local case reader and labels the source as a
+fallback. Tenant mismatch, non-allowlisted tool use, and security denials fail closed; malformed
+structured output is treated as an unavailable source. Remote MCP use is rejected in production
+until authenticated, tenant-aware transport exists.
+
 ## Background execution and live progress
 
 The synchronous endpoint remains available as a compatibility path. When
@@ -82,5 +97,5 @@ console consumes this stream and keeps polling job status as a recovery path.
 The optional local worker/Redis profile and SSE path are implemented and tested, but they have not
 been load/soak tested or deployed to a public cloud. The AWS Terraform does not yet provision a
 managed Redis service or worker tasks. Role-specific gold evaluations, retrieval/reranking
-experiments, public hosting and cloud worker deployment remain planned work and must not be claimed
-as implemented.
+experiments, authenticated production MCP transport, public hosting and cloud worker deployment
+remain planned work and must not be claimed as implemented.

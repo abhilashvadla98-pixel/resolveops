@@ -25,6 +25,7 @@ def process_one(store: AgentJobStore, worker_id: str) -> bool:
         runtime = build_agent_runtime(
             store.session_factory,
             settings,
+            tenant_id=job.tenant_id,
             on_status=lambda run: store.record_agent_progress(job.job_id, worker_id, run),
         )
         result = HierarchicalAgentOrchestrator(runtime).run(

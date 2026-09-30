@@ -2,6 +2,7 @@ import asyncio
 from datetime import UTC, datetime
 from pathlib import Path
 
+import pytest
 from mcp import Client
 from sqlalchemy import create_engine, event
 from sqlalchemy.pool import StaticPool
@@ -9,6 +10,7 @@ from sqlalchemy.pool import StaticPool
 from resolveops.database.base import Base
 from resolveops.database.seed import seed_all
 from resolveops.database.session import create_session_factory
+from resolveops.interfaces.mcp_client import MCPReadClient, MCPReadDenied
 from resolveops.interfaces.mcp_server import create_mcp_server
 from resolveops.knowledge.embeddings import FeatureHashEmbeddingProvider
 from resolveops.knowledge.ingestion import ingest_directory
@@ -107,5 +109,12 @@ def test_mcp_exposes_only_read_tools_with_structured_results() -> None:
 
     try:
         asyncio.run(exercise_server())
+        consumer = MCPReadClient(server, tenant_id="TENANT-A", timeout_seconds=2)
+        case_data = consumer.call_read_tool("TENANT-A", "get_case", {"case_id": "CASE-1001"})
+        assert case_data["case_id"] == "CASE-1001"
+        with pytest.raises(MCPReadDenied, match="tenant boundary"):
+            consumer.call_read_tool("TENANT-B", "get_case", {"case_id": "CASE-1001"})
+        with pytest.raises(MCPReadDenied, match="not approved"):
+            consumer.call_read_tool("TENANT-A", "get_refund", {"refund_id": "REF-2001"})
     finally:
         engine.dispose()

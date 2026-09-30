@@ -13,6 +13,7 @@ class ContextMetrics(DomainModel):
     policy_chunk_count: int = Field(ge=0)
     estimated_tokens: int = Field(ge=0)
     truncation_events: int = Field(ge=0)
+    memory_count: int = Field(default=0, ge=0)
 
 
 class AgentContext(DomainModel):
@@ -25,6 +26,7 @@ class AgentContext(DomainModel):
     prior_outputs: list[dict[str, object]] = Field(default_factory=list, max_length=10)
     tool_results: list[dict[str, object]] = Field(default_factory=list, max_length=30)
     policy_results: list[dict[str, object]] = Field(default_factory=list, max_length=30)
+    memory_results: list[dict[str, object]] = Field(default_factory=list, max_length=10)
     required_evidence: list[NonEmptyText] = Field(default_factory=list, max_length=30)
     freshness_cutoff: AwareDatetime
     redaction_policy: Identifier = "agent-masked-pii-v1"
@@ -33,7 +35,12 @@ class AgentContext(DomainModel):
 
     @model_validator(mode="after")
     def prohibit_cross_tenant_context(self) -> "AgentContext":
-        for group in (self.facts, self.tool_results, self.policy_results):
+        for group in (
+            self.facts,
+            self.tool_results,
+            self.policy_results,
+            self.memory_results,
+        ):
             for item in group:
                 item_tenant = item.get("tenant_id")
                 if item_tenant is not None and item_tenant != self.tenant_id:
@@ -59,6 +66,7 @@ class AgentContextBuilder:
         prior_outputs: list[dict[str, object]] | None = None,
         tool_results: list[dict[str, object]] | None = None,
         policy_results: list[dict[str, object]] | None = None,
+        memory_results: list[dict[str, object]] | None = None,
         required_evidence: list[str] | None = None,
         token_budget: int = 4_000,
         now: datetime | None = None,
@@ -68,6 +76,7 @@ class AgentContextBuilder:
             "prior_outputs": list(prior_outputs or []),
             "tool_results": list(tool_results or []),
             "policy_results": list(policy_results or []),
+            "memory_results": list(memory_results or []),
         }
         truncations = 0
         while _serialized_size(supplied) > self.max_characters:
@@ -90,6 +99,7 @@ class AgentContextBuilder:
             prior_outputs=supplied["prior_outputs"],
             tool_results=supplied["tool_results"],
             policy_results=supplied["policy_results"],
+            memory_results=supplied["memory_results"],
             required_evidence=required_evidence or [],
             freshness_cutoff=current_time,
             token_budget=token_budget,
@@ -98,6 +108,7 @@ class AgentContextBuilder:
                 policy_chunk_count=len(supplied["policy_results"]),
                 estimated_tokens=estimated_tokens,
                 truncation_events=truncations,
+                memory_count=len(supplied["memory_results"]),
             ),
         )
 

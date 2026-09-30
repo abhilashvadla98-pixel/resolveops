@@ -18,6 +18,11 @@ from resolveops.agents.models import (
 )
 from resolveops.agents.persistence import AgentRunStore
 from resolveops.agents.tools import AgentToolResult
+from resolveops.memory.retrieval import (
+    ReviewedMemoryRetriever,
+    issue_types_from_tool_results,
+    select_applicable_memories,
+)
 
 
 class AgentToolExecutor(Protocol):
@@ -35,6 +40,7 @@ class MultiAgentReasoningRuntime:
         context_builder: AgentContextBuilder | None = None,
         max_investigation_turns: int = 4,
         max_policy_turns: int = 3,
+        memory_retriever: ReviewedMemoryRetriever | None = None,
     ) -> None:
         if not 1 <= max_investigation_turns <= 10:
             raise ValueError("investigation turns must be between 1 and 10")
@@ -47,6 +53,7 @@ class MultiAgentReasoningRuntime:
         self.context_builder = context_builder or AgentContextBuilder()
         self.max_investigation_turns = max_investigation_turns
         self.max_policy_turns = max_policy_turns
+        self.memory_retriever = memory_retriever
 
     def run(
         self,
@@ -97,6 +104,11 @@ class MultiAgentReasoningRuntime:
             parent_run_id=supervisor_run,
         )
         run_ids.extend(policy_runs)
+        memory_results = self._reviewed_memory_context(
+            tenant_id=tenant_id,
+            investigation_results=investigation_results,
+            policy=policy,
+        )
         resolution_context = self._context(
             role=AgentRole.RESOLUTION,
             workflow_id=workflow_id,
@@ -107,6 +119,7 @@ class MultiAgentReasoningRuntime:
             prior_outputs=[supervisor.model_dump(mode="json")],
             tool_results=[item.model_dump(mode="json") for item in investigation_results],
             policy_results=[item.model_dump(mode="json") for item in policy_results],
+            memory_results=memory_results,
         )
         resolution, resolution_run = self.invoker.invoke(
             tenant_id=tenant_id,
@@ -355,6 +368,38 @@ class MultiAgentReasoningRuntime:
             response_model=CriticReport,
             parent_agent_run_id=parent_run_id,
         )
+
+    def _reviewed_memory_context(
+        self,
+        *,
+        tenant_id: str,
+        investigation_results: list[AgentToolResult],
+        policy: PolicyTurn,
+    ) -> list[dict[str, object]]:
+        if self.memory_retriever is None:
+            return []
+        serialized_results = [item.model_dump(mode="json") for item in investigation_results]
+        issue_types = issue_types_from_tool_results(serialized_results)
+        memories = select_applicable_memories(
+            self.memory_retriever,
+            tenant_id=tenant_id,
+            issue_types=issue_types,
+            current_policy_versions=dict(policy.policy_versions),
+        )
+        return [
+            {
+                "memory_id": memory.memory_id,
+                "tenant_id": memory.tenant_id,
+                "issue_type": memory.issue_type,
+                "evidence_pattern": list(memory.evidence_pattern),
+                "policy_versions": dict(memory.policy_versions),
+                "approved_resolution": memory.approved_resolution.model_dump(mode="json"),
+                "verification_outcome": memory.verification_outcome,
+                "advisory_only": True,
+                "source": "human_reviewed_resolution_memory",
+            }
+            for memory in memories
+        ]
 
     def _execute_tool(
         self,

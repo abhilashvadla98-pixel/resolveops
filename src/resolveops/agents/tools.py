@@ -8,9 +8,10 @@ from sqlalchemy.orm import Session, sessionmaker
 from resolveops.agents.models import AgentRole, ToolRequest
 from resolveops.agents.permissions import require_agent_tool
 from resolveops.employee_it.store import EmployeeITStore
+from resolveops.interfaces.mcp_client import ExternalReadClient, MCPReadUnavailable
 from resolveops.knowledge.embeddings import EmbeddingProvider
 from resolveops.knowledge.retrieval import HybridPolicyRetriever
-from resolveops.models.case import CaseIssueType
+from resolveops.models.case import Case, CaseIssueType
 from resolveops.models.common import DomainModel, Identifier, NonEmptyText
 from resolveops.operations.models import Actor, ActorRole
 from resolveops.operations.reads import OperationsReadTools
@@ -46,10 +47,14 @@ class AgentReadToolRegistry:
         session_factory: sessionmaker[Session],
         embedding_provider: EmbeddingProvider,
         *,
+        tenant_id: str | None = None,
+        external_read_client: ExternalReadClient | None = None,
         clock: Callable[[], datetime] | None = None,
     ) -> None:
         self.session_factory = session_factory
         self.embedding_provider = embedding_provider
+        self.tenant_id = tenant_id
+        self.external_read_client = external_read_client
         self.clock = clock or (lambda: datetime.now(UTC))
         self._handlers: dict[str, ToolHandler] = {
             "get_case": lambda args: self._customer_resource("case", args),
@@ -71,6 +76,40 @@ class AgentReadToolRegistry:
 
     def _customer_resource(self, resource_type: str, arguments: dict[str, str]) -> AgentToolResult:
         parsed = ResourceIdInput.model_validate(arguments)
+        if (
+            resource_type == "case"
+            and self.external_read_client is not None
+            and self.tenant_id is not None
+        ):
+            try:
+                data = self.external_read_client.call_read_tool(
+                    self.tenant_id,
+                    "get_case",
+                    {"case_id": parsed.resource_id},
+                )
+                case = Case.model_validate(data)
+                return AgentToolResult(
+                    tool_name="get_case",
+                    result_category="case",
+                    source=f"mcp://external-simulator/case/{parsed.resource_id}",
+                    observed_at=self.clock(),
+                    data=case.model_dump(mode="json"),
+                )
+            except MCPReadUnavailable:
+                return self._local_customer_resource(
+                    resource_type,
+                    parsed.resource_id,
+                    source_suffix="?fallback=mcp-unavailable",
+                )
+        return self._local_customer_resource(resource_type, parsed.resource_id)
+
+    def _local_customer_resource(
+        self,
+        resource_type: str,
+        resource_id: str,
+        *,
+        source_suffix: str = "",
+    ) -> AgentToolResult:
         with self.session_factory() as session:
             reads = OperationsReadTools(session, AGENT_READER)
             readers: dict[str, Callable[[str], Any]] = {
@@ -81,11 +120,11 @@ class AgentReadToolRegistry:
                 "return": reads.get_return,
                 "refund": reads.get_refund,
             }
-            value = readers[resource_type](parsed.resource_id)
+            value = readers[resource_type](resource_id)
         return AgentToolResult(
             tool_name=f"get_{resource_type}",
             result_category=resource_type,
-            source=f"resolveops://{resource_type}/{parsed.resource_id}",
+            source=f"resolveops://{resource_type}/{resource_id}{source_suffix}",
             observed_at=self.clock(),
             data=value.model_dump(mode="json"),
         )

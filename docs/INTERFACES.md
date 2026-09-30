@@ -22,6 +22,11 @@ masked PII through internal reads.
 The default server uses deterministic local feature-hash embeddings. It does not call an external
 model or service. It connects to the database configured by `RESOLVEOPS_DATABASE_URL`.
 
+The multi-agent runtime can optionally consume `get_case` from one tenant-bound read-only simulator
+through `RESOLVEOPS_AGENT_MCP_SERVER_URL`. This is a development/demo integration, not a production
+remote trust boundary. The consumer rejects cross-tenant calls and every tool outside its explicit
+allowlist. Availability failures use a source-labelled local read fallback; access denials do not.
+
 ## Refund status webhook
 
 `POST /events/v1/refund-status` accepts the one event type that currently has a justified external

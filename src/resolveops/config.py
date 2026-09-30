@@ -54,6 +54,9 @@ class Settings(BaseSettings):
     agent_job_max_attempts: int = Field(default=2, ge=1, le=5)
     agent_worker_poll_seconds: int = Field(default=5, ge=1, le=60)
     redis_url: str | None = None
+    agent_reviewed_memory_enabled: bool = True
+    agent_mcp_server_url: str | None = None
+    agent_mcp_timeout_seconds: float = Field(default=5, gt=0, le=30)
 
     model_config = SettingsConfigDict(
         env_file=".env",
@@ -201,6 +204,10 @@ def _validate_webhook_configuration(settings: Settings) -> None:
 
 
 def _validate_production_identities(settings: Settings) -> None:
+    if settings.agent_mcp_server_url is not None:
+        raise RuntimeSafetyError(
+            "production external MCP requires an authenticated tenant transport"
+        )
     if settings.api_key_identities_json is None:
         raise RuntimeSafetyError("production requires at least one enabled API identity")
     try:

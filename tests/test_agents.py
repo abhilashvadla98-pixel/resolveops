@@ -27,9 +27,13 @@ from resolveops.agents.models import (
 from resolveops.agents.permissions import AgentToolDenied, require_agent_tool
 from resolveops.agents.persistence import AgentRunStore, safe_context_hash
 from resolveops.agents.runtime import MultiAgentReasoningRuntime
-from resolveops.agents.tools import AgentToolResult
+from resolveops.agents.tools import AgentReadToolRegistry, AgentToolResult
 from resolveops.database.agent_records import AgentRunRecord, AgentToolCallRecord
 from resolveops.database.base import Base
+from resolveops.database.seed import seed_all
+from resolveops.interfaces.mcp_client import MCPReadDenied, MCPReadUnavailable
+from resolveops.knowledge.embeddings import FeatureHashEmbeddingProvider
+from resolveops.memory.retrieval import issue_types_from_tool_results, select_applicable_memories
 from resolveops.memory.store import ReviewedResolutionMemoryStore
 from resolveops.orchestration.graph import HierarchicalAgentOrchestrator
 
@@ -141,6 +145,7 @@ class ScriptedProvider:
         self.roles: list[str] = []
         self.investigation_calls = 0
         self.policy_calls = 0
+        self.resolution_memory_results: list[dict[str, object]] = []
 
     def invoke(self, *, instructions, context, response_model):  # type: ignore[no-untyped-def]
         self.roles.append(response_model.__name__)
@@ -218,6 +223,7 @@ class ScriptedProvider:
                 complete=True,
             )
         if response_model is ResolutionProposal:
+            self.resolution_memory_results = list(context.memory_results)
             return ResolutionProposal(
                 issue_resolutions=[
                     IssueResolution(
@@ -250,6 +256,16 @@ class ScriptedTools:
             observed_at=NOW,
             data={"verified": True},
         )
+
+
+class MemoryAwareScriptedTools(ScriptedTools):
+    def execute(self, role: AgentRole, request: ToolRequest) -> AgentToolResult:
+        result = super().execute(role, request)
+        if request.tool_name == "get_case":
+            return result.model_copy(
+                update={"data": {"issues": [{"issue_type": "duplicate_charge"}]}}
+            )
+        return result
 
 
 def test_true_multi_agent_runtime_invokes_distinct_roles_tools_and_handoffs() -> None:
@@ -291,6 +307,56 @@ def test_true_multi_agent_runtime_invokes_distinct_roles_tools_and_handoffs() ->
     assert len(stored) == 7
     assert {item.role for item in stored} == set(AgentRole)
     assert sum(item.tool_call_count for item in stored) == 2
+
+
+def test_runtime_passes_only_matching_reviewed_memory_to_resolution_role() -> None:
+    engine = create_engine("sqlite:///:memory:")
+    Base.metadata.create_all(engine)
+    factory = sessionmaker(engine, expire_on_commit=False)
+    store = AgentRunStore(factory, clock=lambda: NOW)
+    memory_store = ReviewedResolutionMemoryStore(factory, clock=lambda: NOW)
+    memory_store.promote(
+        tenant_id="TENANT-A",
+        issue_type="duplicate_charge",
+        evidence_pattern=["two captured payments"],
+        policy_versions={"POLICY-1": 1},
+        approved_resolution={"action": "refund_duplicate"},
+        verification_outcome="The approved refund was independently verified.",
+        reviewed_by="REVIEWER-1",
+    )
+    memory_store.promote(
+        tenant_id="TENANT-A",
+        issue_type="duplicate_charge",
+        evidence_pattern=["stale example"],
+        policy_versions={"POLICY-1": 2},
+        approved_resolution={"action": "refund_duplicate"},
+        verification_outcome="Historical verification.",
+        reviewed_by="REVIEWER-1",
+    )
+    provider = ScriptedProvider()
+    ledger = BudgetLedger(AgentBudget(max_model_calls=8, max_agent_steps=8), datetime.now(UTC))
+    runtime = MultiAgentReasoningRuntime(
+        invoker=AgentInvoker(provider=provider, store=store, ledger=ledger),
+        tools=MemoryAwareScriptedTools(),
+        run_store=store,
+        ledger=ledger,
+        memory_retriever=memory_store,
+    )
+
+    runtime.run(
+        workflow_id="WF-MEMORY-1",
+        case_id="CASE-1",
+        tenant_id="TENANT-A",
+        domain=AgentDomain.CUSTOMER_OPERATIONS,
+        objective="Resolve a suspected duplicate payment.",
+        trace_id="d" * 32,
+    )
+
+    assert len(provider.resolution_memory_results) == 1
+    selected = provider.resolution_memory_results[0]
+    assert selected["policy_versions"] == {"POLICY-1": 1}
+    assert selected["advisory_only"] is True
+    assert selected["source"] == "human_reviewed_resolution_memory"
 
 
 def test_context_builder_rejects_cross_tenant_evidence() -> None:
@@ -352,3 +418,143 @@ def test_reviewed_memory_is_explicit_tenant_scoped_and_advisory() -> None:
 
     assert store.retrieve(tenant_id="TENANT-A", issue_type="duplicate_charge") == [promoted]
     assert store.retrieve(tenant_id="TENANT-B", issue_type="duplicate_charge") == []
+
+
+def test_memory_retrieval_requires_current_policy_and_uses_typed_safe_shape() -> None:
+    engine = create_engine("sqlite:///:memory:")
+    Base.metadata.create_all(engine)
+    factory = sessionmaker(engine, expire_on_commit=False)
+    store = ReviewedResolutionMemoryStore(factory, clock=lambda: NOW)
+    current = store.promote(
+        tenant_id="TENANT-A",
+        issue_type="duplicate_charge",
+        evidence_pattern=["two captured payments", "no prior duplicate refund"],
+        policy_versions={"POLICY-1": 2},
+        approved_resolution={
+            "action": "refund_duplicate",
+            "requires_approval": True,
+            "notes": "Verify the exact duplicate capture before proposing a refund.",
+        },
+        verification_outcome="A new refund record matched the approved payment.",
+        reviewed_by="REVIEWER-1",
+    )
+    store.promote(
+        tenant_id="TENANT-A",
+        issue_type="duplicate_charge",
+        evidence_pattern=["outdated policy example"],
+        policy_versions={"POLICY-1": 1},
+        approved_resolution={"action": "refund_duplicate"},
+        verification_outcome="Historical verification.",
+        reviewed_by="REVIEWER-1",
+    )
+
+    selected = select_applicable_memories(
+        store,
+        tenant_id="TENANT-A",
+        issue_types=["duplicate_charge"],
+        current_policy_versions={"POLICY-1": 2},
+    )
+
+    assert selected == [current]
+    assert current.approved_resolution.action == "refund_duplicate"
+    assert (
+        select_applicable_memories(
+            store,
+            tenant_id="TENANT-B",
+            issue_types=["duplicate_charge"],
+            current_policy_versions={"POLICY-1": 2},
+        )
+        == []
+    )
+    assert (
+        select_applicable_memories(
+            store,
+            tenant_id="TENANT-A",
+            issue_types=["duplicate_charge"],
+            current_policy_versions={},
+        )
+        == []
+    )
+
+
+def test_issue_type_extraction_ignores_unstructured_external_content() -> None:
+    results = [
+        {
+            "data": {
+                "issues": [
+                    {"issue_type": "duplicate_charge"},
+                    {"issue_type": "duplicate_charge"},
+                    "untrusted text",
+                ]
+            }
+        },
+        {"data": {"issues": "not-a-list"}},
+    ]
+
+    assert issue_types_from_tool_results(results) == ["duplicate_charge"]
+
+
+class UnavailableExternalReader:
+    def call_read_tool(
+        self, tenant_id: str, tool_name: str, arguments: object
+    ) -> dict[str, object]:
+        raise MCPReadUnavailable("simulator offline")
+
+
+class DeniedExternalReader:
+    def call_read_tool(
+        self, tenant_id: str, tool_name: str, arguments: object
+    ) -> dict[str, object]:
+        raise MCPReadDenied("tenant boundary violation")
+
+
+def test_agent_case_read_falls_back_only_when_mcp_is_unavailable() -> None:
+    engine = create_engine("sqlite:///:memory:")
+    Base.metadata.create_all(engine)
+    factory = sessionmaker(engine, expire_on_commit=False)
+    with factory.begin() as session:
+        seed_all(session)
+    tools = AgentReadToolRegistry(
+        factory,
+        FeatureHashEmbeddingProvider(dimensions=128),
+        tenant_id="TENANT-A",
+        external_read_client=UnavailableExternalReader(),
+        clock=lambda: NOW,
+    )
+
+    result = tools.execute(
+        AgentRole.INVESTIGATION,
+        ToolRequest(
+            tool_name="get_case",
+            arguments={"resource_id": "CASE-1001"},
+            purpose="Inspect the case.",
+        ),
+    )
+
+    assert result.data["case_id"] == "CASE-1001"
+    assert result.source.endswith("?fallback=mcp-unavailable")
+
+
+def test_agent_case_read_does_not_fallback_after_mcp_security_denial() -> None:
+    engine = create_engine("sqlite:///:memory:")
+    Base.metadata.create_all(engine)
+    factory = sessionmaker(engine, expire_on_commit=False)
+    with factory.begin() as session:
+        seed_all(session)
+    tools = AgentReadToolRegistry(
+        factory,
+        FeatureHashEmbeddingProvider(dimensions=128),
+        tenant_id="TENANT-A",
+        external_read_client=DeniedExternalReader(),
+        clock=lambda: NOW,
+    )
+
+    with pytest.raises(MCPReadDenied, match="tenant boundary"):
+        tools.execute(
+            AgentRole.INVESTIGATION,
+            ToolRequest(
+                tool_name="get_case",
+                arguments={"resource_id": "CASE-1001"},
+                purpose="Inspect the case.",
+            ),
+        )

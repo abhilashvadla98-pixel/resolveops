@@ -57,6 +57,7 @@ def test_development_allows_documented_local_defaults() -> None:
         {"webhook_secret": "replace-with-a-real-secret"},
         {"api_key_identities_json": "[]"},
         {"api_key_identities_json": json.dumps([{"key_sha256": "0" * 64, "enabled": True}])},
+        {"agent_mcp_server_url": "https://simulator.internal/mcp"},
     ],
 )
 def test_production_rejects_known_unsafe_configuration(changes: dict[str, object]) -> None:

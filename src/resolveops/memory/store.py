@@ -6,7 +6,11 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
 from resolveops.database.memory_records import ReviewedResolutionMemoryRecord
-from resolveops.memory.models import MemoryReviewStatus, ReviewedResolutionMemory
+from resolveops.memory.models import (
+    ApprovedResolutionPattern,
+    MemoryReviewStatus,
+    ReviewedResolutionMemory,
+)
 
 
 class ReviewedResolutionMemoryStore:
@@ -41,7 +45,7 @@ class ReviewedResolutionMemoryStore:
             issue_type=issue_type,
             evidence_pattern=evidence_pattern,
             policy_versions=policy_versions,
-            approved_resolution=approved_resolution,
+            approved_resolution=ApprovedResolutionPattern.model_validate(approved_resolution),
             verification_outcome=verification_outcome,
             human_feedback_id=human_feedback_id,
             review_status=MemoryReviewStatus.REVIEWED,
@@ -84,7 +88,9 @@ class ReviewedResolutionMemoryStore:
             issue_type=record.issue_type,
             evidence_pattern=record.evidence_pattern,
             policy_versions=record.policy_versions,
-            approved_resolution=record.approved_resolution,
+            approved_resolution=ApprovedResolutionPattern.model_validate(
+                record.approved_resolution
+            ),
             verification_outcome=record.verification_outcome,
             human_feedback_id=record.human_feedback_id,
             review_status=record.review_status,

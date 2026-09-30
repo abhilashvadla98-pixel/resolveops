@@ -12,13 +12,16 @@ from resolveops.agents.providers import GeminiStructuredAgentProvider
 from resolveops.agents.runtime import MultiAgentReasoningRuntime
 from resolveops.agents.tools import AgentReadToolRegistry
 from resolveops.config import Settings
+from resolveops.interfaces.mcp_client import MCPReadClient
 from resolveops.knowledge.embeddings import FeatureHashEmbeddingProvider
+from resolveops.memory.store import ReviewedResolutionMemoryStore
 
 
 def build_agent_runtime(
     session_factory: sessionmaker[Session],
     settings: Settings,
     *,
+    tenant_id: str,
     on_status: Callable[[AgentInvocationRecord], None] | None = None,
 ) -> MultiAgentReasoningRuntime:
     if settings.gemini_api_key is None:
@@ -35,8 +38,26 @@ def build_agent_runtime(
     ledger = BudgetLedger(AgentBudget(), datetime.now(UTC))
     return MultiAgentReasoningRuntime(
         invoker=AgentInvoker(provider=provider, store=store, ledger=ledger, on_status=on_status),
-        tools=AgentReadToolRegistry(session_factory, FeatureHashEmbeddingProvider(dimensions=128)),
+        tools=AgentReadToolRegistry(
+            session_factory,
+            FeatureHashEmbeddingProvider(dimensions=128),
+            tenant_id=tenant_id,
+            external_read_client=(
+                MCPReadClient(
+                    settings.agent_mcp_server_url,
+                    tenant_id=tenant_id,
+                    timeout_seconds=settings.agent_mcp_timeout_seconds,
+                )
+                if settings.agent_mcp_server_url is not None
+                else None
+            ),
+        ),
         run_store=store,
         ledger=ledger,
         context_builder=AgentContextBuilder(max_characters=16_000),
+        memory_retriever=(
+            ReviewedResolutionMemoryStore(session_factory)
+            if settings.agent_reviewed_memory_enabled
+            else None
+        ),
     )

@@ -75,7 +75,7 @@ def run_agent_workflow(
             detail="multi-agent reasoning is not configured",
         )
     factory = _factory(session)
-    runtime = build_agent_runtime(factory, settings)
+    runtime = build_agent_runtime(factory, settings, tenant_id=principal.tenant_id)
     try:
         return HierarchicalAgentOrchestrator(runtime).run(
             workflow_id=body.workflow_id,
