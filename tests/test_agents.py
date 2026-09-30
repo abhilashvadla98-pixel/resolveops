@@ -30,6 +30,7 @@ from resolveops.agents.runtime import MultiAgentReasoningRuntime
 from resolveops.agents.tools import AgentToolResult
 from resolveops.database.agent_records import AgentRunRecord, AgentToolCallRecord
 from resolveops.database.base import Base
+from resolveops.memory.store import ReviewedResolutionMemoryStore
 from resolveops.orchestration.graph import HierarchicalAgentOrchestrator
 
 NOW = datetime(2026, 9, 29, 12, tzinfo=UTC)
@@ -332,3 +333,22 @@ def test_hierarchical_langgraph_routes_customer_domain_through_specialists() -> 
     assert result.supervisor.next_agent == AgentRole.INVESTIGATION
     assert result.critic.decision == CriticDecision.ACCEPT
     assert len(result.agent_run_ids) == 7
+
+
+def test_reviewed_memory_is_explicit_tenant_scoped_and_advisory() -> None:
+    engine = create_engine("sqlite:///:memory:")
+    Base.metadata.create_all(engine)
+    factory = sessionmaker(engine, expire_on_commit=False)
+    store = ReviewedResolutionMemoryStore(factory, clock=lambda: NOW)
+    promoted = store.promote(
+        tenant_id="TENANT-A",
+        issue_type="duplicate_charge",
+        evidence_pattern=["two captured payments", "no existing refund"],
+        policy_versions={"POLICY-1": 2},
+        approved_resolution={"action": "refund_duplicate"},
+        verification_outcome="refund record independently verified",
+        reviewed_by="REVIEWER-1",
+    )
+
+    assert store.retrieve(tenant_id="TENANT-A", issue_type="duplicate_charge") == [promoted]
+    assert store.retrieve(tenant_id="TENANT-B", issue_type="duplicate_charge") == []

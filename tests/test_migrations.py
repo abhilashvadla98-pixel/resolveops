@@ -38,6 +38,7 @@ EXPECTED_TABLES = {
     "it_workflow_executions",
     "agent_runs",
     "agent_tool_calls",
+    "reviewed_resolution_memory",
     "it_access_requests",
     "it_notifications",
     "it_tickets",
