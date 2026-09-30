@@ -4,6 +4,7 @@ from typing import Annotated
 from fastapi import Depends, FastAPI, Request, Response, status
 from fastapi.responses import JSONResponse
 
+from resolveops.api.agents import router as agents_router
 from resolveops.api.audit import router as audit_router
 from resolveops.api.console import router as console_router
 from resolveops.api.demo import router as demo_router
@@ -37,6 +38,7 @@ app = FastAPI(
     ),
 )
 app.include_router(simulator_router)
+app.include_router(agents_router)
 app.include_router(audit_router)
 app.include_router(demo_router)
 app.include_router(employee_it_router)

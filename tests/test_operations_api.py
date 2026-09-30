@@ -95,6 +95,15 @@ def test_complaint_intake_case_list_and_timeline(
     ]
 
 
+def test_agent_run_trace_endpoint_is_tenant_scoped(
+    operations_api: tuple[TestClient, dict[str, ActorRole], Engine],
+) -> None:
+    client, _role, _engine = operations_api
+    response = client.get("/api/v1/agent-workflows/WF-NOT-RUN/runs")
+    assert response.status_code == 200
+    assert response.json() == []
+
+
 def test_operator_queues_audit_and_feedback_use_persisted_records(
     operations_api: tuple[TestClient, dict[str, ActorRole], Engine],
 ) -> None:
