@@ -709,11 +709,11 @@ def _it_rows(
                 "notification_id": _id("ITNOTIF", index),
                 "case_id": case_id,
                 "employee_id": employee_id,
-            "recipient": employee_email,
-            "message": (
-                "Repository access has been granted and independently verified against the "
-                "current directory membership."
-            ),
+                "recipient": employee_email,
+                "message": (
+                    "Repository access has been granted and independently verified against the "
+                    "current directory membership."
+                ),
                 "status": "sent",
                 "sent_at": opened_at + timedelta(minutes=30),
             },
@@ -744,9 +744,7 @@ def generate_dataset(
                     "workspace_id": "demo-west",
                     "employee_id": _id("MGR", manager_index),
                     "name": manager_name,
-                    "work_email": _safe_email(
-                        manager_name, manager_index, prefix="manager"
-                    ),
+                    "work_email": _safe_email(manager_name, manager_index, prefix="manager"),
                     "manager_employee_id": None,
                     "status": "active",
                 },
