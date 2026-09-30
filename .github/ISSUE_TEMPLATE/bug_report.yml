@@ -1,0 +1,50 @@
+name: Bug report
+description: Report a reproducible ResolveOps defect
+title: "bug: "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: Do not report security issues here. Follow SECURITY.md for private reporting.
+  - type: textarea
+    id: problem
+    attributes:
+      label: What happened?
+      description: Describe the expected and observed behavior.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction
+      description: Give the smallest synthetic-data example that reproduces the problem.
+    validations:
+      required: true
+  - type: input
+    id: revision
+    attributes:
+      label: Revision
+      description: Commit SHA, tag, or container revision.
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidence
+      description: Include sanitized logs or trace IDs. Never include keys or personal data.
+  - type: dropdown
+    id: boundary
+    attributes:
+      label: Affected area
+      options:
+        - Customer workflow
+        - Employee IT workflow
+        - Multi-agent investigation
+        - Approval or action control
+        - Data or tenant isolation
+        - Evaluation
+        - Deployment or operations
+        - Console
+        - Other
+    validations:
+      required: true

@@ -12,8 +12,8 @@ ResolveOps is a production-minded operations system built around one boundary:
 > AI may advise. Deterministic software authorizes, executes, audits, and verifies.
 
 The project implements two connected domains: customer refund investigations and employee Git
-access. All records and external integrations are synthetic or simulated. It does not claim a live
-payment, identity, Git, CRM, or cloud connection.
+access. All records and business-system integrations are synthetic or simulated. It does not claim
+a live payment, identity, Git, or CRM connection.
 
 ## Constraints
 
@@ -145,11 +145,11 @@ secrets, unsafe demo settings, and missing identities.
 
 ## Deployment position
 
-The repository contains a locked non-root container, migration-gated Compose stack, CI, and an AWS
-ECS API/worker, RDS, TLS Valkey, ALB, ECR, Secrets Manager, and CloudWatch Terraform design. No
-public cloud environment is claimed.
-Launching it would require the owner's account, cost choice, credentials/OIDC, secrets, and explicit
-authorization. The complete walkthrough remains available locally at no paid cost.
+The repository contains a locked non-root container, migration-gated Compose stack, CI, a live
+synthetic Render demo, and an AWS ECS API/worker, RDS, TLS Valkey, ALB, ECR, Secrets Manager, and
+CloudWatch Terraform design. The Render deployment is recorded separately from local measurements.
+The AWS design has not been provisioned and would require the owner's account, cost choice,
+credentials/OIDC, secrets, and explicit authorization.
 
 ## What 10× and 100× would require
 
@@ -161,5 +161,5 @@ managed observability, disaster-recovery
 targets, realistic external-provider fault testing, and security/operational review.
 
 The most important remaining product gaps are real system connectors, enterprise SSO, calibrated
-human labels, a larger representative evaluation set, production load evidence, and an authorized
-public environment. They are stated directly rather than hidden behind architecture diagrams.
+human labels, a larger representative evaluation set, and production load evidence. They are
+stated directly rather than hidden behind architecture diagrams.

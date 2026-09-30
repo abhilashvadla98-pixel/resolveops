@@ -2,8 +2,8 @@
 
 ## Flagship scenario
 
-The Packet 15 scenario is: "I joined the ML Platform team and cannot access the source
-repository." ResolveOps treats this as a controlled access case, not a chat response. It reads the
+The reference scenario is: "I joined the ML Platform team and cannot access the source repository."
+ResolveOps treats this as a controlled access case, not a chat response. It reads the
 employee, enterprise identity, team membership, target repository, directory group, Git account,
 approval request, IT ticket, policy, and any existing access before deciding what to do.
 
@@ -79,8 +79,8 @@ cases, not a production accuracy or external-service reliability claim.
 
 - The domain has local simulators only; live vendor adapters and OAuth/application installation are
   future integration work.
-- Manager approval is persisted before this workflow starts. Packet 15 does not add a second
-  durable pause/resume approval flow for IT because the existing scoped approval record is the
+- Manager approval is persisted before this workflow starts. The IT workflow does not add a second
+  durable pause/resume approval because the existing scoped approval record is the
   authoritative input.
 - Provisioning is synchronous and transactional in the simulator. Real directory and Git providers
   would require asynchronous status events, provider-specific reconciliation, and compensating

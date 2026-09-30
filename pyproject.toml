@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "resolveops"
-version = "0.1.0"
-description = "Enterprise service and operations resolution platform."
+version = "1.0.1"
+description = "Agent-assisted operations workflows with deterministic action controls."
 requires-python = ">=3.12,<3.13"
 dependencies = [
     "alembic>=1.14,<2.0",

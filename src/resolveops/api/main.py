@@ -1,4 +1,5 @@
 from collections.abc import Awaitable, Callable
+from importlib.metadata import version as package_version
 from typing import Annotated
 
 from fastapi import Depends, FastAPI, Request, Response, status
@@ -48,6 +49,7 @@ configure_default_trace_sink(
 
 app = FastAPI(
     title="ResolveOps API",
+    version=package_version("resolveops"),
     description=(
         "APIs for ResolveOps and its simulated Customer Operations and Employee/IT systems."
     ),

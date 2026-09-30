@@ -1,11 +1,8 @@
 # ResolveOps deployment
 
-## What Packet 16 provides
-
-ResolveOps now has one tested container image, a local PostgreSQL Compose stack, CI checks, a manual
-AWS deployment workflow, Terraform for the application infrastructure, and a deployment verifier.
-The repository has not been connected to an AWS account, so this is a locally verified deployment
-implementation—not a claim that a public cloud environment already exists.
+ResolveOps ships one tested container image, a local PostgreSQL Compose stack, six CI gates, a
+deployment verifier, a live synthetic Render demo, and an unprovisioned AWS reference design. The
+Render deployment record is in [PUBLIC_DEMO.md](PUBLIC_DEMO.md). No AWS deployment is claimed.
 
 ## Deployment architecture
 
@@ -105,12 +102,14 @@ provider lock file. Dependabot is configured for Python, Docker, GitHub Actions,
 
 ## CI/CD behavior
 
-`.github/workflows/ci.yml` runs four independent gates:
+`.github/workflows/ci.yml` runs six independent gates:
 
-1. lint, format, strict typing, local tests, both workflow evaluations, and dependency consistency;
-2. the real PostgreSQL integration test;
-3. a full Docker Compose migration/API deployment and external health verification;
-4. Terraform formatting, initialization, and validation.
+1. lint, format, strict typing, local tests, workflow evaluations, and dependency consistency;
+2. repository secret scanning, adversarial security evaluation, Bandit, and dependency audit;
+3. PostgreSQL migration, persistence, concurrency, and tenant-isolation tests;
+4. the browser workflow test in Chromium;
+5. a full Docker Compose migration/API/worker deployment and external health verification; and
+6. Terraform formatting, initialization, and validation.
 
 `.github/workflows/deploy-aws.yml` is manual and uses a protected GitHub environment. It obtains
 short-lived AWS credentials through GitHub OIDC—no long-lived AWS access key is stored. Its order is
@@ -207,7 +206,7 @@ requires an explicit reviewed change; Terraform should not be forced through tho
 ## Current limitations
 
 - No real AWS resources, DNS records, certificate, GitHub environment, OIDC role, or remote state
-  were created during Packet 16.
+  have been created. The public deployment uses the separate Render Blueprint.
 - Terraform manages one tenant database. The application supports multiple database-per-tenant
   targets, but production provisioning for additional tenants needs a reviewed module strategy.
 - The deployment has no WAF, private API, cross-region recovery, canary traffic shifting, or

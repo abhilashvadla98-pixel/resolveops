@@ -117,7 +117,7 @@ def test_missing_resource_returns_clear_404(client: TestClient) -> None:
     assert response.json() == {"detail": "customer CUST-MISSING was not found"}
 
 
-def test_packet_three_simulator_routes_are_read_only(client: TestClient) -> None:
+def test_simulator_routes_are_read_only(client: TestClient) -> None:
     schema = client.get("/openapi.json").json()
     simulator_paths = {
         path: operations

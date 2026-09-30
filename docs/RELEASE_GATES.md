@@ -15,18 +15,24 @@
 - Reviewed operator feedback can become a versioned dataset candidate only after human review.
 - README, project rules, license and the technical walkthrough script are release-oriented.
 
-## Owner gates before a final v1 release
+## Public v1 status
+
+The public synthetic demo, `v1.0.1` GitHub release, teaser video, default `main` branch, CI badge,
+repository metadata, license, and profile pin are complete. Render deployment evidence is recorded
+in `docs/PUBLIC_DEMO.md`; AWS Terraform remains reference infrastructure.
+
+## Open evidence gates
+
+These are limitations of v1, not silently treated as complete:
 
 1. Rotate the Gemini key that appeared outside local secret storage. Do not reuse it.
-2. Put the new key only in ignored local `.env` storage and set
+2. Put the replacement only in ignored local `.env` storage and set
    `RESOLVEOPS_GEMINI_KEY_ROTATED=true`.
 3. Run the 30-trial live multi-agent evaluation and retain its honest report.
 4. Manually label all 24 response-review rows. Code must not create these labels.
 5. Submit and review one genuine operator correction, promote it to a versioned dataset, make the
    resulting change, and add/pass the focused regression test. Do not invent this example.
-6. Record the 60–90 second technical walkthrough using a verified live trace.
-7. Deploy the synthetic public demo only through an owner-approved free host/account. Keep AWS
-   Terraform labelled reference infrastructure unless AWS is actually deployed.
-8. Create the final v1 GitHub release and pin the repository only after the gates above are true.
+6. Record the 60–90 second technical walkthrough using a verified live provider trace.
 
-Until then, an RC is honest; a final production-ready claim is not.
+Until those gates close, ResolveOps is a released, production-minded reference implementation with
+a public synthetic demo—not a production deployment or a validated business system.

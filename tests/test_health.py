@@ -1,6 +1,7 @@
 import re
 from collections.abc import Iterator
 from contextlib import contextmanager
+from importlib.metadata import version as package_version
 
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, text
@@ -13,6 +14,10 @@ from resolveops.database.session import create_session_factory
 from resolveops.security.tenancy import TenantSessionRegistry
 
 client = TestClient(app)
+
+
+def test_api_reports_installed_release_version() -> None:
+    assert app.version == package_version("resolveops")
 
 
 def test_health_check() -> None:

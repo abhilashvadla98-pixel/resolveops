@@ -19,8 +19,8 @@ ID stored with the credential. Request headers and resource IDs never choose a d
 This boundary covers all data in that database, including customers, employees, identities, team
 memberships, repository access, cases, knowledge documents, embedding records, workflow state,
 approvals, operation audits, tickets, notifications, and inbound events. An unknown or unconfigured
-tenant fails closed with no fallback database and creates a security audit event. Because isolation
-is physical, Packet 13 intentionally adds no `tenant_id` column migration to the domain tables.
+tenant fails closed with no fallback database and creates a security audit event. Because the
+primary tenant boundary is physical, domain tables do not rely on a client-supplied `tenant_id`.
 
 Each tenant database must be migrated and seeded independently. A deployment should give every
 tenant database a different least-privilege database account and should not grant cross-database
