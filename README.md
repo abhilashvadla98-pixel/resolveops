@@ -9,6 +9,7 @@ output remains advisory and deterministic code keeps action authority.
 
 [42-second product teaser](https://github.com/abhilashvadla98-pixel/resolveops/releases/download/recruiter-demo-v1/resolveops-recruiter-demo.webm)
 · [evaluation evidence](docs/EVALUATION.md) · [engineering case study](docs/CASE_STUDY.md)
+· [public-demo deployment](docs/PUBLIC_DEMO.md)
 
 ## Flagship workflow
 
@@ -57,7 +58,7 @@ Requirements: Python 3.12. Docker is optional.
 python -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -e ".[dev]"
 Copy-Item .env.example .env
-.\.venv\Scripts\python.exe -m uvicorn resolveops.main:app --host 127.0.0.1 --port 8000
+.\.venv\Scripts\python.exe -m uvicorn resolveops.api.main:app --host 127.0.0.1 --port 8000
 ```
 
 Open `http://127.0.0.1:8000/console`, choose **Open workspace**, and use the isolated fictional

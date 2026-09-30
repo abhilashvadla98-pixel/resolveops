@@ -47,6 +47,19 @@ def test_development_allows_documented_local_defaults() -> None:
     validate_runtime_safety(local, DemoSettings())
 
 
+@pytest.mark.parametrize("scheme", ["postgresql", "postgres"])
+def test_platform_postgresql_urls_use_installed_psycopg_driver(scheme: str) -> None:
+    configured = Settings(
+        environment=RuntimeEnvironment.DEVELOPMENT,
+        database_url=f"{scheme}://service:password@db.internal/resolveops",
+        _env_file=None,
+    )
+
+    assert configured.resolved_database_url() == (
+        "postgresql+psycopg://service:password@db.internal/resolveops"
+    )
+
+
 def test_agent_pricing_requires_both_input_and_output_prices() -> None:
     with pytest.raises(ValueError, match="configured together"):
         Settings(

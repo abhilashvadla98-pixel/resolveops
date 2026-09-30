@@ -100,7 +100,7 @@ class Settings(BaseSettings):
 
     def resolved_database_url(self) -> str:
         if self.database_url is not None:
-            return self.database_url.get_secret_value()
+            return _normalize_postgresql_driver(self.database_url.get_secret_value())
         if (
             self.database_host is None
             or self.database_name is None
@@ -259,6 +259,14 @@ def _contains_placeholder(value: str) -> bool:
         marker in normalized
         for marker in ("replace-me", "replace-with", "change-me", "example.", "example/")
     )
+
+
+def _normalize_postgresql_driver(database_url: str) -> str:
+    """Use the installed psycopg v3 driver for platform-provided PostgreSQL URLs."""
+    parsed = make_url(database_url)
+    if parsed.drivername in {"postgres", "postgresql"}:
+        parsed = parsed.set(drivername="postgresql+psycopg")
+    return parsed.render_as_string(hide_password=False)
 
 
 def validate_startup_environment() -> None:
