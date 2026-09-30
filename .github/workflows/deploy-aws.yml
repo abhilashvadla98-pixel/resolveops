@@ -42,7 +42,7 @@ jobs:
       TF_VAR_api_desired_count: ${{ inputs.desired_count }}
       TF_VAR_worker_desired_count: ${{ inputs.worker_desired_count }}
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - uses: aws-actions/configure-aws-credentials@ff717079ee2060e4bcee96c4779b553acc87447c # v4
         with:
