@@ -1,7 +1,6 @@
 # Safe public demo runbook
 
-ResolveOps includes a validated Render Blueprint for a synthetic public demo, but this document does
-not claim that the public URL is live until the deployment record below is completed. AWS Terraform
+ResolveOps includes a validated Render Blueprint and a live synthetic public demo. AWS Terraform
 remains reference infrastructure unless an AWS deployment is actually completed.
 
 ## Free Render deployment
@@ -40,14 +39,18 @@ measurements.
 
 ## Deployment record
 
-Complete this only with measured public results:
-
-- Public URL: pending
+- Public URL: https://resolveops-demo.onrender.com/console
 - Host and region: Render, Ohio
-- Git revision: pending
-- Deployment date: pending
-- External verification: pending
-- Cold-start measurement: pending
+- Git revision: `b1855e405cf35fe37ffff00df7dbb5b04d2819e9`
+- Deployment date: 2026-09-30
+- External verification: `/health/live`, `/health/ready`, and `/openapi.json` returned HTTP 200;
+  the isolated workspace loaded the seeded customer and IT queues; approval, controlled execution,
+  fresh-state verification, and baseline reset completed through the public console
+- Warm readiness latency: five samples of 396.6, 157.9, 149.2, 205.7, and 101.3 ms; median 157.9 ms
+- Cold-start measurement: not measured during this deployment; Render warns that a sleeping free
+  service can take 50 seconds or more to wake
+- Persistence limitation: the free PostgreSQL database expires after 30 days and must be replaced
+  or upgraded to keep the public demo available
 
 ## Release boundary
 
@@ -56,4 +59,5 @@ page load. If live integrated agents are later enabled, require the rotated cred
 budgets, synthetic cases only and visible quota-failure handling. Never put the key in browser code,
 the image, repository variables visible to forks, screenshots or videos.
 
-Do not publish a “Live Demo” link until the deployment verifier passes against the public URL.
+The current public link was published only after the deployment verifier and the console workflow
+checks above passed against the Render URL.

@@ -7,7 +7,8 @@ versioned evidence, pauses sensitive changes for approval, executes idempotently
 new state. Complex customer cases automatically use a five-role LangGraph investigation; model
 output remains advisory and deterministic code keeps action authority.
 
-[42-second product teaser](https://github.com/abhilashvadla98-pixel/resolveops/releases/download/recruiter-demo-v1/resolveops-recruiter-demo.webm)
+[Live synthetic demo](https://resolveops-demo.onrender.com/console)
+· [42-second product teaser](https://github.com/abhilashvadla98-pixel/resolveops/releases/download/recruiter-demo-v1/resolveops-recruiter-demo.webm)
 · [evaluation evidence](docs/EVALUATION.md) · [engineering case study](docs/CASE_STUDY.md)
 · [public-demo deployment](docs/PUBLIC_DEMO.md)
 
