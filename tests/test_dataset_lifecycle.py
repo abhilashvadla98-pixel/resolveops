@@ -26,8 +26,8 @@ ROOT = Path(__file__).parents[1]
 def test_all_evaluation_manifests_match_versioned_datasets() -> None:
     catalog = load_manifest_catalog(ROOT / "evals" / "manifests", repository_root=ROOT)
 
-    assert len(catalog) == 6
-    assert sum(item.record_count for item in catalog.values()) == 137
+    assert len(catalog) == 7
+    assert sum(item.record_count for item in catalog.values()) == 154
 
 
 def test_experiment_artifact_records_reproducibility_metadata(tmp_path: Path) -> None:

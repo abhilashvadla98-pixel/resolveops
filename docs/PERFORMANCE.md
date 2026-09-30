@@ -64,12 +64,30 @@ An earlier unpaced six-worker run attempted 15,355 requests in 30 seconds and re
 errors after exceeding the configured application rate limit. It is retained as rate-protection
 evidence, not as an application-capacity result. Mutation endpoints were excluded from both runs.
 
+A separate 30.38-second isolated mixed run combined the same operational reads with resettable case
+intake writes. Four clients targeted 8 requests/second and completed 232 requests (30 case writes,
+12.93% of traffic) with zero errors. Client-observed latency was 16 ms p50 and 47 ms p95; case
+intake was 16 ms p50 and 156 ms p95. Server RSS grew by 13.8 MB between the start and end samples.
+That start/end signal did not show unbounded growth in this short run, but it is not a leak proof.
+The exact operation counts and limitations are stored in
+`benchmarks/results/load-mixed-soak-2026-09-29.json`.
+
+## Durable queue concurrency
+
+A disposable PostgreSQL 16 run enqueued 200 jobs and used eight concurrent workers to claim them.
+All 200 jobs were claimed exactly once: zero duplicates and zero missing claims. Enqueue throughput
+was 156.13 jobs/second, claim throughput was 426.44 jobs/second, and claim latency was 16 ms p50 / 32
+ms p95. The runner removes only its own benchmark jobs afterward. It does not invoke a model, so
+this is queue-coordination evidence rather than agent-provider capacity. See
+`benchmarks/results/agent-queue-2026-09-29.json`.
+
 ## Not measured yet
 
 - PostgreSQL workflow latency;
 - external embedding or model latency;
 - production API latency;
-- mutation/approval throughput and a controlled capacity curve below and above saturation;
+- approval/action throughput and a controlled capacity curve below and above saturation;
+- a multi-hour soak with continuous process, database, Redis, and host resource telemetry;
 - cold-start and deployment startup time;
 - full server and PostgreSQL memory/CPU consumption;
 - provider token cost or cost per workflow; and

@@ -1,6 +1,6 @@
 # ResolveOps threat model
 
-Last reviewed: 2026-09-27
+Last reviewed: 2026-09-29
 
 ## Assets and trust boundaries
 
@@ -33,7 +33,7 @@ The important boundaries are:
 | Model fabricates evidence or requests a tool | Citation allowlist; structured validation; deterministic workflow and action gates; no tool access in reasoning provider | Model quality is not guaranteed; uncertain results must remain in review |
 | Secret leaked through settings or audit | Secret-valued configuration; no plaintext API keys at rest; audit schema excludes credentials; repository ignores `.env` | Application logs, crash dumps, CI output, and cloud configuration still require operational controls |
 | Malicious or compromised MCP client | Read-only tool registration; Agent role; no action or approval tools | Add authenticated transport and tenant-aware deployment before remote MCP exposure |
-| Denial of service | Global request-size gate; bounded network-and-credential token buckets; bounded bucket storage; health-probe exemption; workflow/retry limits | The limiter is process-local; add shared gateway/distributed quotas, connection limits, a WAF, and autoscaling for a scaled deployment |
+| Denial of service | Global request-size gate; bounded network-and-credential token buckets; optional shared Redis token bucket; bounded local fallback; health-probe exemption; workflow/retry limits | Configure Redis or gateway quotas for multiple replicas; add connection limits, a WAF, autoscaling, and alerts for limiter fallback |
 | Database or host compromise | Tenant databases reduce blast radius | Encryption, patching, network policy, backups, incident response, and managed key controls are external |
 
 ## Abuse cases verified in tests
@@ -41,8 +41,9 @@ The important boundaries are:
 The adversarial suite checks unauthenticated and invalid API requests, an untrusted tenant header,
 an identity pointing to an unavailable tenant, masked versus full PII by role, isolation of knowledge
 records, workflow records, tickets, and operation results, secret-safe settings and authentication
-audit data, six malicious policy payload classes, benign policy acceptance, and a tenant A webhook
-signature attempted against tenant B.
+audit data, malicious complaint and policy payload classes, benign controls, and a tenant A webhook
+signature attempted against tenant B. The versioned 17-case adversarial dataset and its measured
+report are stored under `evals/security/` and run as a CI security gate.
 
 ## Security review rule
 

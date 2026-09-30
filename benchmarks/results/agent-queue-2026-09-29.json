@@ -1,0 +1,34 @@
+{
+  "claim_jobs_per_second": 426.439,
+  "claim_latency_p50_ms": 16.0,
+  "claim_latency_p95_ms": 32.0,
+  "claim_seconds": 0.469,
+  "claimed_count": 200,
+  "duplicate_claims": 0,
+  "enqueue_jobs_per_second": 156.128,
+  "enqueue_seconds": 1.281,
+  "environment": {
+    "database": "postgresql",
+    "operating_system": "Windows",
+    "python": "3.12.10"
+  },
+  "jobs": 200,
+  "limitations": [
+    "The benchmark measures durable claim coordination, not model-provider throughput.",
+    "Claimed benchmark jobs are removed after measurement instead of invoking paid models.",
+    "Results from one developer machine are not a production capacity guarantee."
+  ],
+  "measured": true,
+  "measured_at": "2026-09-30T02:36:28.233481+00:00",
+  "missing_claims": [],
+  "passed": true,
+  "queue_health_after_claims": {
+    "accepting": true,
+    "capacity": 210,
+    "dead_letter": 0,
+    "pending": 0,
+    "retrying": 0,
+    "running": 200
+  },
+  "workers": 8
+}

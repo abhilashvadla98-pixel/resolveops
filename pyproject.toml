@@ -55,6 +55,7 @@ dev = [
     "mypy>=1.14,<2.0",
     "pip-audit>=2.10,<3.0",
     "playwright>=1.52,<2.0",
+    "psutil>=6,<8",
     "pytest",
     "ruff>=0.9,<1.0",
 ]

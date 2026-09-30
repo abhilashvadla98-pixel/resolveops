@@ -76,6 +76,11 @@ the model instructions, model output must match a typed schema and known citatio
 only recommend. It cannot select a tenant, grant permission, set a refund amount, call an action,
 approve work, or mark an action verified.
 
+The versioned offline adversarial dataset contains 17 attack and benign-control cases across
+complaint intake and policy ingestion. All 17 pass at the recorded revision. CI runs the same gate
+from `scripts/run_security_evaluation.py`; its stored report includes the dataset fingerprint and
+explicitly does not claim coverage of novel semantic attacks.
+
 ## Secret handling and rotation
 
 Database URLs, API-key identity JSON, and webhook secrets use masked secret settings. `.env` is

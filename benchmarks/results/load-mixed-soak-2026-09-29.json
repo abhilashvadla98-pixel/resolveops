@@ -1,0 +1,76 @@
+{
+  "concurrency": 4,
+  "duration_seconds": 30.375,
+  "error_count": 0,
+  "error_rate": 0.0,
+  "limitations": [
+    "Mutation traffic was limited to case intake against isolated/resettable data.",
+    "Server RSS is a start/end signal, not a leak proof or full CPU/memory profile."
+  ],
+  "measured": true,
+  "mode": "bounded_mixed_read_write_soak",
+  "mutation_percent": 15,
+  "observed_mutation_percent": 12.931,
+  "p50_ms": 16.0,
+  "p95_ms": 47.0,
+  "requests": 232,
+  "requests_per_second": 7.638,
+  "routes": {
+    "GET /api/v1/approvals": {
+      "errors": 0,
+      "p50_ms": 15.0,
+      "p95_ms": 32.0,
+      "requests": 32
+    },
+    "GET /api/v1/audit/events?limit=50": {
+      "errors": 0,
+      "p50_ms": 16.0,
+      "p95_ms": 47.0,
+      "requests": 28
+    },
+    "GET /api/v1/case-queue?page_size=25": {
+      "errors": 0,
+      "p50_ms": 15.0,
+      "p95_ms": 31.0,
+      "requests": 26
+    },
+    "GET /api/v1/cases/CASE-1001": {
+      "errors": 0,
+      "p50_ms": 16.0,
+      "p95_ms": 47.0,
+      "requests": 34
+    },
+    "GET /api/v1/cases/CASE-1001/timeline": {
+      "errors": 0,
+      "p50_ms": 16.0,
+      "p95_ms": 32.0,
+      "requests": 27
+    },
+    "GET /api/v1/it/cases?page_size=25": {
+      "errors": 0,
+      "p50_ms": 16.0,
+      "p95_ms": 32.0,
+      "requests": 32
+    },
+    "GET /api/v1/reliability/summary": {
+      "errors": 0,
+      "p50_ms": 16.0,
+      "p95_ms": 32.0,
+      "requests": 23
+    },
+    "POST /api/v1/cases": {
+      "errors": 0,
+      "p50_ms": 16.0,
+      "p95_ms": 156.0,
+      "requests": 30
+    }
+  },
+  "server_rss_bytes_after": 194543616,
+  "server_rss_bytes_before": 180768768,
+  "server_rss_growth_bytes": 13774848,
+  "status_counts": {
+    "200": 202,
+    "201": 30
+  },
+  "target_rps": 8.0
+}

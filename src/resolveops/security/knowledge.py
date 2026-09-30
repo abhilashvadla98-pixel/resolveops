@@ -5,7 +5,7 @@ from resolveops.knowledge.models import KnowledgeDocument
 
 UNTRUSTED_INSTRUCTION_PATTERNS = (
     re.compile(
-        r"\bignore\s+(all\s+|any\s+)?(previous|prior|system|developer)\s+instructions?\b",
+        r"\b(ignore|disregard|override|forget)\s+(all\s+|any\s+|the\s+)?(previous|prior|system|developer)\s+instructions?\b",
         re.IGNORECASE,
     ),
     re.compile(

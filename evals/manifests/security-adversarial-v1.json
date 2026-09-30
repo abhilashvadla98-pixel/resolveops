@@ -1,0 +1,13 @@
+{
+  "dataset_id": "resolveops.security.adversarial",
+  "version": "1.0.0",
+  "description": "Offline adversarial-input gate for complaint intake and policy ingestion.",
+  "source": "hand-authored synthetic security cases",
+  "creation_method": "Known instruction-override, secret-extraction, tool-abuse, hidden-content, and benign-control cases.",
+  "path": "evals/security/adversarial.jsonl",
+  "labels": ["target", "category", "expected_rejected"],
+  "case_categories": ["instruction_override", "prompt_extraction", "control_bypass", "tool_abuse", "secret_exfiltration", "hidden_html", "unicode_control", "executable_markup", "benign_business_input", "benign_policy"],
+  "record_count": 17,
+  "sha256": "5c1adc04dc106b060d5568386a24ffeaf3e535e50fd86f41ec8d62f8f01ca237",
+  "created_date": "2026-09-29"
+}

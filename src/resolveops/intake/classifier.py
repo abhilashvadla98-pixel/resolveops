@@ -29,10 +29,12 @@ class ComplaintClassifier:
         r"\bstill (?:have not|haven't) received (?:my )?refund\b",
     )
     _injection_patterns = (
-        r"ignore (?:all |the )?(?:previous|prior|system) instructions",
+        r"(?:ignore|disregard|override|forget) (?:all |the )?(?:previous|prior|system|developer) instructions",
         r"reveal (?:the )?(?:system prompt|secret|api key)",
         r"bypass (?:approval|authorization|policy)",
         r"execute (?:a )?refund without approval",
+        r"(?:call|invoke|run) (?:a |the )?(?:refund|admin|write) tool",
+        r"(?:send|upload|exfiltrate).{0,80}(?:secret|token|credential|api[ -]?key)",
     )
     _ambiguous_patterns = (
         r"\bcharged?\b",
