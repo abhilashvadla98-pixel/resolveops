@@ -1,5 +1,5 @@
 import json
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from hashlib import sha256
 
 from pydantic import Field, model_validator
@@ -14,6 +14,7 @@ class ContextMetrics(DomainModel):
     estimated_tokens: int = Field(ge=0)
     truncation_events: int = Field(ge=0)
     memory_count: int = Field(default=0, ge=0)
+    stale_evidence_count: int = Field(default=0, ge=0)
 
 
 class AgentContext(DomainModel):
@@ -30,6 +31,7 @@ class AgentContext(DomainModel):
     required_evidence: list[NonEmptyText] = Field(default_factory=list, max_length=30)
     freshness_cutoff: AwareDatetime
     redaction_policy: Identifier = "agent-masked-pii-v1"
+    content_is_untrusted: bool = True
     token_budget: int = Field(ge=250, le=100_000)
     metrics: ContextMetrics
 
@@ -69,8 +71,12 @@ class AgentContextBuilder:
         memory_results: list[dict[str, object]] | None = None,
         required_evidence: list[str] | None = None,
         token_budget: int = 4_000,
+        max_evidence_age: timedelta = timedelta(hours=24),
+        reject_stale_evidence: bool = False,
         now: datetime | None = None,
     ) -> AgentContext:
+        if max_evidence_age <= timedelta(0):
+            raise ValueError("evidence freshness window must be positive")
         supplied = {
             "facts": list(facts or []),
             "prior_outputs": list(prior_outputs or []),
@@ -89,6 +95,14 @@ class AgentContextBuilder:
         if estimated_tokens > token_budget:
             raise ValueError("agent context exceeds its token budget")
         current_time = now or datetime.now(UTC)
+        freshness_cutoff = current_time - max_evidence_age
+        stale_evidence_count = sum(
+            _is_stale(item, freshness_cutoff)
+            for group in (supplied["facts"], supplied["tool_results"], supplied["policy_results"])
+            for item in group
+        )
+        if reject_stale_evidence and stale_evidence_count:
+            raise ValueError("agent context contains stale evidence")
         return AgentContext(
             role=role,
             workflow_id=workflow_id,
@@ -101,7 +115,7 @@ class AgentContextBuilder:
             policy_results=supplied["policy_results"],
             memory_results=supplied["memory_results"],
             required_evidence=required_evidence or [],
-            freshness_cutoff=current_time,
+            freshness_cutoff=freshness_cutoff,
             token_budget=token_budget,
             metrics=ContextMetrics(
                 evidence_count=len(supplied["facts"]) + len(supplied["tool_results"]),
@@ -109,6 +123,7 @@ class AgentContextBuilder:
                 estimated_tokens=estimated_tokens,
                 truncation_events=truncations,
                 memory_count=len(supplied["memory_results"]),
+                stale_evidence_count=stale_evidence_count,
             ),
         )
 
@@ -119,3 +134,15 @@ def context_fingerprint(context: AgentContext) -> str:
 
 def _serialized_size(value: object) -> int:
     return len(json.dumps(value, sort_keys=True, default=str, separators=(",", ":")))
+
+
+def _is_stale(item: dict[str, object], cutoff: datetime) -> bool:
+    observed_at = item.get("observed_at")
+    if observed_at is None:
+        return False
+    if isinstance(observed_at, str):
+        try:
+            observed_at = datetime.fromisoformat(observed_at)
+        except ValueError:
+            return True
+    return isinstance(observed_at, datetime) and observed_at < cutoff

@@ -20,6 +20,30 @@ paid model calls and does not claim live-model quality or human labels. The stor
 the dataset checksum, environment, measured local latency, estimated context tokens, and explicit
 limitations.
 
+## Live stochastic multi-agent evaluation
+
+`scripts/run_live_agent_evaluation.py` is the provider-backed companion to the offline gate. It
+runs 10 difficult curated tasks three times each and records outcome, role routing, read tools,
+policy citations, critic decisions, per-agent and end-to-end latency, tokens, tool/model calls, and
+cost only when explicit pricing is configured. Quota/provider failures remain visible rather than
+being dropped. The runner refuses to use the previously exposed credential: after the owner rotates
+it, set `RESOLVEOPS_GEMINI_KEY_ROTATED=true` locally and run the script. No live multi-agent report
+is claimed yet.
+
+```powershell
+.\.venv\Scripts\python.exe scripts/run_live_agent_evaluation.py --tasks 10 --trials 3
+```
+
+The offline 22-case suite remains the required deterministic regression gate.
+
+## Reviewed-memory ablation
+
+`scripts/run_memory_ablation.py` compares eight paired trajectories with reviewed memory disabled
+and enabled. The stored `evals/agents/memory-ablation.json` report measures outcome, routing,
+latency, tokens, calls and critic behavior. It proves the tenant- and policy-scoped memory plumbing,
+not live answer-quality improvement. Memory remains typed, expiring, advisory and eligible only
+after human review; arbitrary model text is never promoted.
+
 ## Retrieval evaluation
 
 The retrieval benchmark contains 50 hand-authored questions over six versioned policy documents.

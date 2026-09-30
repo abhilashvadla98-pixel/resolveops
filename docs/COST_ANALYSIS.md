@@ -15,6 +15,12 @@ The separate recorded Gemini boundary test made three single-reasoner requests a
 reported 1,058 input plus 531 output tokens. That is evidence that the provider integration worked
 for those three synthetic cases only; it is not a multi-agent cost sample.
 
+The live multi-agent runner records every role invocation and the end-to-end envelope across 10
+tasks and three trials. Its report keeps per-agent latency, input/output tokens, model calls, tool
+calls and end-to-end totals. Per-agent and total dollar cost remain `null` unless both provider
+prices are explicitly configured. This run is currently blocked pending rotation of the exposed
+demo credential, so there is no claimed live multi-agent cost or latency number yet.
+
 ## Runtime controls
 
 `RESOLVEOPS_AGENT_INPUT_COST_PER_MILLION_USD` and

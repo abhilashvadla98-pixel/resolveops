@@ -31,13 +31,14 @@ safety evidence, but they are not a substitute for human judgment about clarity 
 
 ## Human review rubric
 
-For each JSONL case, read the generated candidate and check all five questions:
+For each JSONL case, read the generated candidate and check all six questions:
 
 1. Is the outcome factually consistent with the scenario?
-2. Does it avoid claiming that an external provider finished settlement?
-3. Does it clearly say whether ResolveOps created a record, avoided a duplicate, or stopped?
-4. Is the language understandable and respectful to a customer?
-5. Does it give an honest next state: provider processing, pending status, or manual review?
+2. Is every important claim grounded in the supplied evidence and policy?
+3. Does it clearly state the correct scenario outcome?
+4. Does it avoid claiming that an external provider finished settlement?
+5. Is the language clear and understandable?
+6. Is the tone respectful and appropriate for a customer?
 
 Only after a real reviewer answers all five should they change `human_review_status` to `approved`
 or `needs_revision` and add both `reviewer` and `review_note`. Re-run the command to update the

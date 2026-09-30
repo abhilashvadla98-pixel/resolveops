@@ -1,6 +1,6 @@
 from collections.abc import Callable
 from datetime import UTC, datetime
-from typing import Any, cast
+from typing import Any, Protocol, cast
 
 from langchain_core.runnables import RunnableConfig, RunnableLambda
 from langgraph.checkpoint.base import BaseCheckpointSaver
@@ -10,6 +10,8 @@ from langgraph.types import Command, interrupt
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
+from resolveops.agents.budgets import AgentBudgetExceeded
+from resolveops.agents.models import AgentDomain, MultiAgentReasoningResult
 from resolveops.database.records import RefundRecord
 from resolveops.database.store import CustomerOperationsStore
 from resolveops.domain.billing import find_possible_duplicate_charges
@@ -19,7 +21,7 @@ from resolveops.models.case import CaseIssueStatus, CaseIssueType, IssueFinding
 from resolveops.models.refund import RefundStatus
 from resolveops.observability.models import TraceComponent
 from resolveops.observability.sinks import DEFAULT_TRACE_SINK, TraceSink
-from resolveops.observability.tracing import Span, observed_span, trace_context
+from resolveops.observability.tracing import Span, current_trace_id, observed_span, trace_context
 from resolveops.operations.actions import ActionTools
 from resolveops.operations.auth import (
     has_approval_path,
@@ -42,7 +44,7 @@ from resolveops.operations.models import (
 )
 from resolveops.operations.reads import OperationsReadTools
 from resolveops.reasoning.agent import CaseReasoner
-from resolveops.reasoning.errors import ReasoningError
+from resolveops.reasoning.errors import ReasoningError, ReasoningProviderError
 from resolveops.reasoning.models import ReasoningDisposition, ReasoningPolicyExcerpt
 from resolveops.reasoning.providers import ReasoningProvider
 from resolveops.responses.customer import CustomerResponseComposer
@@ -86,6 +88,19 @@ REQUIRED_POLICY = {
 }
 
 
+class IntegratedAgentRuntime(Protocol):
+    def run(
+        self,
+        *,
+        workflow_id: str,
+        case_id: str,
+        tenant_id: str,
+        domain: AgentDomain,
+        objective: str,
+        trace_id: str,
+    ) -> MultiAgentReasoningResult: ...
+
+
 class CustomerIssueWorkflow:
     """Case workflow with bounded LLM advice and deterministic control gates."""
 
@@ -96,6 +111,8 @@ class CustomerIssueWorkflow:
         *,
         action_tools: ActionTools | None = None,
         reasoning_provider: ReasoningProvider | None = None,
+        agent_runtime: IntegratedAgentRuntime | None = None,
+        tenant_id: str = "TENANT-LOCAL",
         checkpointer: BaseCheckpointSaver[Any] | None = None,
         lifecycle_store: WorkflowLifecycleStore | None = None,
         observability_sink: TraceSink | None = None,
@@ -108,6 +125,8 @@ class CustomerIssueWorkflow:
         self.action_tools = action_tools or ActionTools(session_factory)
         self.observability_sink = observability_sink or DEFAULT_TRACE_SINK
         self.clock = clock or (lambda: datetime.now(UTC))
+        self.agent_runtime = agent_runtime
+        self.tenant_id = tenant_id
         self.reasoner = (
             CaseReasoner(
                 reasoning_provider,
@@ -210,6 +229,7 @@ class CustomerIssueWorkflow:
             "policy_excerpts": [],
             "node_history": [],
             "approval": None,
+            "agent_assessment": None,
         }
 
     def _result_from_state(self, final: WorkflowState) -> WorkflowResult:
@@ -235,6 +255,7 @@ class CustomerIssueWorkflow:
             evidence=final["evidence"],
             policy_citations=final["policy_citations"],
             reasoning=final.get("reasoning"),
+            agent_assessment=final.get("agent_assessment"),
             operation=final.get("operation"),
             verified_resource_id=final.get("verified_resource_id"),
             resolution_summary=final["resolution_summary"],
@@ -449,6 +470,8 @@ class CustomerIssueWorkflow:
             "finding": issue.finding,
             "order_id": issue.order_id,
             "customer_id": customer_case.customer_id,
+            "complaint_text": customer_case.complaint_text,
+            "case_issue_count": len(customer_case.issues),
             "payment_ids": list(issue.payment_ids),
             "return_id": issue.return_id,
             "evidence": [item.summary for item in issue.evidence],
@@ -552,6 +575,46 @@ class CustomerIssueWorkflow:
         }
 
     def _reason_case(self, state: WorkflowState) -> dict[str, object]:
+        if self.agent_runtime is not None and self._requires_multi_agent(state):
+            try:
+                assessment = self.agent_runtime.run(
+                    workflow_id=state["workflow_id"],
+                    case_id=state["case_id"],
+                    tenant_id=self.tenant_id,
+                    domain=AgentDomain.CUSTOMER_OPERATIONS,
+                    objective=(
+                        state.get("complaint_text")
+                        or f"Investigate {state['issue_type'].value} using trusted evidence."
+                    ),
+                    trace_id=current_trace_id() or state["workflow_id"],
+                )
+            except (AgentBudgetExceeded, ReasoningProviderError, ValueError) as exc:
+                return {
+                    "status": WorkflowStatus.ESCALATED,
+                    "agent_assessment": None,
+                    "error_code": "multi_agent_analysis_failed",
+                    "error_message": (
+                        "The specialist assessment stopped safely before deterministic action "
+                        f"controls: {type(exc).__name__}."
+                    ),
+                    "node_history": ["reason_case"],
+                }
+            if assessment.status != "ready_for_control_plane":
+                return {
+                    "status": WorkflowStatus.ESCALATED,
+                    "agent_assessment": assessment,
+                    "error_code": "multi_agent_review_required",
+                    "error_message": (
+                        "The independent critic did not clear the recommendation for the "
+                        "deterministic control plane."
+                    ),
+                    "node_history": ["reason_case"],
+                }
+            return {
+                "agent_assessment": assessment,
+                "reasoning": None,
+                "node_history": ["reason_case"],
+            }
         if self.reasoner is None or not state["policy_excerpts"]:
             return {"reasoning": None, "node_history": ["reason_case"]}
         try:
@@ -573,6 +636,13 @@ class CustomerIssueWorkflow:
                 "node_history": ["reason_case"],
             }
         return {"reasoning": reasoning, "node_history": ["reason_case"]}
+
+    @staticmethod
+    def _requires_multi_agent(state: WorkflowState) -> bool:
+        """Route complex cases through specialists without granting them action authority."""
+        refund_request = state.get("refund_request")
+        high_value_refund = refund_request is not None and refund_request.amount > 500
+        return state.get("case_issue_count", 1) > 1 or high_value_refund
 
     @staticmethod
     def _route_reasoning(state: WorkflowState) -> str:

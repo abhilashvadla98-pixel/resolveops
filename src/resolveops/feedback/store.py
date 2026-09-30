@@ -68,6 +68,10 @@ class OperatorFeedbackStore:
         ).all()
         return [self._model(record) for record in records]
 
+    def get(self, feedback_id: str) -> OperatorFeedback | None:
+        record = self.session.get(OperatorFeedbackRecord, feedback_id)
+        return None if record is None else self._model(record)
+
     def review(
         self, feedback_id: str, *, status: FeedbackReviewStatus, reviewer_id: str, note: str
     ) -> OperatorFeedback | None:
@@ -82,6 +86,17 @@ class OperatorFeedbackStore:
         record.reviewed_by = reviewer_id
         record.reviewed_at = datetime.now(UTC)
         record.review_note = note
+        self.session.flush()
+        return self._model(record)
+
+    def mark_promoted(self, feedback_id: str, *, dataset_example_id: str) -> OperatorFeedback:
+        record = self.session.get(OperatorFeedbackRecord, feedback_id)
+        if record is None:
+            raise KeyError(feedback_id)
+        if record.review_status != FeedbackReviewStatus.REVIEWED:
+            raise ValueError("only reviewed feedback can be promoted")
+        record.review_status = FeedbackReviewStatus.PROMOTED
+        record.dataset_example_id = dataset_example_id
         self.session.flush()
         return self._model(record)
 

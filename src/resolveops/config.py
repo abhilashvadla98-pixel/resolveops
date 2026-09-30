@@ -48,6 +48,8 @@ class Settings(BaseSettings):
     gemini_max_attempts: int = Field(default=2, ge=1, le=3)
     gemini_max_input_characters: int = Field(default=24_000, ge=1_000, le=100_000)
     gemini_max_output_tokens: int = Field(default=800, ge=100, le=4_096)
+    gemini_key_rotated: bool = False
+    integrated_agents_enabled: bool = False
     agent_queue_enabled: bool = False
     agent_queue_capacity: int = Field(default=500, ge=10, le=100_000)
     agent_job_lease_seconds: int = Field(default=120, ge=30, le=3_600)
@@ -90,6 +92,10 @@ class Settings(BaseSettings):
             self.agent_output_cost_per_million_usd is None
         ):
             raise ValueError("agent input and output pricing must be configured together")
+        if self.integrated_agents_enabled and self.gemini_api_key is None:
+            raise ValueError("integrated agents require a configured Gemini API key")
+        if self.integrated_agents_enabled and not self.gemini_key_rotated:
+            raise ValueError("integrated agents require confirmed Gemini key rotation")
         return self
 
     def resolved_database_url(self) -> str:

@@ -6,11 +6,13 @@ from typing import Annotated, Any
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from langgraph.checkpoint.base import BaseCheckpointSaver
 from langgraph.checkpoint.memory import InMemorySaver
-from pydantic import Field
+from pydantic import Field, SecretStr
 from sqlalchemy import Engine, func, or_, select
 from sqlalchemy.orm import Session, selectinload, sessionmaker
 
+from resolveops.agents.factory import build_agent_runtime
 from resolveops.api.dependencies import get_principal, get_tenant_session
+from resolveops.config import Settings
 from resolveops.database.records import CaseRecord, CustomerRecord
 from resolveops.database.session import create_session_factory
 from resolveops.database.store import CustomerOperationsStore
@@ -20,6 +22,7 @@ from resolveops.models.case import Case
 from resolveops.models.common import AwareDatetime, DomainModel, Identifier, NonEmptyText
 from resolveops.operations.auth import has_permission
 from resolveops.operations.models import Actor, ActorRole, IssueRefundRequest, Permission
+from resolveops.orchestration.graph import HierarchicalAgentOrchestrator
 from resolveops.security.models import SecurityPrincipal
 from resolveops.workflows.checkpointing import checkpoint_serializer, open_postgres_checkpointer
 from resolveops.workflows.customer_issue import CustomerIssueWorkflow
@@ -117,29 +120,43 @@ def _factory(session: Session) -> tuple[Engine, sessionmaker[Session]]:
 
 
 @contextmanager
-def _workflow_service(session: Session) -> Iterator[CustomerIssueWorkflow]:
+def _workflow_service(
+    session: Session, principal: SecurityPrincipal
+) -> Iterator[CustomerIssueWorkflow]:
     engine, factory = _factory(session)
+    settings = Settings(database_url=SecretStr(engine.url.render_as_string(hide_password=False)))
     lifecycle = WorkflowLifecycleStore(factory)
     if engine.dialect.name == "postgresql":
         database_url = engine.url.render_as_string(hide_password=False)
         with open_postgres_checkpointer(database_url) as postgres_saver:
-            yield _build_workflow(factory, lifecycle, postgres_saver)
+            yield _build_workflow(factory, lifecycle, postgres_saver, principal, settings)
         return
     with _checkpointer_lock:
         memory_saver = _sqlite_checkpointers.setdefault(
             id(engine), InMemorySaver(serde=checkpoint_serializer())
         )
-    yield _build_workflow(factory, lifecycle, memory_saver)
+    yield _build_workflow(factory, lifecycle, memory_saver, principal, settings)
 
 
 def _build_workflow(
     factory: sessionmaker[Session],
     lifecycle: WorkflowLifecycleStore,
     saver: BaseCheckpointSaver[Any],
+    principal: SecurityPrincipal,
+    settings: Settings,
 ) -> CustomerIssueWorkflow:
+    agent_runtime = (
+        HierarchicalAgentOrchestrator(
+            build_agent_runtime(factory, settings, tenant_id=principal.tenant_id)
+        )
+        if settings.integrated_agents_enabled
+        else None
+    )
     return CustomerIssueWorkflow(
         factory,
         FeatureHashEmbeddingProvider(dimensions=128),
+        agent_runtime=agent_runtime,
+        tenant_id=principal.tenant_id,
         checkpointer=saver,
         lifecycle_store=lifecycle,
     )
@@ -257,7 +274,7 @@ def start_workflow(
     _require_operations_access(principal)
     request = WorkflowRequest(actor=_workflow_actor(principal), **body.model_dump())
     try:
-        with _workflow_service(session) as workflow:
+        with _workflow_service(session, principal) as workflow:
             return workflow.start(request)
     except WorkflowLifecycleError as exc:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=exc.message) from exc
@@ -269,7 +286,7 @@ def get_workflow(
 ) -> WorkflowResult | WorkflowPause:
     _require_operations_access(principal)
     try:
-        with _workflow_service(session) as workflow:
+        with _workflow_service(session, principal) as workflow:
             return workflow.get_execution(workflow_id)
     except WorkflowLifecycleError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=exc.message) from exc
@@ -326,7 +343,7 @@ def decide_approval(
         note=body.note,
     )
     try:
-        with _workflow_service(session) as workflow:
+        with _workflow_service(session, principal) as workflow:
             return workflow.resume(decision)
     except ApprovalDecisionError as exc:
         error_status = (

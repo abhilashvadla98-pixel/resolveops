@@ -2,12 +2,12 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from resolveops.agents.context import AgentContext
 from resolveops.agents.models import (
+    AgentBudget,
     AgentRole,
     CriticReport,
     InvestigationTurn,
     PolicyTurn,
     ResolutionProposal,
-    SupervisorPlan,
 )
 from resolveops.models.common import DomainModel, Identifier
 
@@ -20,6 +20,7 @@ class AgentSkill(DomainModel):
     timeout_seconds: int = Field(gt=0, le=120)
     policy_tags: list[Identifier] = Field(default_factory=list, max_length=20)
     evaluation_set: Identifier
+    budget: AgentBudget
     input_schema: type[BaseModel]
     output_schema: type[BaseModel]
 
@@ -28,15 +29,6 @@ class AgentSkill(DomainModel):
 
 def skill_catalog() -> dict[str, AgentSkill]:
     return {
-        "case_planning": AgentSkill(
-            skill_id="case_planning",
-            roles=[AgentRole.SUPERVISOR],
-            required_context=["objective", "case_id"],
-            timeout_seconds=30,
-            evaluation_set="supervisor-gold-v1",
-            input_schema=AgentContext,
-            output_schema=SupervisorPlan,
-        ),
         "domain_investigation": AgentSkill(
             skill_id="domain_investigation",
             roles=[AgentRole.INVESTIGATION],
@@ -51,7 +43,8 @@ def skill_catalog() -> dict[str, AgentSkill]:
             ],
             required_context=["objective", "required_evidence"],
             timeout_seconds=30,
-            evaluation_set="investigation-gold-v1",
+            evaluation_set="agent-trajectories-v1",
+            budget=AgentBudget(max_model_calls=5, max_agent_steps=5, max_tool_calls=8),
             input_schema=AgentContext,
             output_schema=InvestigationTurn,
         ),
@@ -62,21 +55,23 @@ def skill_catalog() -> dict[str, AgentSkill]:
             required_context=["objective", "investigation"],
             timeout_seconds=30,
             policy_tags=["active", "versioned"],
-            evaluation_set="policy-gold-v1",
+            evaluation_set="agent-trajectories-v1",
+            budget=AgentBudget(max_model_calls=5, max_agent_steps=5, max_tool_calls=5),
             input_schema=AgentContext,
             output_schema=PolicyTurn,
         ),
-        "business_resolution": AgentSkill(
-            skill_id="business_resolution",
+        "resolution_recommendation": AgentSkill(
+            skill_id="resolution_recommendation",
             roles=[AgentRole.RESOLUTION],
             required_context=["investigation", "policy"],
             timeout_seconds=30,
-            evaluation_set="resolution-gold-v1",
+            evaluation_set="agent-trajectories-v1",
+            budget=AgentBudget(max_model_calls=5, max_agent_steps=5, max_tool_calls=1),
             input_schema=AgentContext,
             output_schema=ResolutionProposal,
         ),
-        "independent_verification": AgentSkill(
-            skill_id="independent_verification",
+        "independent_critique": AgentSkill(
+            skill_id="independent_critique",
             roles=[AgentRole.CRITIC],
             allowed_tools=[
                 "get_case",
@@ -88,8 +83,17 @@ def skill_catalog() -> dict[str, AgentSkill]:
             ],
             required_context=["proposal", "fresh_evidence"],
             timeout_seconds=30,
-            evaluation_set="critic-gold-v1",
+            evaluation_set="agent-trajectories-v1",
+            budget=AgentBudget(max_model_calls=5, max_agent_steps=5, max_tool_calls=6),
             input_schema=AgentContext,
             output_schema=CriticReport,
         ),
     }
+
+
+def skill_for_role(role: AgentRole) -> AgentSkill | None:
+    """Return the reusable capability for a specialist role.
+
+    The supervisor is orchestration, not a separately advertised domain skill.
+    """
+    return next((skill for skill in skill_catalog().values() if role in skill.roles), None)

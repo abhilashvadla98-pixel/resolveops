@@ -56,6 +56,25 @@ def test_agent_pricing_requires_both_input_and_output_prices() -> None:
         )
 
 
+def test_integrated_agents_require_key_and_explicit_rotation_confirmation() -> None:
+    with pytest.raises(ValueError, match="configured Gemini API key"):
+        Settings(
+            environment=RuntimeEnvironment.DEVELOPMENT,
+            database_url="sqlite:///local.db",
+            integrated_agents_enabled=True,
+            gemini_key_rotated=True,
+            _env_file=None,
+        )
+    with pytest.raises(ValueError, match="confirmed Gemini key rotation"):
+        Settings(
+            environment=RuntimeEnvironment.DEVELOPMENT,
+            database_url="sqlite:///local.db",
+            integrated_agents_enabled=True,
+            gemini_api_key="test-key-not-used",
+            _env_file=None,
+        )
+
+
 @pytest.mark.parametrize(
     "changes",
     [

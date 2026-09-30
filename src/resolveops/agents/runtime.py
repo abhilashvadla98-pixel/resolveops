@@ -17,6 +17,7 @@ from resolveops.agents.models import (
     ToolRequest,
 )
 from resolveops.agents.persistence import AgentRunStore
+from resolveops.agents.skills import skill_for_role
 from resolveops.agents.tools import AgentToolResult
 from resolveops.memory.retrieval import (
     ReviewedMemoryRetriever,
@@ -262,6 +263,16 @@ class MultiAgentReasoningRuntime:
             )
             runs.append(run_id)
             if turn.complete:
+                if (
+                    not turn.facts
+                    or not turn.evidence_ids
+                    or not turn.source_provenance
+                    or turn.missing_evidence
+                    or any(not fact.fresh for fact in turn.facts)
+                ):
+                    raise ValueError(
+                        "completed investigation requires fresh evidence, provenance, and no gaps"
+                    )
                 return turn, results, runs
             if turn.next_tool is None:
                 break
@@ -314,6 +325,10 @@ class MultiAgentReasoningRuntime:
             )
             runs.append(run_id)
             if turn.complete:
+                if not turn.missing_policy and (not turn.citations or not turn.policy_versions):
+                    raise ValueError(
+                        "completed policy research requires citations and policy versions"
+                    )
                 return turn, results, runs
             if turn.next_query is None:
                 break
@@ -410,6 +425,11 @@ class MultiAgentReasoningRuntime:
         run_id: str,
         request: ToolRequest,
     ) -> AgentToolResult:
+        skill = skill_for_role(role)
+        if skill is None or request.tool_name not in skill.allowed_tools:
+            raise PermissionError(
+                f"tool {request.tool_name} is outside the declared {role.value} skill boundary"
+            )
         self.ledger.consume_tool_call()
         record = self.run_store.start_tool_call(
             tenant_id=tenant_id,

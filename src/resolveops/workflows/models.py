@@ -3,6 +3,7 @@ from enum import Enum
 
 from pydantic import Field, model_validator
 
+from resolveops.agents.models import MultiAgentReasoningResult
 from resolveops.models.case import CaseIssueType, IssueFinding
 from resolveops.models.common import AwareDatetime, DomainModel, Identifier, NonEmptyText
 from resolveops.operations.models import Actor, ActorRole, IssueRefundRequest, OperationResult
@@ -206,6 +207,7 @@ class WorkflowResult(DomainModel):
     evidence: list[NonEmptyText]
     policy_citations: list[PolicyCitation]
     reasoning: ReasoningTrace | None = None
+    agent_assessment: MultiAgentReasoningResult | None = None
     operation: OperationResult | None = None
     verified_resource_id: Identifier | None = None
     resolution_summary: NonEmptyText

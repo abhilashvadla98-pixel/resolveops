@@ -32,6 +32,7 @@ from resolveops.evaluation.agent_trajectory import (
     AgentTrajectoryCase,
     AgentTrajectoryObservation,
 )
+from resolveops.memory.store import ReviewedResolutionMemoryStore
 from resolveops.orchestration.graph import HierarchicalAgentOrchestrator
 
 OutputT = TypeVar("OutputT", bound=BaseModel)
@@ -195,7 +196,9 @@ class OfflineTrajectoryTools:
         )
 
 
-def run_offline_trajectory(case: AgentTrajectoryCase) -> AgentTrajectoryObservation:
+def run_offline_trajectory(
+    case: AgentTrajectoryCase, *, memory_enabled: bool = False
+) -> AgentTrajectoryObservation:
     engine = create_engine("sqlite:///:memory:")
     Base.metadata.create_all(engine)
     factory = sessionmaker(engine, expire_on_commit=False)
@@ -211,11 +214,23 @@ def run_offline_trajectory(case: AgentTrajectoryCase) -> AgentTrajectoryObservat
         datetime.now(UTC),
     )
     provider = OfflineTrajectoryProvider(case)
+    memory_store = ReviewedResolutionMemoryStore(factory)
+    if memory_enabled:
+        memory_store.promote(
+            tenant_id="TENANT-EVALUATION",
+            issue_type="duplicate_charge",
+            evidence_pattern=["current record indicates a duplicate charge"],
+            policy_versions={"POLICY-OFFLINE": 1},
+            approved_resolution={"action": "review_duplicate", "requires_approval": True},
+            verification_outcome="The deterministic fixture verified the bounded outcome.",
+            reviewed_by="EVALUATION-FIXTURE",
+        )
     runtime = MultiAgentReasoningRuntime(
         invoker=AgentInvoker(provider=provider, store=store, ledger=ledger),
         tools=OfflineTrajectoryTools(),
         run_store=store,
         ledger=ledger,
+        memory_retriever=memory_store if memory_enabled else None,
     )
     started = perf_counter()
     result = HierarchicalAgentOrchestrator(runtime).run(

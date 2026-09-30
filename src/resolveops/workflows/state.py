@@ -1,6 +1,7 @@
 import operator
 from typing import Annotated, NotRequired, TypedDict
 
+from resolveops.agents.models import MultiAgentReasoningResult
 from resolveops.models.case import CaseIssueType, IssueFinding
 from resolveops.operations.models import Actor, IssueRefundRequest, OperationResult
 from resolveops.reasoning.models import ReasoningPolicyExcerpt, ReasoningTrace
@@ -29,11 +30,14 @@ class WorkflowState(TypedDict):
     finding: NotRequired[IssueFinding]
     order_id: NotRequired[str]
     customer_id: NotRequired[str]
+    complaint_text: NotRequired[str | None]
+    case_issue_count: NotRequired[int]
     payment_ids: NotRequired[list[str]]
     return_id: NotRequired[str | None]
     existing_refund_id: NotRequired[str | None]
     decision: NotRequired[WorkflowDecision]
     reasoning: NotRequired[ReasoningTrace | None]
+    agent_assessment: NotRequired[MultiAgentReasoningResult | None]
     operation: NotRequired[OperationResult | None]
     verified_resource_id: NotRequired[str | None]
     outcome: NotRequired[WorkflowOutcome]

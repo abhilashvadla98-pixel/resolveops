@@ -8,6 +8,20 @@ from psycopg.rows import dict_row
 from sqlalchemy.engine import make_url
 
 ALLOWED_CHECKPOINT_TYPES = [
+    ("resolveops.agents.models", "AgentBudgetUsage"),
+    ("resolveops.agents.models", "AgentDomain"),
+    ("resolveops.agents.models", "AgentRole"),
+    ("resolveops.agents.models", "CriticDecision"),
+    ("resolveops.agents.models", "CriticReport"),
+    ("resolveops.agents.models", "EvidenceFact"),
+    ("resolveops.agents.models", "InvestigationTurn"),
+    ("resolveops.agents.models", "IssueResolution"),
+    ("resolveops.agents.models", "MultiAgentReasoningResult"),
+    ("resolveops.agents.models", "PlanStep"),
+    ("resolveops.agents.models", "PolicyTurn"),
+    ("resolveops.agents.models", "ProposedAction"),
+    ("resolveops.agents.models", "ResolutionProposal"),
+    ("resolveops.agents.models", "SupervisorPlan"),
     ("resolveops.models.case", "CaseIssueType"),
     ("resolveops.models.case", "IssueFinding"),
     ("resolveops.models.refund", "RefundKind"),

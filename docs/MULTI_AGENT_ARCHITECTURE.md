@@ -1,9 +1,9 @@
 # Hierarchical multi-agent analysis
 
-ResolveOps now contains a guarded hierarchical analysis path alongside the proven deterministic
-customer and IT workflows. The analysis path is explicit and manual: opening a case does not spend
-model tokens. An operator chooses **Run multi-agent analysis** when the additional assessment is
-useful.
+ResolveOps integrates guarded hierarchical analysis into the normal customer workflow. Opening a
+case does not spend model tokens. When an operator starts an investigation, deterministic routing
+selects the five-role graph only for complex cases (multiple issues or a high-value refund); simpler
+cases use the lower-cost advisory path. Both results enter the same deterministic control plane.
 
 ## Roles and authority
 
@@ -43,7 +43,7 @@ replan and model-call budgets; a rejection or exhausted budget escalates safely.
 
 ## Usage controls
 
-- analysis is manual, not triggered by page load;
+- analysis starts only when the operator starts an investigation, never on page load;
 - role context is scoped and capped at 16,000 characters;
 - provider output is capped at 600 tokens per call in the API path;
 - default workflow budgets cap agent steps, calls, tools, input/output tokens and wall time;
@@ -56,7 +56,8 @@ These controls reduce avoidable usage without weakening the deterministic safety
 22-case offline trajectory run made 182 model-double invocations (8.27 per case) and estimated
 71,991 input-context tokens (3,272 per case). It made no provider calls, so dollar cost and live
 provider latency remain unknown. The multi-agent path necessarily costs more than the single-call
-advisory baseline and is therefore operator-triggered rather than automatic.
+advisory baseline and is complexity-routed after an operator starts work, rather than exposed as a
+separate toy control.
 
 ## Persistence
 

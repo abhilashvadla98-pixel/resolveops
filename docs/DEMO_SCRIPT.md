@@ -14,10 +14,10 @@ Show the populated Cases queue and select scenario D.
 
 ## 15–35 seconds: evidence to recommendation
 
-Start the duplicate-charge workflow. Point to the customer/order/payment evidence, versioned policy
-citation, separate issue state, and workflow timeline. If a model key is intentionally configured,
-show **Run multi-agent analysis** and the five role statuses; otherwise state that the offline
-22-case trajectory gate proves the same routing/tool/replan contracts without spending tokens.
+Start the duplicate-charge investigation. Point to the integrated Supervisor, Investigator, Policy,
+Resolution and Critic trace, then show customer/order/payment evidence and versioned policy. Use a
+verified live trace for the technical walkthrough; do not describe skipped provider calls as live
+multi-agent execution.
 
 ## 35–55 seconds: human control and verified action
 
@@ -51,5 +51,7 @@ response review are deliberately listed as not completed.”
 - Record one continuous path instead of touring every screen.
 - Do not display `.env`, API keys, provider dashboards, emails, or GitHub security settings.
 - Call every integration synthetic/simulated unless it is actually connected and verified.
+- Record only after the demo workspace is loaded; keep the existing 42-second clip as the teaser.
+- Do not record the technical walkthrough until the exposed provider credential is rotated.
 - Link the video only after replaying it and checking that no secret or personal notification is
   visible.

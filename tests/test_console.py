@@ -37,9 +37,9 @@ def test_operator_console_serves_secure_shell_and_local_assets() -> None:
     assert "apiFetch(`/api/v1/case-queue?" in script.text
     assert 'apiFetch("/api/v1/approvals"' in script.text
     assert 'apiFetch("/api/v1/reliability/summary"' in script.text
-    assert 'apiFetch("/api/v1/agent-workflows/jobs"' in script.text
-    assert 'Accept: "text/event-stream"' in script.text
-    assert "Agent progress stream unavailable; polling continues." in script.text
+    assert "Run multi-agent analysis" not in page.text
+    assert 'apiFetch("/api/v1/agent-workflows/jobs"' not in script.text
+    assert "Integrated investigation · advisory only" in page.text
     assert "CSS.escape" in script.text
 
 

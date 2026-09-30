@@ -17,7 +17,7 @@ from alembic.config import Config
 from playwright.sync_api import Page, expect, sync_playwright
 
 ROOT = Path(__file__).resolve().parents[1]
-OUTPUT = ROOT / "artifacts" / "resolveops-recruiter-demo.webm"
+OUTPUT = ROOT / "artifacts" / "resolveops-technical-walkthrough.webm"
 
 
 def available_port() -> int:
@@ -57,6 +57,9 @@ def caption(page: Page, title: str, detail: str, milliseconds: int = 3300) -> No
 
 def run_walkthrough(page: Page, base_url: str) -> None:
     page.goto(f"{base_url}/console", wait_until="networkidle")
+    page.locator("#try-demo").click()
+    expect(page.locator("#sidebar-connection")).to_have_text("Connected")
+    expect(page.locator("#case-table")).to_contain_text("CASE-1001")
     caption(
         page,
         "ResolveOps · Production AI Operations System",
@@ -64,9 +67,6 @@ def run_walkthrough(page: Page, base_url: str) -> None:
         4200,
     )
 
-    page.locator("#try-demo").click()
-    expect(page.locator("#sidebar-connection")).to_have_text("Connected")
-    expect(page.locator("#case-table")).to_contain_text("CASE-1001")
     caption(
         page,
         "1 · One operational workspace",
@@ -81,16 +81,15 @@ def run_walkthrough(page: Page, base_url: str) -> None:
         "A duplicate-charge case keeps the complaint, payment facts, and versioned policy evidence separate.",
     )
 
-    page.locator("#run-agent-analysis").focus()
-    caption(
-        page,
-        "3 · Optional five-role multi-agent assessment",
-        "Supervisor, investigator, policy, resolution, and independent critic return structured advice; live provider calls are skipped in this public recording to conserve quota.",
-        4500,
-    )
-
     page.locator("#detail-issues .start-workflow").click()
     expect(page.locator("#workflow-summary")).to_contain_text("Human approval required")
+    expect(page.locator("#agent-summary")).to_be_visible()
+    caption(
+        page,
+        "3 · Integrated five-role investigation",
+        "The verified live trace shows supervisor routing, evidence reads, policy citations, a bounded proposal, and an independent critic.",
+        6500,
+    )
     caption(
         page,
         "4 · Sensitive actions pause",
@@ -146,6 +145,11 @@ def run_walkthrough(page: Page, base_url: str) -> None:
 
 
 def main() -> None:
+    if os.environ.get("RESOLVEOPS_GEMINI_KEY_ROTATED", "").lower() != "true":
+        raise SystemExit(
+            "Recording blocked: rotate the exposed Gemini key and set "
+            "RESOLVEOPS_GEMINI_KEY_ROTATED=true locally."
+        )
     OUTPUT.parent.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(
         prefix="resolveops-demo-", ignore_cleanup_errors=True
@@ -167,6 +171,7 @@ def main() -> None:
                     "recruiter-demo-session-secret-more-than-32-characters"
                 ),
                 "RESOLVEOPS_AGENT_QUEUE_ENABLED": "false",
+                "RESOLVEOPS_INTEGRATED_AGENTS_ENABLED": "true",
             }
         )
 

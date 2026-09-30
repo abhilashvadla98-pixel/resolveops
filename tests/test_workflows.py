@@ -8,6 +8,7 @@ from langgraph.checkpoint.memory import InMemorySaver
 from sqlalchemy import Engine, create_engine, event, func, select
 from sqlalchemy.orm import Session, sessionmaker
 
+from resolveops.agents.models import MultiAgentReasoningResult
 from resolveops.database.base import Base
 from resolveops.database.records import CaseIssueRecord, RefundRecord
 from resolveops.database.seed import seed_all
@@ -28,7 +29,7 @@ from resolveops.reasoning.models import (
     ReasoningDisposition,
 )
 from resolveops.reasoning.providers import ReasoningProvider
-from resolveops.workflows.customer_issue import CustomerIssueWorkflow
+from resolveops.workflows.customer_issue import CustomerIssueWorkflow, IntegratedAgentRuntime
 from resolveops.workflows.lifecycle import ApprovalDecisionError, WorkflowLifecycleStore
 from resolveops.workflows.models import (
     ApprovalDecisionType,
@@ -86,13 +87,14 @@ def refund_request(*, key: str = "workflow-refund-1") -> IssueRefundRequest:
 
 def request(
     *,
+    case_id: str = "CASE-1001",
     issue_id: str = "ISSUE-1001",
     role: ActorRole = ActorRole.APPROVER,
     proposed_refund: IssueRefundRequest | None = None,
 ) -> WorkflowRequest:
     return WorkflowRequest(
         workflow_id=f"WORKFLOW-{issue_id}",
-        case_id="CASE-1001",
+        case_id=case_id,
         issue_id=issue_id,
         actor=actor(role),
         refund_request=proposed_refund,
@@ -109,13 +111,17 @@ def workflow(
     *,
     action_tools: ActionTools | None = None,
     reasoning_provider: ReasoningProvider | None = None,
+    agent_runtime: IntegratedAgentRuntime | None = None,
+    workflow_clock: Callable[[], datetime] = lambda: NOW,
 ) -> CustomerIssueWorkflow:
     return CustomerIssueWorkflow(
         factory,
         FeatureHashEmbeddingProvider(dimensions=128),
         action_tools=action_tools,
         reasoning_provider=reasoning_provider,
-        clock=lambda: NOW,
+        agent_runtime=agent_runtime,
+        tenant_id="TENANT-TEST",
+        clock=workflow_clock,
     )
 
 
@@ -176,6 +182,98 @@ class ScriptedReasoningProvider:
             missing_information=[],
             risk_notes=["Deterministic authorization remains required."],
             rationale="The recommendation is advisory and does not authorize an action.",
+        )
+
+
+class RecordingIntegratedAgentRuntime:
+    def __init__(self) -> None:
+        self.calls: list[dict[str, object]] = []
+
+    def run(self, **kwargs: object) -> MultiAgentReasoningResult:
+        self.calls.append(kwargs)
+        return MultiAgentReasoningResult.model_validate(
+            {
+                "workflow_id": kwargs["workflow_id"],
+                "case_id": kwargs["case_id"],
+                "tenant_id": kwargs["tenant_id"],
+                "domain": "customer_operations",
+                "supervisor": {
+                    "goal": "Investigate the duplicate charge.",
+                    "issues": ["duplicate_charge"],
+                    "plan_steps": [
+                        {
+                            "step_id": "STEP-1",
+                            "objective": "Read trusted evidence.",
+                            "assigned_role": "investigation",
+                        }
+                    ],
+                    "required_evidence": ["payment records"],
+                    "delegations": ["investigation", "policy", "resolution", "critic"],
+                    "parallelizable_tasks": [],
+                    "missing_information": [],
+                    "next_agent": "investigation",
+                    "stopping_condition": "Independent critic accepts the proposal.",
+                },
+                "investigation": {
+                    "facts": [],
+                    "evidence_ids": ["PAY-1001", "PAY-1002"],
+                    "contradictions": [],
+                    "missing_evidence": [],
+                    "confidence": 0.98,
+                    "source_provenance": ["trusted payment read"],
+                    "complete": True,
+                },
+                "policy": {
+                    "applicable_policy": "POLICY-DUPLICATE-CHARGE",
+                    "citations": ["POLICY-DUPLICATE-CHARGE"],
+                    "policy_versions": {"POLICY-DUPLICATE-CHARGE": 1},
+                    "supporting_sections": ["Required evidence"],
+                    "conflicts": [],
+                    "missing_policy": False,
+                    "policy_interpretation": "A confirmed duplicate capture may be refunded.",
+                    "uncertainty": [],
+                    "complete": True,
+                },
+                "resolution": {
+                    "issue_resolutions": [
+                        {
+                            "issue_id": "ISSUE-1001",
+                            "recommendation": "Submit to deterministic refund controls.",
+                            "evidence_ids": ["PAY-1001", "PAY-1002"],
+                            "policy_citations": ["POLICY-DUPLICATE-CHARGE"],
+                        }
+                    ],
+                    "proposed_actions": [],
+                    "evidence_support": ["PAY-1001", "PAY-1002"],
+                    "policy_support": ["POLICY-DUPLICATE-CHARGE"],
+                    "risk_flags": [],
+                    "uncertainty": [],
+                    "escalation_needed": False,
+                },
+                "critic": {
+                    "decision": "accept",
+                    "unsupported_claims": [],
+                    "missing_evidence": [],
+                    "contradictions": [],
+                    "unsafe_actions": [],
+                    "citation_issues": [],
+                    "partial_completion": [],
+                    "summary": "Grounded recommendation; deterministic controls still apply.",
+                },
+                "status": "ready_for_control_plane",
+                "replan_count": 0,
+                "agent_call_count": 5,
+                "tool_call_count": 2,
+                "usage": {
+                    "agent_steps": 5,
+                    "model_calls": 5,
+                    "tool_calls": 2,
+                    "input_tokens": 1200,
+                    "output_tokens": 350,
+                    "estimated_cost_usd": None,
+                },
+                "agent_run_ids": [f"ARUN-{index}" for index in range(1, 6)],
+            }
         )
 
 
@@ -250,6 +348,44 @@ def test_authorized_refund_executes_and_is_independently_verified(
     assert any(item.document_id == "POLICY-DUPLICATE-CHARGE" for item in result.policy_citations)
     assert result.node_history[-3:] == ["execute_refund", "verify_action", "complete"]
     assert "case remains open" in result.resolution_summary
+
+
+def test_normal_complex_investigation_runs_agents_before_deterministic_controls(
+    workflow_database: tuple[Engine, sessionmaker[Session]],
+) -> None:
+    _, factory = workflow_database
+    make_duplicate_issue_actionable(factory)
+    tools = ActionTools(factory, clock=lambda: NOW, id_generator=ids())
+    agents = RecordingIntegratedAgentRuntime()
+
+    result = workflow(factory, action_tools=tools, agent_runtime=agents).run(
+        request(proposed_refund=refund_request())
+    )
+
+    assert len(agents.calls) == 1
+    assert agents.calls[0]["tenant_id"] == "TENANT-TEST"
+    assert result.agent_assessment is not None
+    assert result.agent_assessment.critic.decision.value == "accept"
+    assert result.status == WorkflowStatus.COMPLETED
+    assert result.outcome == WorkflowOutcome.ACTION_VERIFIED
+    assert result.operation is not None and result.operation.verified is True
+
+
+def test_simple_investigation_skips_multi_agent_runtime(
+    workflow_database: tuple[Engine, sessionmaker[Session]],
+) -> None:
+    _, factory = workflow_database
+    agents = RecordingIntegratedAgentRuntime()
+
+    result = workflow(
+        factory,
+        agent_runtime=agents,
+        workflow_clock=lambda: datetime(2026, 9, 30, 12, 0, tzinfo=UTC),
+    ).run(request(case_id="CASE-DEMO-A", issue_id="ISSUE-DEMO-A"))
+
+    assert agents.calls == []
+    assert result.agent_assessment is None
+    assert result.outcome == WorkflowOutcome.NEEDS_REVIEW
 
 
 def test_approval_failure_routes_to_review(
