@@ -74,3 +74,12 @@ evidence, not as an application-capacity result. Mutation endpoints were exclude
 - full server and PostgreSQL memory/CPU consumption;
 - provider token cost or cost per workflow; and
 - production p50/p95 or SLO compliance.
+
+## Retrieval serving decision
+
+A separate disposable-container benchmark now covers exact vector serving at 1,000 and 10,000
+synthetic vectors. At 10,000 vectors, Python exact cosine measured 363.24 ms p95 and pgvector exact
+cosine measured 8.02 ms p95 with full top-five agreement over 12 queries. ResolveOps retains the
+in-process exact implementation for the actual 17-chunk corpus and records pgvector as the measured
+scale-up option rather than adding an unused production dependency. See
+`benchmarks/results/vector-serving.json` for environment and limitations.

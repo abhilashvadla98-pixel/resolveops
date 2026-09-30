@@ -48,6 +48,25 @@ nDCG in this run. Hard negatives and wrong-issue terminology remain the weakest 
 cross-encoder reranker was not added because six documents still do not justify its model, latency,
 and operational complexity; improving query labels and fusion weights is the cheaper next step.
 
+## Cross-encoder experiment
+
+On 2026-09-29, `scripts/run_retrieval_reranker_experiment.py` compared the same 50 queries and
+17 policy chunks against `Xenova/ms-marco-MiniLM-L-6-v2`. The reranker improved MRR from 0.9233 to
+0.9367 and nDCG@3 from 0.9363 to 0.9531, but local p95 latency increased from 45.75 ms to
+1,179.72 ms. It therefore failed the checked-in adoption rule and was not connected to the runtime.
+The full per-query artifact is `reranker-report.json`. This is a local six-document experiment, not
+a general model-quality claim.
+
+## Exact serving scale experiment
+
+`scripts/run_vector_serving_benchmark.py` compared the current Python exact cosine implementation
+with pgvector exact cosine search in a disposable PostgreSQL 16 container. At 10,000 synthetic
+64-dimensional vectors, both returned identical top-five sets across 12 queries. Python exact p95
+was 363.24 ms; pgvector exact p95 was 8.02 ms. At the current real corpus size of only 17 chunks,
+adding pgvector to the application would still be unjustified operational complexity. The measured
+artifact is `benchmarks/results/vector-serving.json`; synthetic vectors measure serving mechanics,
+not policy relevance or production capacity.
+
 The active corpus has no superseded policy version and no meaningful "no relevant policy" answer,
 so those two categories are not padded with invented examples. Effective-date exclusion is covered
 by focused knowledge tests. Add those retrieval categories when the policy corpus contains honest

@@ -1,0 +1,61 @@
+{
+  "measured_at": "2026-09-30T02:17:02.845611+00:00",
+  "environment": {
+    "python": "3.12.10",
+    "operating_system": "Windows",
+    "database": "disposable pgvector/pgvector:pg16 container"
+  },
+  "method": "exact cosine scan in both implementations; no approximate index",
+  "points": [
+    {
+      "vector_count": 1000,
+      "dimensions": 64,
+      "query_count": 12,
+      "top_k": 5,
+      "python_exact_build_ms": 7.972999999765307,
+      "python_exact_latency_ms": {
+        "samples": 12,
+        "minimum": 16.259899999568006,
+        "p50": 17.96449999892502,
+        "p95": 42.7836999988358,
+        "maximum": 42.7836999988358
+      },
+      "pgvector_exact_latency_ms": {
+        "samples": 12,
+        "minimum": 1.9989000029454473,
+        "p50": 2.6615999995556194,
+        "p95": 11.032200000045123,
+        "maximum": 11.032200000045123
+      },
+      "pgvector_recall_against_python_exact": 1.0
+    },
+    {
+      "vector_count": 10000,
+      "dimensions": 64,
+      "query_count": 12,
+      "top_k": 5,
+      "python_exact_build_ms": 240.41049999868846,
+      "python_exact_latency_ms": {
+        "samples": 12,
+        "minimum": 190.4753000017081,
+        "p50": 230.44560000198544,
+        "p95": 363.24149999927613,
+        "maximum": 363.24149999927613
+      },
+      "pgvector_exact_latency_ms": {
+        "samples": 12,
+        "minimum": 4.366199998912634,
+        "p50": 5.233899999439018,
+        "p95": 8.0232000000251,
+        "maximum": 8.0232000000251
+      },
+      "pgvector_recall_against_python_exact": 1.0
+    }
+  ],
+  "decision": "retain Python exact retrieval for the current 17-chunk corpus; pgvector is deployable when measured corpus growth justifies it",
+  "limitations": [
+    "Synthetic deterministic vectors measure serving mechanics, not policy retrieval quality.",
+    "This single-client local benchmark is not a concurrency or production-capacity test.",
+    "The application schema was not changed because the current policy corpus is only 17 chunks."
+  ]
+}

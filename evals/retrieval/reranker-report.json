@@ -1,0 +1,1349 @@
+{
+  "measured_at": "2026-09-30T02:15:15.890248+00:00",
+  "environment": {
+    "python": "3.12.10",
+    "operating_system": "Windows",
+    "database": "SQLite in-memory"
+  },
+  "dataset": "evals/retrieval/customer_operations.jsonl",
+  "dataset_sha256": "9274c72f275e1369e931a225a5023ba0afbd32e16a4822a3947bd0e3b33e5242",
+  "query_count": 50,
+  "policy_documents": 6,
+  "policy_chunks": 17,
+  "embedding_model": "BAAI/bge-small-en-v1.5",
+  "reranker_model": "Xenova/ms-marco-MiniLM-L-6-v2",
+  "candidate_pool": 20,
+  "k": 3,
+  "hybrid": {
+    "metrics": {
+      "method": "hybrid",
+      "query_count": 50,
+      "k": 3,
+      "recall_at_k": 0.98,
+      "mrr": 0.9233333333333333,
+      "ndcg_at_k": 0.9362502009972512,
+      "category_metrics": [
+        {
+          "category": "confusing_terminology",
+          "query_count": 5,
+          "recall_at_k": 1.0,
+          "mrr": 1.0,
+          "ndcg_at_k": 1.0
+        },
+        {
+          "category": "direct_lookup",
+          "query_count": 14,
+          "recall_at_k": 1.0,
+          "mrr": 0.9166666666666667,
+          "ndcg_at_k": 0.9379235538265327
+        },
+        {
+          "category": "hard_negative",
+          "query_count": 16,
+          "recall_at_k": 0.9375,
+          "mrr": 0.875,
+          "ndcg_at_k": 0.8913662191964322
+        },
+        {
+          "category": "multi_section",
+          "query_count": 7,
+          "recall_at_k": 1.0,
+          "mrr": 1.0,
+          "ndcg_at_k": 1.0
+        },
+        {
+          "category": "similar_policy",
+          "query_count": 4,
+          "recall_at_k": 1.0,
+          "mrr": 1.0,
+          "ndcg_at_k": 0.9799301972870469
+        },
+        {
+          "category": "wrong_issue_type",
+          "query_count": 4,
+          "recall_at_k": 1.0,
+          "mrr": 0.8333333333333334,
+          "ndcg_at_k": 0.875
+        }
+      ],
+      "cases": [
+        {
+          "case_id": "RET-001",
+          "category": "direct_lookup",
+          "retrieved_document_ids": [
+            "POLICY-DUPLICATE-CHARGE",
+            "POLICY-PAYMENT-STATUS",
+            "POLICY-CASE-ESCALATION"
+          ],
+          "recall_at_k": 1.0,
+          "reciprocal_rank": 1.0,
+          "ndcg_at_k": 1.0
+        },
+        {
+          "case_id": "RET-002",
+          "category": "direct_lookup",
+          "retrieved_document_ids": [
+            "POLICY-DUPLICATE-CHARGE",
+            "POLICY-PAYMENT-STATUS",
+            "POLICY-CUSTOMER-COMMUNICATION"
+          ],
+          "recall_at_k": 1.0,
+          "reciprocal_rank": 1.0,
+          "ndcg_at_k": 1.0
+        },
+        {
+          "case_id": "RET-003",
+          "category": "hard_negative",
+          "retrieved_document_ids": [
+            "POLICY-PAYMENT-STATUS",
+            "POLICY-DUPLICATE-CHARGE",
+            "POLICY-CUSTOMER-COMMUNICATION"
+          ],
+          "recall_at_k": 1.0,
+          "reciprocal_rank": 1.0,
+          "ndcg_at_k": 1.0
+        },
+        {
+          "case_id": "RET-004",
+          "category": "direct_lookup",
+          "retrieved_document_ids": [
+            "POLICY-DUPLICATE-CHARGE",
+            "POLICY-PAYMENT-STATUS",
+            "POLICY-CASE-ESCALATION"
+          ],
+          "recall_at_k": 1.0,
+          "reciprocal_rank": 1.0,
+          "ndcg_at_k": 1.0
+        },
+        {
+          "case_id": "RET-005",
+          "category": "direct_lookup",
+          "retrieved_document_ids": [
+            "POLICY-RETURN-ELIGIBILITY",
+            "POLICY-RETURN-REFUND",
+            "POLICY-CUSTOMER-COMMUNICATION"
+          ],
+          "recall_at_k": 1.0,
+          "reciprocal_rank": 0.5,
+          "ndcg_at_k": 0.6309297535714575
+        },
+        {
+          "case_id": "RET-006",
+          "category": "direct_lookup",
+          "retrieved_document_ids": [
+            "POLICY-RETURN-REFUND",
+            "POLICY-RETURN-ELIGIBILITY",
+            "POLICY-CUSTOMER-COMMUNICATION"
+          ],
+          "recall_at_k": 1.0,
+          "reciprocal_rank": 1.0,
+          "ndcg_at_k": 1.0
+        },
+        {
+          "case_id": "RET-007",
+          "category": "hard_negative",
+          "retrieved_document_ids": [
+            "POLICY-RETURN-ELIGIBILITY",
+            "POLICY-RETURN-REFUND",
+            "POLICY-CASE-ESCALATION"
+          ],
+          "recall_at_k": 1.0,
+          "reciprocal_rank": 1.0,
+          "ndcg_at_k": 1.0
+        },
+        {
+          "case_id": "RET-008",
+          "category": "wrong_issue_type",
+          "retrieved_document_ids": [
+            "POLICY-CUSTOMER-COMMUNICATION",
+            "POLICY-CASE-ESCALATION",
+            "POLICY-DUPLICATE-CHARGE"
+          ],
+          "recall_at_k": 1.0,
+          "reciprocal_rank": 1.0,
+          "ndcg_at_k": 1.0
+        },
+        {
+          "case_id": "RET-009",
+          "category": "hard_negative",
+          "retrieved_document_ids": [
+            "POLICY-CUSTOMER-COMMUNICATION",
+            "POLICY-DUPLICATE-CHARGE",
+            "POLICY-PAYMENT-STATUS"
+          ],
+          "recall_at_k": 1.0,
+          "reciprocal_rank": 1.0,
+          "ndcg_at_k": 1.0
+        },
+        {
+          "case_id": "RET-010",
+          "category": "hard_negative",
+          "retrieved_document_ids": [
+            "POLICY-CUSTOMER-COMMUNICATION",
+            "POLICY-RETURN-REFUND",
+            "POLICY-CASE-ESCALATION"
+          ],
+          "recall_at_k": 1.0,
+          "reciprocal_rank": 1.0,
+          "ndcg_at_k": 1.0
+        },
+        {
+          "case_id": "RET-011",
+          "category": "multi_section",
+          "retrieved_document_ids": [
+            "POLICY-DUPLICATE-CHARGE",
+            "POLICY-RETURN-REFUND",
+            "POLICY-CUSTOMER-COMMUNICATION"
+          ],
+          "recall_at_k": 1.0,
+          "reciprocal_rank": 1.0,
+          "ndcg_at_k": 1.0
+        },
+        {
+          "case_id": "RET-012",
+          "category": "confusing_terminology",
+          "retrieved_document_ids": [
+            "POLICY-CUSTOMER-COMMUNICATION",
+            "POLICY-CASE-ESCALATION",
+            "POLICY-RETURN-REFUND"
+          ],
+          "recall_at_k": 1.0,
+          "reciprocal_rank": 1.0,
+          "ndcg_at_k": 1.0
+        },
+        {
+          "case_id": "RET-013",
+          "category": "direct_lookup",
+          "retrieved_document_ids": [
+            "POLICY-RETURN-REFUND",
+            "POLICY-DUPLICATE-CHARGE",
+            "POLICY-CASE-ESCALATION"
+          ],
+          "recall_at_k": 1.0,
+          "reciprocal_rank": 0.3333333333333333,
+          "ndcg_at_k": 0.5
+        },
+        {
+          "case_id": "RET-014",
+          "category": "multi_section",
+          "retrieved_document_ids": [
+            "POLICY-RETURN-ELIGIBILITY",
+            "POLICY-RETURN-REFUND",
+            "POLICY-CUSTOMER-COMMUNICATION"
+          ],
+          "recall_at_k": 1.0,
+          "reciprocal_rank": 1.0,
+          "ndcg_at_k": 1.0
+        },
+        {
+          "case_id": "RET-015",
+          "category": "direct_lookup",
+          "retrieved_document_ids": [
+            "POLICY-PAYMENT-STATUS",
+            "POLICY-DUPLICATE-CHARGE",
+            "POLICY-CUSTOMER-COMMUNICATION"
+          ],
+          "recall_at_k": 1.0,
+          "reciprocal_rank": 1.0,
+          "ndcg_at_k": 1.0
+        },
+        {
+          "case_id": "RET-016",
+          "category": "hard_negative",
+          "retrieved_document_ids": [
+            "POLICY-DUPLICATE-CHARGE",
+            "POLICY-PAYMENT-STATUS",
+            "POLICY-CUSTOMER-COMMUNICATION"
+          ],
+          "recall_at_k": 1.0,
+          "reciprocal_rank": 1.0,
+          "ndcg_at_k": 1.0
+        },
+        {
+          "case_id": "RET-017",
+          "category": "hard_negative",
+          "retrieved_document_ids": [
+            "POLICY-DUPLICATE-CHARGE",
+            "POLICY-PAYMENT-STATUS",
+            "POLICY-CASE-ESCALATION"
+          ],
+          "recall_at_k": 1.0,
+          "reciprocal_rank": 1.0,
+          "ndcg_at_k": 1.0
+        },
+        {
+          "case_id": "RET-018",
+          "category": "similar_policy",
+          "retrieved_document_ids": [
+            "POLICY-DUPLICATE-CHARGE",
+            "POLICY-PAYMENT-STATUS",
+            "POLICY-CUSTOMER-COMMUNICATION"
+          ],
+          "recall_at_k": 1.0,
+          "reciprocal_rank": 1.0,
+          "ndcg_at_k": 1.0
+        },
+        {
+          "case_id": "RET-019",
+          "category": "direct_lookup",
+          "retrieved_document_ids": [
+            "POLICY-DUPLICATE-CHARGE",
+            "POLICY-PAYMENT-STATUS",
+            "POLICY-CUSTOMER-COMMUNICATION"
+          ],
+          "recall_at_k": 1.0,
+          "reciprocal_rank": 1.0,
+          "ndcg_at_k": 1.0
+        },
+        {
+          "case_id": "RET-020",
+          "category": "hard_negative",
+          "retrieved_document_ids": [
+            "POLICY-PAYMENT-STATUS",
+            "POLICY-DUPLICATE-CHARGE",
+            "POLICY-CASE-ESCALATION"
+          ],
+          "recall_at_k": 1.0,
+          "reciprocal_rank": 0.5,
+          "ndcg_at_k": 0.6309297535714575
+        },
+        {
+          "case_id": "RET-021",
+          "category": "hard_negative",
+          "retrieved_document_ids": [
+            "POLICY-DUPLICATE-CHARGE",
+            "POLICY-PAYMENT-STATUS",
+            "POLICY-CUSTOMER-COMMUNICATION"
+          ],
+          "recall_at_k": 1.0,
+          "reciprocal_rank": 1.0,
+          "ndcg_at_k": 1.0
+        },
+        {
+          "case_id": "RET-022",
+          "category": "multi_section",
+          "retrieved_document_ids": [
+            "POLICY-DUPLICATE-CHARGE",
+            "POLICY-PAYMENT-STATUS",
+            "POLICY-CUSTOMER-COMMUNICATION"
+          ],
+          "recall_at_k": 1.0,
+          "reciprocal_rank": 1.0,
+          "ndcg_at_k": 1.0
+        },
+        {
+          "case_id": "RET-023",
+          "category": "confusing_terminology",
+          "retrieved_document_ids": [
+            "POLICY-PAYMENT-STATUS",
+            "POLICY-DUPLICATE-CHARGE",
+            "POLICY-CASE-ESCALATION"
+          ],
+          "recall_at_k": 1.0,
+          "reciprocal_rank": 1.0,
+          "ndcg_at_k": 1.0
+        },
+        {
+          "case_id": "RET-024",
+          "category": "confusing_terminology",
+          "retrieved_document_ids": [
+            "POLICY-PAYMENT-STATUS",
+            "POLICY-DUPLICATE-CHARGE",
+            "POLICY-CUSTOMER-COMMUNICATION"
+          ],
+          "recall_at_k": 1.0,
+          "reciprocal_rank": 1.0,
+          "ndcg_at_k": 1.0
+        },
+        {
+          "case_id": "RET-025",
+          "category": "hard_negative",
+          "retrieved_document_ids": [
+            "POLICY-PAYMENT-STATUS",
+            "POLICY-DUPLICATE-CHARGE",
+            "POLICY-CASE-ESCALATION"
+          ],
+          "recall_at_k": 1.0,
+          "reciprocal_rank": 1.0,
+          "ndcg_at_k": 1.0
+        },
+        {
+          "case_id": "RET-026",
+          "category": "confusing_terminology",
+          "retrieved_document_ids": [
+            "POLICY-PAYMENT-STATUS",
+            "POLICY-DUPLICATE-CHARGE",
+            "POLICY-CUSTOMER-COMMUNICATION"
+          ],
+          "recall_at_k": 1.0,
+          "reciprocal_rank": 1.0,
+          "ndcg_at_k": 1.0
+        },
+        {
+          "case_id": "RET-027",
+          "category": "hard_negative",
+          "retrieved_document_ids": [
+            "POLICY-RETURN-ELIGIBILITY",
+            "POLICY-RETURN-REFUND",
+            "POLICY-CUSTOMER-COMMUNICATION"
+          ],
+          "recall_at_k": 1.0,
+          "reciprocal_rank": 1.0,
+          "ndcg_at_k": 1.0
+        },
+        {
+          "case_id": "RET-028",
+          "category": "hard_negative",
+          "retrieved_document_ids": [
+            "POLICY-RETURN-ELIGIBILITY",
+            "POLICY-RETURN-REFUND",
+            "POLICY-CUSTOMER-COMMUNICATION"
+          ],
+          "recall_at_k": 1.0,
+          "reciprocal_rank": 1.0,
+          "ndcg_at_k": 1.0
+        },
+        {
+          "case_id": "RET-029",
+          "category": "direct_lookup",
+          "retrieved_document_ids": [
+            "POLICY-RETURN-REFUND",
+            "POLICY-RETURN-ELIGIBILITY",
+            "POLICY-CUSTOMER-COMMUNICATION"
+          ],
+          "recall_at_k": 1.0,
+          "reciprocal_rank": 1.0,
+          "ndcg_at_k": 1.0
+        },
+        {
+          "case_id": "RET-030",
+          "category": "similar_policy",
+          "retrieved_document_ids": [
+            "POLICY-RETURN-ELIGIBILITY",
+            "POLICY-RETURN-REFUND",
+            "POLICY-CASE-ESCALATION"
+          ],
+          "recall_at_k": 1.0,
+          "reciprocal_rank": 1.0,
+          "ndcg_at_k": 1.0
+        },
+        {
+          "case_id": "RET-031",
+          "category": "direct_lookup",
+          "retrieved_document_ids": [
+            "POLICY-RETURN-REFUND",
+            "POLICY-CUSTOMER-COMMUNICATION",
+            "POLICY-RETURN-ELIGIBILITY"
+          ],
+          "recall_at_k": 1.0,
+          "reciprocal_rank": 1.0,
+          "ndcg_at_k": 1.0
+        },
+        {
+          "case_id": "RET-032",
+          "category": "hard_negative",
+          "retrieved_document_ids": [
+            "POLICY-RETURN-REFUND",
+            "POLICY-RETURN-ELIGIBILITY",
+            "POLICY-CUSTOMER-COMMUNICATION"
+          ],
+          "recall_at_k": 1.0,
+          "reciprocal_rank": 1.0,
+          "ndcg_at_k": 1.0
+        },
+        {
+          "case_id": "RET-033",
+          "category": "hard_negative",
+          "retrieved_document_ids": [
+            "POLICY-RETURN-REFUND",
+            "POLICY-RETURN-ELIGIBILITY",
+            "POLICY-CUSTOMER-COMMUNICATION"
+          ],
+          "recall_at_k": 1.0,
+          "reciprocal_rank": 1.0,
+          "ndcg_at_k": 1.0
+        },
+        {
+          "case_id": "RET-034",
+          "category": "hard_negative",
+          "retrieved_document_ids": [
+            "POLICY-RETURN-ELIGIBILITY",
+            "POLICY-RETURN-REFUND",
+            "POLICY-CASE-ESCALATION"
+          ],
+          "recall_at_k": 1.0,
+          "reciprocal_rank": 0.5,
+          "ndcg_at_k": 0.6309297535714575
+        },
+        {
+          "case_id": "RET-035",
+          "category": "multi_section",
+          "retrieved_document_ids": [
+            "POLICY-RETURN-ELIGIBILITY",
+            "POLICY-RETURN-REFUND",
+            "POLICY-CUSTOMER-COMMUNICATION"
+          ],
+          "recall_at_k": 1.0,
+          "reciprocal_rank": 1.0,
+          "ndcg_at_k": 1.0
+        },
+        {
+          "case_id": "RET-036",
+          "category": "confusing_terminology",
+          "retrieved_document_ids": [
+            "POLICY-RETURN-REFUND",
+            "POLICY-RETURN-ELIGIBILITY",
+            "POLICY-CUSTOMER-COMMUNICATION"
+          ],
+          "recall_at_k": 1.0,
+          "reciprocal_rank": 1.0,
+          "ndcg_at_k": 1.0
+        },
+        {
+          "case_id": "RET-037",
+          "category": "similar_policy",
+          "retrieved_document_ids": [
+            "POLICY-DUPLICATE-CHARGE",
+            "POLICY-RETURN-REFUND",
+            "POLICY-CUSTOMER-COMMUNICATION"
+          ],
+          "recall_at_k": 1.0,
+          "reciprocal_rank": 1.0,
+          "ndcg_at_k": 1.0
+        },
+        {
+          "case_id": "RET-038",
+          "category": "direct_lookup",
+          "retrieved_document_ids": [
+            "POLICY-CASE-ESCALATION",
+            "POLICY-DUPLICATE-CHARGE",
+            "POLICY-PAYMENT-STATUS"
+          ],
+          "recall_at_k": 1.0,
+          "reciprocal_rank": 1.0,
+          "ndcg_at_k": 1.0
+        },
+        {
+          "case_id": "RET-039",
+          "category": "direct_lookup",
+          "retrieved_document_ids": [
+            "POLICY-CASE-ESCALATION",
+            "POLICY-DUPLICATE-CHARGE",
+            "POLICY-PAYMENT-STATUS"
+          ],
+          "recall_at_k": 1.0,
+          "reciprocal_rank": 1.0,
+          "ndcg_at_k": 1.0
+        },
+        {
+          "case_id": "RET-040",
+          "category": "hard_negative",
+          "retrieved_document_ids": [
+            "POLICY-CUSTOMER-COMMUNICATION",
+            "POLICY-DUPLICATE-CHARGE",
+            "POLICY-RETURN-REFUND"
+          ],
+          "recall_at_k": 0.0,
+          "reciprocal_rank": 0.0,
+          "ndcg_at_k": 0.0
+        },
+        {
+          "case_id": "RET-041",
+          "category": "multi_section",
+          "retrieved_document_ids": [
+            "POLICY-CASE-ESCALATION",
+            "POLICY-DUPLICATE-CHARGE",
+            "POLICY-CUSTOMER-COMMUNICATION"
+          ],
+          "recall_at_k": 1.0,
+          "reciprocal_rank": 1.0,
+          "ndcg_at_k": 1.0
+        },
+        {
+          "case_id": "RET-042",
+          "category": "similar_policy",
+          "retrieved_document_ids": [
+            "POLICY-CASE-ESCALATION",
+            "POLICY-DUPLICATE-CHARGE",
+            "POLICY-CUSTOMER-COMMUNICATION"
+          ],
+          "recall_at_k": 1.0,
+          "reciprocal_rank": 1.0,
+          "ndcg_at_k": 0.9197207891481876
+        },
+        {
+          "case_id": "RET-043",
+          "category": "direct_lookup",
+          "retrieved_document_ids": [
+            "POLICY-CUSTOMER-COMMUNICATION",
+            "POLICY-DUPLICATE-CHARGE",
+            "POLICY-PAYMENT-STATUS"
+          ],
+          "recall_at_k": 1.0,
+          "reciprocal_rank": 1.0,
+          "ndcg_at_k": 1.0
+        },
+        {
+          "case_id": "RET-044",
+          "category": "direct_lookup",
+          "retrieved_document_ids": [
+            "POLICY-CUSTOMER-COMMUNICATION",
+            "POLICY-DUPLICATE-CHARGE",
+            "POLICY-CASE-ESCALATION"
+          ],
+          "recall_at_k": 1.0,
+          "reciprocal_rank": 1.0,
+          "ndcg_at_k": 1.0
+        },
+        {
+          "case_id": "RET-045",
+          "category": "hard_negative",
+          "retrieved_document_ids": [
+            "POLICY-CUSTOMER-COMMUNICATION",
+            "POLICY-DUPLICATE-CHARGE",
+            "POLICY-RETURN-REFUND"
+          ],
+          "recall_at_k": 1.0,
+          "reciprocal_rank": 1.0,
+          "ndcg_at_k": 1.0
+        },
+        {
+          "case_id": "RET-046",
+          "category": "multi_section",
+          "retrieved_document_ids": [
+            "POLICY-CUSTOMER-COMMUNICATION",
+            "POLICY-DUPLICATE-CHARGE",
+            "POLICY-PAYMENT-STATUS"
+          ],
+          "recall_at_k": 1.0,
+          "reciprocal_rank": 1.0,
+          "ndcg_at_k": 1.0
+        },
+        {
+          "case_id": "RET-047",
+          "category": "wrong_issue_type",
+          "retrieved_document_ids": [
+            "POLICY-CUSTOMER-COMMUNICATION",
+            "POLICY-DUPLICATE-CHARGE",
+            "POLICY-CASE-ESCALATION"
+          ],
+          "recall_at_k": 1.0,
+          "reciprocal_rank": 0.3333333333333333,
+          "ndcg_at_k": 0.5
+        },
+        {
+          "case_id": "RET-048",
+          "category": "wrong_issue_type",
+          "retrieved_document_ids": [
+            "POLICY-DUPLICATE-CHARGE",
+            "POLICY-PAYMENT-STATUS",
+            "POLICY-CUSTOMER-COMMUNICATION"
+          ],
+          "recall_at_k": 1.0,
+          "reciprocal_rank": 1.0,
+          "ndcg_at_k": 1.0
+        },
+        {
+          "case_id": "RET-049",
+          "category": "wrong_issue_type",
+          "retrieved_document_ids": [
+            "POLICY-RETURN-REFUND",
+            "POLICY-RETURN-ELIGIBILITY",
+            "POLICY-CUSTOMER-COMMUNICATION"
+          ],
+          "recall_at_k": 1.0,
+          "reciprocal_rank": 1.0,
+          "ndcg_at_k": 1.0
+        },
+        {
+          "case_id": "RET-050",
+          "category": "multi_section",
+          "retrieved_document_ids": [
+            "POLICY-CASE-ESCALATION",
+            "POLICY-DUPLICATE-CHARGE",
+            "POLICY-CUSTOMER-COMMUNICATION"
+          ],
+          "recall_at_k": 1.0,
+          "reciprocal_rank": 1.0,
+          "ndcg_at_k": 1.0
+        }
+      ]
+    },
+    "latency_ms": {
+      "samples": 50,
+      "p50": 21.25089999753982,
+      "p95": 45.74799999682,
+      "maximum": 47.64910000085365
+    }
+  },
+  "hybrid_reranked": {
+    "metrics": {
+      "method": "hybrid",
+      "query_count": 50,
+      "k": 3,
+      "recall_at_k": 1.0,
+      "mrr": 0.9366666666666668,
+      "ndcg_at_k": 0.9530929753571458,
+      "category_metrics": [
+        {
+          "category": "confusing_terminology",
+          "query_count": 5,
+          "recall_at_k": 1.0,
+          "mrr": 1.0,
+          "ndcg_at_k": 1.0
+        },
+        {
+          "category": "direct_lookup",
+          "query_count": 14,
+          "recall_at_k": 1.0,
+          "mrr": 0.8928571428571429,
+          "ndcg_at_k": 0.9209135186224552
+        },
+        {
+          "category": "hard_negative",
+          "query_count": 16,
+          "recall_at_k": 1.0,
+          "mrr": 0.9375,
+          "ndcg_at_k": 0.9538662191964322
+        },
+        {
+          "category": "multi_section",
+          "query_count": 7,
+          "recall_at_k": 1.0,
+          "mrr": 1.0,
+          "ndcg_at_k": 1.0
+        },
+        {
+          "category": "similar_policy",
+          "query_count": 4,
+          "recall_at_k": 1.0,
+          "mrr": 1.0,
+          "ndcg_at_k": 1.0
+        },
+        {
+          "category": "wrong_issue_type",
+          "query_count": 4,
+          "recall_at_k": 1.0,
+          "mrr": 0.8333333333333334,
+          "ndcg_at_k": 0.875
+        }
+      ],
+      "cases": [
+        {
+          "case_id": "RET-001",
+          "category": "direct_lookup",
+          "retrieved_document_ids": [
+            "POLICY-PAYMENT-STATUS",
+            "POLICY-DUPLICATE-CHARGE",
+            "POLICY-CUSTOMER-COMMUNICATION"
+          ],
+          "recall_at_k": 1.0,
+          "reciprocal_rank": 0.5,
+          "ndcg_at_k": 0.6309297535714575
+        },
+        {
+          "case_id": "RET-002",
+          "category": "direct_lookup",
+          "retrieved_document_ids": [
+            "POLICY-DUPLICATE-CHARGE",
+            "POLICY-PAYMENT-STATUS",
+            "POLICY-CUSTOMER-COMMUNICATION"
+          ],
+          "recall_at_k": 1.0,
+          "reciprocal_rank": 1.0,
+          "ndcg_at_k": 1.0
+        },
+        {
+          "case_id": "RET-003",
+          "category": "hard_negative",
+          "retrieved_document_ids": [
+            "POLICY-PAYMENT-STATUS",
+            "POLICY-DUPLICATE-CHARGE",
+            "POLICY-CUSTOMER-COMMUNICATION"
+          ],
+          "recall_at_k": 1.0,
+          "reciprocal_rank": 1.0,
+          "ndcg_at_k": 1.0
+        },
+        {
+          "case_id": "RET-004",
+          "category": "direct_lookup",
+          "retrieved_document_ids": [
+            "POLICY-DUPLICATE-CHARGE",
+            "POLICY-PAYMENT-STATUS",
+            "POLICY-CASE-ESCALATION"
+          ],
+          "recall_at_k": 1.0,
+          "reciprocal_rank": 1.0,
+          "ndcg_at_k": 1.0
+        },
+        {
+          "case_id": "RET-005",
+          "category": "direct_lookup",
+          "retrieved_document_ids": [
+            "POLICY-RETURN-ELIGIBILITY",
+            "POLICY-RETURN-REFUND",
+            "POLICY-CUSTOMER-COMMUNICATION"
+          ],
+          "recall_at_k": 1.0,
+          "reciprocal_rank": 0.5,
+          "ndcg_at_k": 0.6309297535714575
+        },
+        {
+          "case_id": "RET-006",
+          "category": "direct_lookup",
+          "retrieved_document_ids": [
+            "POLICY-RETURN-REFUND",
+            "POLICY-RETURN-ELIGIBILITY",
+            "POLICY-CUSTOMER-COMMUNICATION"
+          ],
+          "recall_at_k": 1.0,
+          "reciprocal_rank": 1.0,
+          "ndcg_at_k": 1.0
+        },
+        {
+          "case_id": "RET-007",
+          "category": "hard_negative",
+          "retrieved_document_ids": [
+            "POLICY-RETURN-ELIGIBILITY",
+            "POLICY-RETURN-REFUND",
+            "POLICY-CUSTOMER-COMMUNICATION"
+          ],
+          "recall_at_k": 1.0,
+          "reciprocal_rank": 1.0,
+          "ndcg_at_k": 1.0
+        },
+        {
+          "case_id": "RET-008",
+          "category": "wrong_issue_type",
+          "retrieved_document_ids": [
+            "POLICY-CUSTOMER-COMMUNICATION",
+            "POLICY-CASE-ESCALATION",
+            "POLICY-DUPLICATE-CHARGE"
+          ],
+          "recall_at_k": 1.0,
+          "reciprocal_rank": 1.0,
+          "ndcg_at_k": 1.0
+        },
+        {
+          "case_id": "RET-009",
+          "category": "hard_negative",
+          "retrieved_document_ids": [
+            "POLICY-CUSTOMER-COMMUNICATION",
+            "POLICY-PAYMENT-STATUS",
+            "POLICY-CASE-ESCALATION"
+          ],
+          "recall_at_k": 1.0,
+          "reciprocal_rank": 1.0,
+          "ndcg_at_k": 1.0
+        },
+        {
+          "case_id": "RET-010",
+          "category": "hard_negative",
+          "retrieved_document_ids": [
+            "POLICY-CUSTOMER-COMMUNICATION",
+            "POLICY-CASE-ESCALATION",
+            "POLICY-DUPLICATE-CHARGE"
+          ],
+          "recall_at_k": 1.0,
+          "reciprocal_rank": 1.0,
+          "ndcg_at_k": 1.0
+        },
+        {
+          "case_id": "RET-011",
+          "category": "multi_section",
+          "retrieved_document_ids": [
+            "POLICY-CUSTOMER-COMMUNICATION",
+            "POLICY-DUPLICATE-CHARGE",
+            "POLICY-RETURN-REFUND"
+          ],
+          "recall_at_k": 1.0,
+          "reciprocal_rank": 1.0,
+          "ndcg_at_k": 1.0
+        },
+        {
+          "case_id": "RET-012",
+          "category": "confusing_terminology",
+          "retrieved_document_ids": [
+            "POLICY-CUSTOMER-COMMUNICATION",
+            "POLICY-CASE-ESCALATION",
+            "POLICY-DUPLICATE-CHARGE"
+          ],
+          "recall_at_k": 1.0,
+          "reciprocal_rank": 1.0,
+          "ndcg_at_k": 1.0
+        },
+        {
+          "case_id": "RET-013",
+          "category": "direct_lookup",
+          "retrieved_document_ids": [
+            "POLICY-RETURN-REFUND",
+            "POLICY-CASE-ESCALATION",
+            "POLICY-RETURN-ELIGIBILITY"
+          ],
+          "recall_at_k": 1.0,
+          "reciprocal_rank": 0.5,
+          "ndcg_at_k": 0.6309297535714575
+        },
+        {
+          "case_id": "RET-014",
+          "category": "multi_section",
+          "retrieved_document_ids": [
+            "POLICY-RETURN-ELIGIBILITY",
+            "POLICY-RETURN-REFUND",
+            "POLICY-CUSTOMER-COMMUNICATION"
+          ],
+          "recall_at_k": 1.0,
+          "reciprocal_rank": 1.0,
+          "ndcg_at_k": 1.0
+        },
+        {
+          "case_id": "RET-015",
+          "category": "direct_lookup",
+          "retrieved_document_ids": [
+            "POLICY-PAYMENT-STATUS",
+            "POLICY-DUPLICATE-CHARGE",
+            "POLICY-CASE-ESCALATION"
+          ],
+          "recall_at_k": 1.0,
+          "reciprocal_rank": 1.0,
+          "ndcg_at_k": 1.0
+        },
+        {
+          "case_id": "RET-016",
+          "category": "hard_negative",
+          "retrieved_document_ids": [
+            "POLICY-DUPLICATE-CHARGE",
+            "POLICY-PAYMENT-STATUS",
+            "POLICY-CUSTOMER-COMMUNICATION"
+          ],
+          "recall_at_k": 1.0,
+          "reciprocal_rank": 1.0,
+          "ndcg_at_k": 1.0
+        },
+        {
+          "case_id": "RET-017",
+          "category": "hard_negative",
+          "retrieved_document_ids": [
+            "POLICY-DUPLICATE-CHARGE",
+            "POLICY-PAYMENT-STATUS",
+            "POLICY-CUSTOMER-COMMUNICATION"
+          ],
+          "recall_at_k": 1.0,
+          "reciprocal_rank": 1.0,
+          "ndcg_at_k": 1.0
+        },
+        {
+          "case_id": "RET-018",
+          "category": "similar_policy",
+          "retrieved_document_ids": [
+            "POLICY-DUPLICATE-CHARGE",
+            "POLICY-PAYMENT-STATUS",
+            "POLICY-CUSTOMER-COMMUNICATION"
+          ],
+          "recall_at_k": 1.0,
+          "reciprocal_rank": 1.0,
+          "ndcg_at_k": 1.0
+        },
+        {
+          "case_id": "RET-019",
+          "category": "direct_lookup",
+          "retrieved_document_ids": [
+            "POLICY-DUPLICATE-CHARGE",
+            "POLICY-PAYMENT-STATUS",
+            "POLICY-CUSTOMER-COMMUNICATION"
+          ],
+          "recall_at_k": 1.0,
+          "reciprocal_rank": 1.0,
+          "ndcg_at_k": 1.0
+        },
+        {
+          "case_id": "RET-020",
+          "category": "hard_negative",
+          "retrieved_document_ids": [
+            "POLICY-PAYMENT-STATUS",
+            "POLICY-DUPLICATE-CHARGE",
+            "POLICY-CUSTOMER-COMMUNICATION"
+          ],
+          "recall_at_k": 1.0,
+          "reciprocal_rank": 0.5,
+          "ndcg_at_k": 0.6309297535714575
+        },
+        {
+          "case_id": "RET-021",
+          "category": "hard_negative",
+          "retrieved_document_ids": [
+            "POLICY-DUPLICATE-CHARGE",
+            "POLICY-CUSTOMER-COMMUNICATION",
+            "POLICY-PAYMENT-STATUS"
+          ],
+          "recall_at_k": 1.0,
+          "reciprocal_rank": 1.0,
+          "ndcg_at_k": 1.0
+        },
+        {
+          "case_id": "RET-022",
+          "category": "multi_section",
+          "retrieved_document_ids": [
+            "POLICY-DUPLICATE-CHARGE",
+            "POLICY-PAYMENT-STATUS",
+            "POLICY-CUSTOMER-COMMUNICATION"
+          ],
+          "recall_at_k": 1.0,
+          "reciprocal_rank": 1.0,
+          "ndcg_at_k": 1.0
+        },
+        {
+          "case_id": "RET-023",
+          "category": "confusing_terminology",
+          "retrieved_document_ids": [
+            "POLICY-PAYMENT-STATUS",
+            "POLICY-DUPLICATE-CHARGE",
+            "POLICY-CUSTOMER-COMMUNICATION"
+          ],
+          "recall_at_k": 1.0,
+          "reciprocal_rank": 1.0,
+          "ndcg_at_k": 1.0
+        },
+        {
+          "case_id": "RET-024",
+          "category": "confusing_terminology",
+          "retrieved_document_ids": [
+            "POLICY-PAYMENT-STATUS",
+            "POLICY-DUPLICATE-CHARGE",
+            "POLICY-CUSTOMER-COMMUNICATION"
+          ],
+          "recall_at_k": 1.0,
+          "reciprocal_rank": 1.0,
+          "ndcg_at_k": 1.0
+        },
+        {
+          "case_id": "RET-025",
+          "category": "hard_negative",
+          "retrieved_document_ids": [
+            "POLICY-PAYMENT-STATUS",
+            "POLICY-DUPLICATE-CHARGE",
+            "POLICY-CUSTOMER-COMMUNICATION"
+          ],
+          "recall_at_k": 1.0,
+          "reciprocal_rank": 1.0,
+          "ndcg_at_k": 1.0
+        },
+        {
+          "case_id": "RET-026",
+          "category": "confusing_terminology",
+          "retrieved_document_ids": [
+            "POLICY-PAYMENT-STATUS",
+            "POLICY-DUPLICATE-CHARGE",
+            "POLICY-CUSTOMER-COMMUNICATION"
+          ],
+          "recall_at_k": 1.0,
+          "reciprocal_rank": 1.0,
+          "ndcg_at_k": 1.0
+        },
+        {
+          "case_id": "RET-027",
+          "category": "hard_negative",
+          "retrieved_document_ids": [
+            "POLICY-RETURN-ELIGIBILITY",
+            "POLICY-RETURN-REFUND",
+            "POLICY-CUSTOMER-COMMUNICATION"
+          ],
+          "recall_at_k": 1.0,
+          "reciprocal_rank": 1.0,
+          "ndcg_at_k": 1.0
+        },
+        {
+          "case_id": "RET-028",
+          "category": "hard_negative",
+          "retrieved_document_ids": [
+            "POLICY-RETURN-ELIGIBILITY",
+            "POLICY-RETURN-REFUND",
+            "POLICY-CUSTOMER-COMMUNICATION"
+          ],
+          "recall_at_k": 1.0,
+          "reciprocal_rank": 1.0,
+          "ndcg_at_k": 1.0
+        },
+        {
+          "case_id": "RET-029",
+          "category": "direct_lookup",
+          "retrieved_document_ids": [
+            "POLICY-RETURN-ELIGIBILITY",
+            "POLICY-RETURN-REFUND",
+            "POLICY-CUSTOMER-COMMUNICATION"
+          ],
+          "recall_at_k": 1.0,
+          "reciprocal_rank": 1.0,
+          "ndcg_at_k": 1.0
+        },
+        {
+          "case_id": "RET-030",
+          "category": "similar_policy",
+          "retrieved_document_ids": [
+            "POLICY-RETURN-ELIGIBILITY",
+            "POLICY-RETURN-REFUND",
+            "POLICY-CASE-ESCALATION"
+          ],
+          "recall_at_k": 1.0,
+          "reciprocal_rank": 1.0,
+          "ndcg_at_k": 1.0
+        },
+        {
+          "case_id": "RET-031",
+          "category": "direct_lookup",
+          "retrieved_document_ids": [
+            "POLICY-RETURN-REFUND",
+            "POLICY-RETURN-ELIGIBILITY",
+            "POLICY-CUSTOMER-COMMUNICATION"
+          ],
+          "recall_at_k": 1.0,
+          "reciprocal_rank": 1.0,
+          "ndcg_at_k": 1.0
+        },
+        {
+          "case_id": "RET-032",
+          "category": "hard_negative",
+          "retrieved_document_ids": [
+            "POLICY-RETURN-REFUND",
+            "POLICY-RETURN-ELIGIBILITY",
+            "POLICY-CUSTOMER-COMMUNICATION"
+          ],
+          "recall_at_k": 1.0,
+          "reciprocal_rank": 1.0,
+          "ndcg_at_k": 1.0
+        },
+        {
+          "case_id": "RET-033",
+          "category": "hard_negative",
+          "retrieved_document_ids": [
+            "POLICY-RETURN-REFUND",
+            "POLICY-RETURN-ELIGIBILITY",
+            "POLICY-CUSTOMER-COMMUNICATION"
+          ],
+          "recall_at_k": 1.0,
+          "reciprocal_rank": 1.0,
+          "ndcg_at_k": 1.0
+        },
+        {
+          "case_id": "RET-034",
+          "category": "hard_negative",
+          "retrieved_document_ids": [
+            "POLICY-RETURN-ELIGIBILITY",
+            "POLICY-RETURN-REFUND",
+            "POLICY-CUSTOMER-COMMUNICATION"
+          ],
+          "recall_at_k": 1.0,
+          "reciprocal_rank": 0.5,
+          "ndcg_at_k": 0.6309297535714575
+        },
+        {
+          "case_id": "RET-035",
+          "category": "multi_section",
+          "retrieved_document_ids": [
+            "POLICY-RETURN-ELIGIBILITY",
+            "POLICY-RETURN-REFUND",
+            "POLICY-CASE-ESCALATION"
+          ],
+          "recall_at_k": 1.0,
+          "reciprocal_rank": 1.0,
+          "ndcg_at_k": 1.0
+        },
+        {
+          "case_id": "RET-036",
+          "category": "confusing_terminology",
+          "retrieved_document_ids": [
+            "POLICY-RETURN-REFUND",
+            "POLICY-RETURN-ELIGIBILITY",
+            "POLICY-CASE-ESCALATION"
+          ],
+          "recall_at_k": 1.0,
+          "reciprocal_rank": 1.0,
+          "ndcg_at_k": 1.0
+        },
+        {
+          "case_id": "RET-037",
+          "category": "similar_policy",
+          "retrieved_document_ids": [
+            "POLICY-RETURN-REFUND",
+            "POLICY-DUPLICATE-CHARGE",
+            "POLICY-CASE-ESCALATION"
+          ],
+          "recall_at_k": 1.0,
+          "reciprocal_rank": 1.0,
+          "ndcg_at_k": 1.0
+        },
+        {
+          "case_id": "RET-038",
+          "category": "direct_lookup",
+          "retrieved_document_ids": [
+            "POLICY-CASE-ESCALATION",
+            "POLICY-DUPLICATE-CHARGE",
+            "POLICY-RETURN-REFUND"
+          ],
+          "recall_at_k": 1.0,
+          "reciprocal_rank": 1.0,
+          "ndcg_at_k": 1.0
+        },
+        {
+          "case_id": "RET-039",
+          "category": "direct_lookup",
+          "retrieved_document_ids": [
+            "POLICY-CASE-ESCALATION",
+            "POLICY-DUPLICATE-CHARGE",
+            "POLICY-RETURN-REFUND"
+          ],
+          "recall_at_k": 1.0,
+          "reciprocal_rank": 1.0,
+          "ndcg_at_k": 1.0
+        },
+        {
+          "case_id": "RET-040",
+          "category": "hard_negative",
+          "retrieved_document_ids": [
+            "POLICY-CASE-ESCALATION",
+            "POLICY-DUPLICATE-CHARGE",
+            "POLICY-RETURN-REFUND"
+          ],
+          "recall_at_k": 1.0,
+          "reciprocal_rank": 1.0,
+          "ndcg_at_k": 1.0
+        },
+        {
+          "case_id": "RET-041",
+          "category": "multi_section",
+          "retrieved_document_ids": [
+            "POLICY-CASE-ESCALATION",
+            "POLICY-DUPLICATE-CHARGE",
+            "POLICY-RETURN-REFUND"
+          ],
+          "recall_at_k": 1.0,
+          "reciprocal_rank": 1.0,
+          "ndcg_at_k": 1.0
+        },
+        {
+          "case_id": "RET-042",
+          "category": "similar_policy",
+          "retrieved_document_ids": [
+            "POLICY-CASE-ESCALATION",
+            "POLICY-CUSTOMER-COMMUNICATION",
+            "POLICY-RETURN-REFUND"
+          ],
+          "recall_at_k": 1.0,
+          "reciprocal_rank": 1.0,
+          "ndcg_at_k": 1.0
+        },
+        {
+          "case_id": "RET-043",
+          "category": "direct_lookup",
+          "retrieved_document_ids": [
+            "POLICY-CUSTOMER-COMMUNICATION",
+            "POLICY-DUPLICATE-CHARGE",
+            "POLICY-PAYMENT-STATUS"
+          ],
+          "recall_at_k": 1.0,
+          "reciprocal_rank": 1.0,
+          "ndcg_at_k": 1.0
+        },
+        {
+          "case_id": "RET-044",
+          "category": "direct_lookup",
+          "retrieved_document_ids": [
+            "POLICY-CUSTOMER-COMMUNICATION",
+            "POLICY-DUPLICATE-CHARGE",
+            "POLICY-RETURN-REFUND"
+          ],
+          "recall_at_k": 1.0,
+          "reciprocal_rank": 1.0,
+          "ndcg_at_k": 1.0
+        },
+        {
+          "case_id": "RET-045",
+          "category": "hard_negative",
+          "retrieved_document_ids": [
+            "POLICY-CUSTOMER-COMMUNICATION",
+            "POLICY-RETURN-REFUND",
+            "POLICY-CASE-ESCALATION"
+          ],
+          "recall_at_k": 1.0,
+          "reciprocal_rank": 1.0,
+          "ndcg_at_k": 1.0
+        },
+        {
+          "case_id": "RET-046",
+          "category": "multi_section",
+          "retrieved_document_ids": [
+            "POLICY-CUSTOMER-COMMUNICATION",
+            "POLICY-RETURN-REFUND",
+            "POLICY-DUPLICATE-CHARGE"
+          ],
+          "recall_at_k": 1.0,
+          "reciprocal_rank": 1.0,
+          "ndcg_at_k": 1.0
+        },
+        {
+          "case_id": "RET-047",
+          "category": "wrong_issue_type",
+          "retrieved_document_ids": [
+            "POLICY-CUSTOMER-COMMUNICATION",
+            "POLICY-DUPLICATE-CHARGE",
+            "POLICY-CASE-ESCALATION"
+          ],
+          "recall_at_k": 1.0,
+          "reciprocal_rank": 0.3333333333333333,
+          "ndcg_at_k": 0.5
+        },
+        {
+          "case_id": "RET-048",
+          "category": "wrong_issue_type",
+          "retrieved_document_ids": [
+            "POLICY-DUPLICATE-CHARGE",
+            "POLICY-PAYMENT-STATUS",
+            "POLICY-CUSTOMER-COMMUNICATION"
+          ],
+          "recall_at_k": 1.0,
+          "reciprocal_rank": 1.0,
+          "ndcg_at_k": 1.0
+        },
+        {
+          "case_id": "RET-049",
+          "category": "wrong_issue_type",
+          "retrieved_document_ids": [
+            "POLICY-RETURN-REFUND",
+            "POLICY-RETURN-ELIGIBILITY",
+            "POLICY-CUSTOMER-COMMUNICATION"
+          ],
+          "recall_at_k": 1.0,
+          "reciprocal_rank": 1.0,
+          "ndcg_at_k": 1.0
+        },
+        {
+          "case_id": "RET-050",
+          "category": "multi_section",
+          "retrieved_document_ids": [
+            "POLICY-CASE-ESCALATION",
+            "POLICY-CUSTOMER-COMMUNICATION",
+            "POLICY-DUPLICATE-CHARGE"
+          ],
+          "recall_at_k": 1.0,
+          "reciprocal_rank": 1.0,
+          "ndcg_at_k": 1.0
+        }
+      ]
+    },
+    "latency_ms": {
+      "samples": 50,
+      "p50": 989.7313000001304,
+      "p95": 1179.7217999992426,
+      "maximum": 1201.0474999988219
+    }
+  },
+  "adoption_rule": "MRR improves by at least 0.01, nDCG does not regress, and local p95 is at most 250 ms",
+  "adopt_reranker": false,
+  "decision": "do not adopt; retain measured hybrid baseline",
+  "limitations": [
+    "This local experiment uses six policy documents and cannot establish production quality.",
+    "Latency includes local ONNX inference and excludes network, API, and concurrent load.",
+    "Labels are hand-authored synthetic relevance judgments, not human production feedback."
+  ]
+}
