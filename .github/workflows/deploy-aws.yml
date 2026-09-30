@@ -14,6 +14,11 @@ on:
         required: true
         default: "2"
         type: string
+      worker_desired_count:
+        description: Background worker count after successful migration
+        required: true
+        default: "1"
+        type: string
 
 permissions:
   contents: read
@@ -35,6 +40,7 @@ jobs:
       TF_VAR_image_tag: ${{ github.sha }}
       TF_VAR_application_secret_arn: ${{ vars.APPLICATION_SECRET_ARN }}
       TF_VAR_api_desired_count: ${{ inputs.desired_count }}
+      TF_VAR_worker_desired_count: ${{ inputs.worker_desired_count }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
@@ -75,8 +81,11 @@ jobs:
             echo "service=$(terraform output -raw ecs_service_name)"
             echo "api_task=$(terraform output -raw api_task_definition_arn)"
             echo "migration_task=$(terraform output -raw migration_task_definition_arn)"
+            echo "worker_task=$(terraform output -raw worker_task_definition_arn)"
+            echo "worker_service=$(terraform output -raw worker_service_name)"
             echo "security_group=$(terraform output -raw ecs_security_group_id)"
             echo "desired_count=$(terraform output -raw api_desired_count)"
+            echo "worker_desired_count=$(terraform output -raw worker_desired_count)"
             echo "application_url=$(terraform output -raw application_url)"
             echo "subnets=$(terraform output -json private_subnet_ids | jq -r 'join(",")')"
           } >> "$GITHUB_OUTPUT"
@@ -126,6 +135,21 @@ jobs:
           SERVICE: ${{ steps.infrastructure.outputs.service }}
           TASK_DEFINITION: ${{ steps.infrastructure.outputs.api_task }}
           DESIRED_COUNT: ${{ steps.infrastructure.outputs.desired_count }}
+        run: |
+          aws ecs update-service \
+            --cluster "$CLUSTER" \
+            --service "$SERVICE" \
+            --task-definition "$TASK_DEFINITION" \
+            --desired-count "$DESIRED_COUNT" \
+            --force-new-deployment >/dev/null
+          aws ecs wait services-stable --cluster "$CLUSTER" --services "$SERVICE"
+
+      - name: Deploy worker only after migration succeeds
+        env:
+          CLUSTER: ${{ steps.infrastructure.outputs.cluster }}
+          SERVICE: ${{ steps.infrastructure.outputs.worker_service }}
+          TASK_DEFINITION: ${{ steps.infrastructure.outputs.worker_task }}
+          DESIRED_COUNT: ${{ steps.infrastructure.outputs.worker_desired_count }}
         run: |
           aws ecs update-service \
             --cluster "$CLUSTER" \

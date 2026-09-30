@@ -38,6 +38,19 @@ def run_drill(target: DrillTarget) -> None:
     )
     if not original_title:
         raise RuntimeError("scenario A is missing; migrate and seed the drill database first")
+    original_revision = sql(target, "SELECT version_num FROM alembic_version;")
+    durable_tables = (
+        "agent_runs",
+        "agent_tool_calls",
+        "reviewed_resolution_memory",
+        "agent_workflow_jobs",
+        "agent_job_events",
+    )
+    table_query = " UNION ALL ".join(
+        f"SELECT to_regclass('public.{table}') IS NOT NULL" for table in durable_tables
+    )
+    if sql(target, table_query).splitlines() != ["t"] * len(durable_tables):
+        raise RuntimeError("agent durability tables are missing before backup")
     try:
         docker_exec(
             target,
@@ -86,9 +99,19 @@ def run_drill(target: DrillTarget) -> None:
             target,
             "SELECT count(*) FROM cases WHERE case_id = 'CASE-1001';",
         )
-        if restored_title != original_title or restored_case_count != "1":
+        restored_revision = sql(target, "SELECT version_num FROM alembic_version;")
+        restored_tables = sql(target, table_query).splitlines()
+        if (
+            restored_title != original_title
+            or restored_case_count != "1"
+            or restored_revision != original_revision
+            or restored_tables != ["t"] * len(durable_tables)
+        ):
             raise RuntimeError("restored database did not match the known pre-backup state")
-        print("Backup/restore drill passed: scenario A and CASE-1001 were restored.")
+        print(
+            "Backup/restore drill passed: business records, migration revision, and agent "
+            "durability tables were restored."
+        )
     finally:
         docker_exec(target, "rm", "-f", dump_path)
 

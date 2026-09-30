@@ -14,6 +14,10 @@ flowchart LR
     User[Client] --> ALB[Application Load Balancer]
     ALB --> ECS[ECS Fargate API tasks]
     ECS --> RDS[(Private RDS PostgreSQL 16)]
+    ECS --> Valkey[(Private ElastiCache Valkey)]
+    Valkey --> Worker[ECS Fargate agent workers]
+    Worker --> RDS
+    Worker --> Provider[Configured model provider]
     ECS --> Secrets[AWS Secrets Manager]
     ECS --> Logs[CloudWatch logs and alarms]
     ECS --> ECR[Amazon ECR]
@@ -24,16 +28,20 @@ flowchart LR
     AWS --> ECS
 ```
 
-The load balancer is in two public subnets. API tasks and RDS are in two private subnets. A NAT
+The load balancer is in two public subnets. API tasks, workers, RDS, and Valkey are in two private
+subnets. A NAT
 gateway lets private tasks pull images, read secrets, and send logs. Security groups permit public
 HTTP/HTTPS only to the load balancer, load-balancer traffic only to API port 8000, and PostgreSQL
-only from the ECS tasks. RDS is encrypted, not publicly accessible, keeps seven days of backups,
+only from the ECS tasks. Valkey accepts TLS traffic only from the ECS task security group and is
+encrypted at rest. It is a wake-up/rate-limit coordination layer; PostgreSQL remains the durable
+job source of truth. RDS is encrypted, not publicly accessible, keeps seven days of backups,
 uses an AWS-managed master password, and enables deletion protection by default.
 
 The checked-in defaults use one NAT gateway and a single-AZ small RDS instance to limit a demonstration
-environment's cost. That creates availability limitations. A production review should choose
-multi-AZ RDS and either a NAT gateway per Availability Zone or the needed VPC endpoints. ALB, NAT,
-RDS, Fargate, logs, data transfer, and public IPv4 resources can all incur charges; review the AWS
+environment's cost. The default single-node Valkey cache and single-AZ small RDS instance also
+create availability limitations. A production review should choose multi-AZ RDS and Valkey plus
+either a NAT gateway per Availability Zone or the needed VPC endpoints. ALB, NAT, RDS, ElastiCache,
+Fargate, logs, data transfer, and public IPv4 resources can all incur charges; review the AWS
 calculator and destroy unused non-production infrastructure deliberately.
 
 ## Local Docker deployment
@@ -108,11 +116,11 @@ provider lock file. Dependabot is configured for Python, Docker, GitHub Actions,
 short-lived AWS credentials through GitHub OIDC—no long-lived AWS access key is stored. Its order is
 deliberate:
 
-1. apply infrastructure with the API service stopped;
+1. apply infrastructure with the API and worker services stopped;
 2. build and push an immutable commit-SHA image to ECR;
 3. run the migration task and require exit code zero;
-4. update the API service only after migration succeeds;
-5. wait for ECS stability and run the public deployment verifier.
+4. update the API and worker services only after migration succeeds;
+5. wait for both ECS services to stabilize and run the public deployment verifier.
 
 If migration fails, the API deployment does not continue. Existing healthy tasks are not replaced.
 The ECS deployment circuit breaker rolls back a failed service deployment.
@@ -125,8 +133,10 @@ These steps cannot be completed without the user's AWS and GitHub accounts:
 2. Create an encrypted, versioned S3 Terraform-state bucket and a DynamoDB lock table.
 3. Configure GitHub's OIDC provider and a least-privilege deployment role whose trust policy is
    restricted to this repository and the selected GitHub environments.
-4. Create an application secret in AWS Secrets Manager with two JSON keys:
-   `api_key_identities_json` and `webhook_secret`. Store API-key hashes, never plaintext API keys.
+4. Create an application secret in AWS Secrets Manager with three JSON keys:
+   `api_key_identities_json`, `webhook_secret`, and `gemini_api_key`. Store ResolveOps API-key
+   hashes, never plaintext ResolveOps API keys. The provider key remains a runtime secret and is
+   never written to Terraform state or a task definition.
 5. Optionally request/validate an ACM certificate and configure DNS before public use.
 6. Add the following GitHub environment variables for `staging` or `production`:
 
@@ -182,7 +192,9 @@ or business-function test.
 ## Rollback and recovery
 
 Application rollback means updating the ECS service to a previously known-good immutable task
-definition. Database rollback is different: do not automatically downgrade after a new application
+definition for both the API and worker. Drain or stop new queue submissions before rolling back the
+worker, allow active leases to finish, and then confirm expired leases are recovered. Database
+rollback is different: do not automatically downgrade after a new application
 has written data. Use a reviewed forward-fix migration or a separately tested recovery plan.
 
 Terraform lifecycle rules intentionally ignore the ECS service's task-definition and desired-count
@@ -200,8 +212,14 @@ requires an explicit reviewed change; Terraform should not be forced through tho
   targets, but production provisioning for additional tenants needs a reviewed module strategy.
 - The deployment has no WAF, private API, cross-region recovery, canary traffic shifting, or
   automated database restore drill yet.
-- The Compose worker/Redis profile is implemented locally, but AWS Terraform does not yet provision
-  ElastiCache, a worker ECS service, worker autoscaling or backlog alarms.
+- The AWS reference provisions a TLS-only, security-group-isolated Valkey cache without Redis AUTH
+  or ElastiCache RBAC. Add reviewed IAM/RBAC authentication before using a less isolated network
+  boundary. The cache is not a business system of record.
+- Worker autoscaling and a CloudWatch backlog alarm are not wired because queue depth currently
+  exists as an authenticated Prometheus metric, not a published CloudWatch custom metric.
 - The one-shot migration task supports normal forward migrations. It does not implement online
   expand/contract coordination for a breaking schema change.
 - Alarm thresholds are operational starting points, not measured production SLOs.
+
+Day-two procedures for queue backlog, expired leases, dead letters, provider failure, migration
+failure, rollback, and recovery are in `docs/OPERATIONS_RUNBOOK.md`.

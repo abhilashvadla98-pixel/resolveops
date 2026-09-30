@@ -27,6 +27,14 @@ output "migration_task_definition_arn" {
   value = aws_ecs_task_definition.migration.arn
 }
 
+output "worker_task_definition_arn" {
+  value = aws_ecs_task_definition.worker.arn
+}
+
+output "worker_service_name" {
+  value = aws_ecs_service.worker.name
+}
+
 output "private_subnet_ids" {
   value = aws_subnet.private[*].id
 }
@@ -37,6 +45,15 @@ output "ecs_security_group_id" {
 
 output "api_desired_count" {
   value = var.api_desired_count
+}
+
+output "worker_desired_count" {
+  value = var.worker_desired_count
+}
+
+output "cache_primary_endpoint" {
+  description = "Private TLS Valkey endpoint; reachable only from the ECS task security group."
+  value       = aws_elasticache_replication_group.coordination.primary_endpoint_address
 }
 
 output "alarm_topic_arn" {

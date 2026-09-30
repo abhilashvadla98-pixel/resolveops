@@ -124,6 +124,41 @@ resource "aws_ecs_task_definition" "migration" {
   }])
 }
 
+resource "aws_ecs_task_definition" "worker" {
+  family                   = "${local.name}-worker"
+  requires_compatibilities = ["FARGATE"]
+  network_mode             = "awsvpc"
+  cpu                      = tostring(var.container_cpu)
+  memory                   = tostring(var.container_memory)
+  execution_role_arn       = aws_iam_role.ecs_execution.arn
+  task_role_arn            = aws_iam_role.ecs_task.arn
+
+  runtime_platform {
+    operating_system_family = "LINUX"
+    cpu_architecture        = "X86_64"
+  }
+
+  container_definitions = jsonencode([{
+    name                   = "worker"
+    image                  = "${aws_ecr_repository.app.repository_url}:${var.image_tag}"
+    essential              = true
+    readonlyRootFilesystem = true
+    user                   = "10001"
+    command                = ["resolveops-worker"]
+    environment            = local.database_environment
+    secrets                = local.application_secrets
+    stopTimeout            = 120
+    logConfiguration = {
+      logDriver = "awslogs"
+      options = {
+        awslogs-group         = aws_cloudwatch_log_group.app.name
+        awslogs-region        = var.aws_region
+        awslogs-stream-prefix = "worker"
+      }
+    }
+  }])
+}
+
 resource "aws_ecs_service" "api" {
   name            = "${local.name}-api"
   cluster         = aws_ecs_cluster.main.id
@@ -159,4 +194,32 @@ resource "aws_ecs_service" "api" {
   }
 
   depends_on = [aws_lb_listener.http]
+}
+
+resource "aws_ecs_service" "worker" {
+  name            = "${local.name}-worker"
+  cluster         = aws_ecs_cluster.main.id
+  task_definition = aws_ecs_task_definition.worker.arn
+  desired_count   = 0
+  launch_type     = "FARGATE"
+
+  platform_version = "LATEST"
+
+  deployment_circuit_breaker {
+    enable   = true
+    rollback = true
+  }
+
+  deployment_minimum_healthy_percent = 50
+  deployment_maximum_percent         = 200
+
+  network_configuration {
+    subnets          = aws_subnet.private[*].id
+    security_groups  = [aws_security_group.ecs.id]
+    assign_public_ip = false
+  }
+
+  lifecycle {
+    ignore_changes = [desired_count, task_definition]
+  }
 }

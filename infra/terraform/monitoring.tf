@@ -62,3 +62,38 @@ resource "aws_cloudwatch_metric_alarm" "database_storage" {
     DBInstanceIdentifier = aws_db_instance.main.identifier
   }
 }
+
+resource "aws_cloudwatch_metric_alarm" "worker_cpu" {
+  alarm_name          = "${local.name}-worker-high-cpu"
+  comparison_operator = "GreaterThanThreshold"
+  evaluation_periods  = 5
+  metric_name         = "CPUUtilization"
+  namespace           = "AWS/ECS"
+  period              = 60
+  statistic           = "Average"
+  threshold           = 80
+  treat_missing_data  = "notBreaching"
+  alarm_actions       = [aws_sns_topic.alarms.arn]
+
+  dimensions = {
+    ClusterName = aws_ecs_cluster.main.name
+    ServiceName = aws_ecs_service.worker.name
+  }
+}
+
+resource "aws_cloudwatch_metric_alarm" "cache_cpu" {
+  alarm_name          = "${local.name}-cache-high-cpu"
+  comparison_operator = "GreaterThanThreshold"
+  evaluation_periods  = 5
+  metric_name         = "EngineCPUUtilization"
+  namespace           = "AWS/ElastiCache"
+  period              = 60
+  statistic           = "Average"
+  threshold           = 80
+  treat_missing_data  = "notBreaching"
+  alarm_actions       = [aws_sns_topic.alarms.arn]
+
+  dimensions = {
+    CacheClusterId = tolist(aws_elasticache_replication_group.coordination.member_clusters)[0]
+  }
+}

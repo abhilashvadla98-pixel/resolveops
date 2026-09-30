@@ -11,4 +11,7 @@ database_instance_class      = "db.t4g.micro"
 database_multi_az            = false
 database_deletion_protection = true
 api_desired_count            = 2
+worker_desired_count         = 1
+cache_node_type              = "cache.t4g.micro"
+cache_multi_az               = false
 alarm_email                  = null

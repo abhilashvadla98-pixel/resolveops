@@ -86,6 +86,29 @@ variable "api_desired_count" {
   }
 }
 
+variable "worker_desired_count" {
+  description = "Background agent worker task count applied after migrations succeed."
+  type        = number
+  default     = 1
+
+  validation {
+    condition     = var.worker_desired_count >= 1 && var.worker_desired_count <= 10
+    error_message = "worker_desired_count must be between 1 and 10."
+  }
+}
+
+variable "cache_node_type" {
+  description = "ElastiCache node type for queue wake-up and shared rate-limit coordination."
+  type        = string
+  default     = "cache.t4g.micro"
+}
+
+variable "cache_multi_az" {
+  description = "Create a Valkey replica with automatic failover in another Availability Zone."
+  type        = bool
+  default     = false
+}
+
 variable "container_cpu" {
   description = "Fargate CPU units for each API and migration task."
   type        = number

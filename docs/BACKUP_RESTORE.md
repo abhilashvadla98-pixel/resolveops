@@ -31,12 +31,14 @@ The script performs this sequence using PostgreSQL's own `pg_dump`, `dropdb`, `c
 3. replace the title with a known mutation and verify it was committed;
 4. drop and recreate only the guarded drill database;
 5. restore the backup;
-6. verify the original scenario title and `CASE-1001` are present; and
+6. verify the original scenario title, `CASE-1001`, migration revision, agent runs/tool calls,
+   reviewed memory, and durable queue/event tables are present; and
 7. remove the temporary dump from the container.
 
 ## Recorded result
 
-On 2026-09-29 the drill passed against a fresh `postgres:16-alpine` container and the Alembic head
-`0010_demo_scenarios`. The pre-backup scenario A title and `CASE-1001` were restored after the known
-mutation and full database recreation. The temporary database container was then removed. This is
-one local logical-restore observation, not a production recovery guarantee.
+On 2026-09-29 the drill passed against a fresh `postgres:16-alpine` container and Alembic head
+`0018_agent_workflow_jobs`. The pre-backup scenario A title, `CASE-1001`, revision, and all five
+agent durability tables were restored after the known mutation and full database recreation. The
+temporary database container was then removed. This is one local logical-restore observation, not
+a production recovery guarantee.
