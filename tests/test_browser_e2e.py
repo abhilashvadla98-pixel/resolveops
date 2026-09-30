@@ -93,12 +93,18 @@ def test_operator_completes_demo_approval_workflow(running_demo: str, tmp_path: 
         browser = playwright.chromium.launch()
         page: Page = browser.new_page(viewport={"width": 1440, "height": 1000})
         page.goto(f"{running_demo}/console")
-        page.locator("#try-demo").click()
         expect(page.locator("#sidebar-connection")).to_have_text("Connected")
         expect(page.locator("#case-table")).to_contain_text("CASE-1001")
         expect(page.locator("#overview-cases")).to_have_text("7")
         expect(page.locator("#overview-attention")).to_contain_text("Evidence review")
-        page.locator('[data-view="cases"]').click()
+        expect(page.get_by_role("heading", name="Customer Operations")).to_be_visible()
+        expect(page.get_by_role("heading", name="Employee IT Operations")).to_be_visible()
+        page.screenshot(
+            path=screenshot_directory / "resolveops-overview.png",
+            full_page=True,
+        )
+        page.locator("#open-customer-workflow").click()
+        expect(page.locator('[data-view-panel="cases"]')).to_have_class("view active")
 
         page.locator("#new-case-button").click()
         page.locator("#complaint-text").fill(
@@ -115,6 +121,10 @@ def test_operator_completes_demo_approval_workflow(running_demo: str, tmp_path: 
         expect(page.locator("#workflow-summary")).to_be_visible()
         expect(page.locator("#workflow-summary")).to_contain_text("Human approval required")
         expect(page.locator("#workflow-summary")).to_contain_text("Separate human decision")
+        page.screenshot(
+            path=screenshot_directory / "resolveops-customer-approval.png",
+            full_page=True,
+        )
 
         page.locator('[data-view="approvals"]').click()
         expect(page.locator("#approval-list")).to_contain_text("650.00 USD")
@@ -148,7 +158,9 @@ def test_operator_completes_demo_approval_workflow(running_demo: str, tmp_path: 
             path=screenshot_directory / "resolveops-reliability.png",
             full_page=True,
         )
-        page.locator('[data-view="it"]').click()
+        page.locator('[data-view="overview"]').click()
+        page.locator("#open-employee-workflow").click()
+        expect(page.locator('[data-view-panel="it"]')).to_have_class("view active")
         page.locator('[data-it-case="ITCASE-2001"]').click()
         expect(page.locator("#it-step-identity")).to_contain_text("MFA enrolled")
         expect(page.locator("#it-step-approval")).to_contain_text("Approved by")

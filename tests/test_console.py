@@ -14,13 +14,15 @@ def test_operator_console_serves_secure_shell_and_local_assets() -> None:
     assert page.headers["x-frame-options"] == "DENY"
     assert "default-src 'self'" in page.headers["content-security-policy"]
     assert "ResolveOps | Operations Console" in page.text
-    assert ">Cases<" in page.text
+    assert ">Customer Operations<" in page.text
     assert ">Overview<" in page.text
     assert ">Approvals<" in page.text
-    assert ">IT Requests<" in page.text
+    assert ">Employee IT<" in page.text
     assert ">Audit<" in page.text
-    assert ">Open workspace<" in page.text
-    assert 'src="/console/app.js?v=20260930b"' in page.text
+    assert "Open customer workflow" in page.text
+    assert "Open employee IT workflow" in page.text
+    assert 'src="/console/app.js?v=20260930c"' in page.text
+    assert 'href="/console/app.css?v=20260930c"' in page.text
     assert 'role="dialog"' in page.text
     assert 'aria-modal="true"' in page.text
     assert styles.status_code == 200
@@ -38,6 +40,7 @@ def test_operator_console_serves_secure_shell_and_local_assets() -> None:
     assert "timeoutMs: 90000" in script.text
     assert "Starting free demo · first visit can take about a minute" in script.text
     assert 'button.textContent = "Starting service…"' in script.text
+    assert "renderOverview(); openDemo();" in script.text
     assert "apiFetch(`/api/v1/case-queue?" in script.text
     assert 'apiFetch("/api/v1/approvals"' in script.text
     assert 'apiFetch("/api/v1/reliability/summary"' in script.text

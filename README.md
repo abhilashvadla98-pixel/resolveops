@@ -7,6 +7,13 @@ versioned evidence, pauses sensitive changes for approval, executes idempotently
 new state. Complex customer cases automatically use a five-role LangGraph investigation; model
 output remains advisory and deterministic code keeps action authority.
 
+The public demo opens with populated synthetic data and two distinct paths:
+
+- **Customer Operations:** complaint intake → evidence investigation → human approval → controlled
+  action → fresh verification.
+- **Employee IT Operations:** access request → identity and MFA checks → manager approval →
+  least-privilege grant → fresh verification.
+
 [Live synthetic demo](https://resolveops-demo.onrender.com/console) *(free host: allow about one minute for the first wake-up)*
 · [42-second product teaser](https://github.com/abhilashvadla98-pixel/resolveops/releases/download/recruiter-demo-v1/resolveops-recruiter-demo.webm)
 · [evaluation evidence](docs/EVALUATION.md) · [engineering case study](docs/CASE_STUDY.md)
@@ -33,6 +40,45 @@ flowchart LR
 The same control pattern supports employee repository-access requests: identity, employment, MFA,
 team, manager approval, directory membership, Git account, repository ownership, action, and fresh
 verification are all checked independently.
+
+## Product walkthrough
+
+### 1. Choose the workflow
+
+The landing view loads a repeatable fictional workspace automatically. Recruiters can enter either
+the external customer workflow or the internal employee workflow without setup or credentials.
+
+![ResolveOps overview with Customer Operations and Employee IT Operations](docs/assets/resolveops-overview.png)
+
+### 2. Investigate a customer case
+
+The case workspace keeps the original complaint, structured issues, evidence, policy citations,
+agent trace and timeline together. The model may recommend; it cannot authorize the action.
+
+![Resolved customer workflow with evidence and verification](docs/assets/resolveops-customer-workflow.png)
+
+### 3. Stop for human approval
+
+A sensitive refund pauses durably and shows the proposed amount, payment, reason and authority
+boundary before an operator can approve or reject it.
+
+![Customer refund waiting for human approval](docs/assets/resolveops-customer-approval.png)
+
+### 4. Process employee access safely
+
+The separate internal flow checks employment, identity, MFA, manager approval, group membership,
+repository ownership and the final permission. Unsafe requests fail closed.
+
+![Employee IT access workflow and safety checks](docs/assets/resolveops-employee-it.png)
+
+### 5. Verify the operation
+
+The reliability view exposes attempts, latency, recovery and the fresh-state verification used to
+decide whether an operation actually completed.
+
+![Reliability and verification evidence](docs/assets/resolveops-reliability.png)
+
+See the [click-by-click demo guide](docs/DEMO_WALKTHROUGH.md) for both complete paths.
 
 ## Measured evidence
 
@@ -62,8 +108,8 @@ Copy-Item .env.example .env
 .\.venv\Scripts\python.exe -m uvicorn resolveops.api.main:app --host 127.0.0.1 --port 8000
 ```
 
-Open `http://127.0.0.1:8000/console`, choose **Open workspace**, and use the isolated fictional
-workspace. The complete deterministic demo needs no paid service or model key.
+Open `http://127.0.0.1:8000/console`. The isolated fictional workspace loads automatically. The
+complete deterministic demo needs no paid service or model key.
 
 Run the required checks:
 
