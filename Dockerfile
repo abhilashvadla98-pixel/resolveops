@@ -40,6 +40,7 @@ COPY --from=builder /app/.venv /app/.venv
 COPY --chown=resolveops:resolveops alembic.ini ./
 COPY --chown=resolveops:resolveops migrations ./migrations
 COPY --chown=resolveops:resolveops domain_packs ./domain_packs
+COPY --chown=resolveops:resolveops --chmod=755 scripts/start-render.sh ./scripts/start-render.sh
 
 USER resolveops
 EXPOSE 8000
