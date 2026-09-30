@@ -48,11 +48,13 @@ measurements.
 
 - Public URL: https://resolveops-demo.onrender.com/console
 - Host and region: Render, Ohio
-- Application revision: updated by the latest verified deployment
+- Application revision: `c102f4a076cc61547c6c802e2afa998220098125`
 - Deployment date: 2026-09-30
 - External verification: `/health/live`, `/health/ready`, and `/openapi.json` returned HTTP 200;
   the isolated workspace loaded the seeded customer and IT queues; approval, controlled execution,
   fresh-state verification, and baseline reset completed through the public console
+- Session-isolation verification: two independently signed visitor sessions loaded the same baseline;
+  a synthetic case created in the first session remained visible there and was absent from the second
 - Warm console latency after the latest deployment: five samples of 158.5, 188.9, 108.5,
   267.9, and 192.4 ms; median 188.9 ms
 - Warm workspace preparation: session creation 253 ms, deterministic baseline reset 2,086 ms,
