@@ -31,6 +31,10 @@ services:
         generateValue: true
       - key: RESOLVEOPS_DEMO_SESSION_TTL_SECONDS
         value: "1800"
+      - key: RESOLVEOPS_DEMO_ISOLATED_SESSIONS
+        value: "true"
+      - key: RESOLVEOPS_DEMO_MAX_ISOLATED_SESSIONS
+        value: "8"
       - key: RESOLVEOPS_INTEGRATED_AGENTS_ENABLED
         value: "false"
       - key: RESOLVEOPS_GEMINI_KEY_ROTATED

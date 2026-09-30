@@ -23,7 +23,7 @@ payment, identity, Git, CRM, or cloud connection.
 - Money and access changes require deterministic gates, idempotency, and fresh verification.
 - Human approvals must be durable and auditable.
 - Evaluation evidence must remain reproducible and must not hide failures or unlabeled data.
-- A recruiter demo must show real persisted queues and histories, not a static dashboard.
+- A public demo must show real persisted queues and histories, not a static dashboard.
 
 ## System built
 
@@ -149,7 +149,7 @@ The repository contains a locked non-root container, migration-gated Compose sta
 ECS API/worker, RDS, TLS Valkey, ALB, ECR, Secrets Manager, and CloudWatch Terraform design. No
 public cloud environment is claimed.
 Launching it would require the owner's account, cost choice, credentials/OIDC, secrets, and explicit
-authorization. The complete recruiter walkthrough remains available locally at no paid cost.
+authorization. The complete walkthrough remains available locally at no paid cost.
 
 ## What 10× and 100× would require
 

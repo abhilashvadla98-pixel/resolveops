@@ -18,8 +18,8 @@ invented KPI values.
 1. Run migrations and `python -m resolveops.database.seed`. The seed command also creates the
    deterministic 128-dimension demo policy index.
 2. Start the API and open `http://127.0.0.1:8000/console`.
-3. Choose **Open workspace**. No API key is needed; the signed session can access only the
-   fictional demo tenant and expires after the configured short lifetime.
+3. Wait for the workspace to load automatically. No API key is needed; the signed session receives
+   a separate synthetic PostgreSQL workspace and expires after the configured short lifetime.
 4. Submit a natural-language complaint and inspect its persisted classification. Intake never
    authorizes an action.
 5. Select scenario D, start the investigation, and inspect the pending refund approval.
@@ -68,7 +68,8 @@ role from their trusted API-key identity.
 - Demo and operator tokens stay only in JavaScript memory; the page uses neither `localStorage` nor
   `sessionStorage`.
 - The server chooses tenant and role. Request bodies cannot select either.
-- Reset is accepted only from a signed demo session and affects only its configured synthetic tenant.
+- Reset is accepted only from a signed demo session and affects only that session's synthetic
+  PostgreSQL schema.
 - Refund and access execution still passes deterministic permissions, limits, idempotency, approval,
   and fresh-state verification.
 - The same-origin Content Security Policy loads no analytics, CDN scripts, or remote fonts.

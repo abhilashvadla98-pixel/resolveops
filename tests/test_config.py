@@ -119,7 +119,11 @@ def test_safe_production_configuration_passes() -> None:
 
 
 def test_demo_environment_is_restricted_to_synthetic_tenant() -> None:
-    demo = DemoSettings(demo_enabled=True, demo_session_secret=SAFE_DEMO_SECRET)
+    demo = DemoSettings(
+        demo_enabled=True,
+        demo_session_secret=SAFE_DEMO_SECRET,
+        demo_isolated_sessions=True,
+    )
     demo_settings = settings(
         RuntimeEnvironment.DEMO,
         default_tenant_id="TENANT-DEMO",
@@ -131,5 +135,19 @@ def test_demo_environment_is_restricted_to_synthetic_tenant() -> None:
     with pytest.raises(RuntimeSafetyError, match="synthetic demo tenant"):
         validate_runtime_safety(
             settings(RuntimeEnvironment.DEMO, default_tenant_id="TENANT-OTHER"),
+            demo,
+        )
+
+
+def test_demo_environment_requires_isolated_sessions() -> None:
+    demo = DemoSettings(demo_enabled=True, demo_session_secret=SAFE_DEMO_SECRET)
+
+    with pytest.raises(RuntimeSafetyError, match="isolated per-session workspaces"):
+        validate_runtime_safety(
+            settings(
+                RuntimeEnvironment.DEMO,
+                default_tenant_id="TENANT-DEMO",
+                api_key_identities_json="[]",
+            ),
             demo,
         )

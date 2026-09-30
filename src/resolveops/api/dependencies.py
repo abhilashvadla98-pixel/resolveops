@@ -16,6 +16,10 @@ from resolveops.security.authentication import (
     AuthenticationError,
 )
 from resolveops.security.demo_sessions import DemoSessionAuthenticator, DemoSessionError
+from resolveops.security.demo_workspaces import (
+    DemoWorkspaceCapacityError,
+    DemoWorkspaceRegistry,
+)
 from resolveops.security.models import SecurityPrincipal
 from resolveops.security.tenancy import (
     TenantAccessError,
@@ -128,10 +132,34 @@ def get_tenant_registry() -> TenantSessionRegistry:
     return TenantSessionRegistry({settings.default_tenant_id: get_session_factory()})
 
 
+@lru_cache
+def get_demo_workspace_registry() -> DemoWorkspaceRegistry | None:
+    demo_settings = get_demo_settings()
+    if not demo_settings.demo_enabled or not demo_settings.demo_isolated_sessions:
+        return None
+    return DemoWorkspaceRegistry(
+        get_engine(),
+        ttl_seconds=demo_settings.demo_session_ttl_seconds,
+        max_sessions=demo_settings.demo_max_isolated_sessions,
+    )
+
+
 def get_tenant_session(
     principal: Annotated[SecurityPrincipal, Depends(get_principal)],
     tenant_registry: Annotated[TenantSessionRegistry, Depends(get_tenant_registry)],
+    demo_workspaces: Annotated[DemoWorkspaceRegistry | None, Depends(get_demo_workspace_registry)],
 ) -> Iterator[Session]:
+    if principal.authentication_method == "demo_session" and demo_workspaces is not None:
+        try:
+            factory = demo_workspaces.session_factory(principal)
+        except DemoWorkspaceCapacityError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="The public demo is busy. Please try again shortly.",
+            ) from exc
+        with factory() as session:
+            yield session
+        return
     try:
         factory = tenant_registry.session_factory(principal)
     except TenantAccessError as exc:

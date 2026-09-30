@@ -45,8 +45,8 @@ verification are all checked independently.
 
 ### 1. Choose the workflow
 
-The landing view loads a repeatable fictional workspace automatically. Recruiters can enter either
-the external customer workflow or the internal employee workflow without setup or credentials.
+The landing view loads a repeatable fictional workspace automatically. Each visitor receives a
+separate session workspace and can enter either workflow without setup or credentials.
 
 ![ResolveOps overview with Customer Operations and Employee IT Operations](docs/assets/resolveops-overview.png)
 
@@ -165,7 +165,7 @@ Run the required checks:
 - [Safe public demo runbook](docs/PUBLIC_DEMO.md)
 - [Operations and recovery](docs/OPERATIONS_RUNBOOK.md)
 - [Cost and latency](docs/COST_ANALYSIS.md)
-- [Demo script](docs/DEMO_SCRIPT.md)
+- [Demo walkthrough](docs/DEMO_WALKTHROUGH.md)
 
 ## License
 

@@ -149,6 +149,8 @@ class DemoSettings(BaseSettings):
     demo_tenant_id: str = "TENANT-DEMO"
     demo_session_secret: SecretStr | None = None
     demo_session_ttl_seconds: int = Field(default=1800, ge=300, le=3600)
+    demo_isolated_sessions: bool = False
+    demo_max_isolated_sessions: int = Field(default=8, ge=1, le=64)
 
     model_config = SettingsConfigDict(
         env_file=".env",
@@ -186,6 +188,8 @@ def _validate_environment_mode(
 ) -> None:
     if environment == RuntimeEnvironment.DEMO and not demo_settings.demo_enabled:
         raise RuntimeSafetyError("demo environment requires restricted demo sessions")
+    if environment == RuntimeEnvironment.DEMO and not demo_settings.demo_isolated_sessions:
+        raise RuntimeSafetyError("demo environment requires isolated per-session workspaces")
     if environment == RuntimeEnvironment.PRODUCTION and demo_settings.demo_enabled:
         raise RuntimeSafetyError("production environment cannot enable the public demo workspace")
 

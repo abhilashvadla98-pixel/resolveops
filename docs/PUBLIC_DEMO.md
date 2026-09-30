@@ -11,12 +11,17 @@ requested or stored. On every service start, the container runs forward migratio
 loads the fictional baseline, and starts the API on Render's assigned port. Auto-deployment waits
 for GitHub checks to pass.
 
+Each signed visitor receives a separate PostgreSQL schema populated with the same synthetic
+baseline. Reset changes only that visitor's schema. Expired workspaces are removed before new ones
+are created, and the service rejects new sessions safely when the configured workspace limit is
+reached. This keeps simultaneous walkthroughs from changing one another's cases or approvals.
+
 [Create the ResolveOps demo from the Blueprint](https://dashboard.render.com/blueprints/new?repo=https%3A%2F%2Fgithub.com%2Fabhilashvadla98-pixel%2Fresolveops)
 
 The account owner must review and approve resource creation in Render. Select only the `free` plan
 shown by the Blueprint. Do not add a payment method merely to deploy this demo. Free web services
 sleep after inactivity and can take about one minute to wake. Render's free PostgreSQL database
-expires after 30 days, so treat this as a recruiter demonstration rather than durable production
+expires after 30 days, so treat this as a public demonstration rather than durable production
 infrastructure.
 
 ## Required public-demo configuration
@@ -26,6 +31,8 @@ infrastructure.
 - `RESOLVEOPS_DEFAULT_TENANT_ID=TENANT-DEMO`
 - `RESOLVEOPS_DEMO_ENABLED=true`
 - a new random demo-session secret of at least 32 characters
+- `RESOLVEOPS_DEMO_ISOLATED_SESSIONS=true`
+- a bounded `RESOLVEOPS_DEMO_MAX_ISOLATED_SESSIONS` value
 - a new random webhook secret of at least 32 characters
 - no real customer, employee, payment, identity or repository data
 - `RESOLVEOPS_INTEGRATED_AGENTS_ENABLED=false` until the exposed provider key is rotated
@@ -41,7 +48,7 @@ measurements.
 
 - Public URL: https://resolveops-demo.onrender.com/console
 - Host and region: Render, Ohio
-- Application revision: `381718837d670433352496af904b55199e6de35d`
+- Application revision: updated by the latest verified deployment
 - Deployment date: 2026-09-30
 - External verification: `/health/live`, `/health/ready`, and `/openapi.json` returned HTTP 200;
   the isolated workspace loaded the seeded customer and IT queues; approval, controlled execution,
