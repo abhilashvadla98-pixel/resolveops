@@ -20,8 +20,9 @@ reliability evidence, browser automation, deployment infrastructure, and recover
 checked-in business data is synthetic. No live payment, CRM, identity, Git, ticketing, or cloud
 account is connected.
 
-**Portfolio links:** [run the local demo](#try-the-complete-demo-locally) ·
-[90-second walkthrough](docs/DEMO_SCRIPT.md) ·
+**Portfolio links:** [watch the 42-second product demo](https://github.com/abhilashvadla98-pixel/resolveops/releases/download/recruiter-demo-v1/resolveops-recruiter-demo.webm) ·
+[run the local demo](#try-the-complete-demo-locally) ·
+[recording script](docs/DEMO_SCRIPT.md) ·
 [multi-agent architecture](docs/MULTI_AGENT_ARCHITECTURE.md) ·
 [measured evidence](#evaluation-evidence) ·
 [engineering case study](docs/CASE_STUDY.md)
