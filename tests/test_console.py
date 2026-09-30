@@ -35,8 +35,8 @@ def test_operator_console_serves_secure_shell_and_local_assets() -> None:
     assert "state.token = token" in script.text
     assert "Authorization" in script.text
     assert 'apiFetch("/api/v1/demo/session"' in script.text
-    assert 'timeoutMs: 90000' in script.text
-    assert 'Starting free demo · first visit can take about a minute' in script.text
+    assert "timeoutMs: 90000" in script.text
+    assert "Starting free demo · first visit can take about a minute" in script.text
     assert 'button.textContent = "Starting service…"' in script.text
     assert "apiFetch(`/api/v1/case-queue?" in script.text
     assert 'apiFetch("/api/v1/approvals"' in script.text
