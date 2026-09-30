@@ -146,8 +146,11 @@ class AgentRunStore:
         )
         with self.session_factory.begin() as session:
             parent = session.get(AgentRunRecord, agent_run_id)
-            if parent is None or parent.status != AgentRunStatus.RUNNING:
-                raise ValueError("tool call requires a running agent run")
+            if parent is None or parent.status not in {
+                AgentRunStatus.RUNNING,
+                AgentRunStatus.COMPLETED,
+            }:
+                raise ValueError("tool call requires a viable agent run")
             parent.tool_call_count += 1
             session.add(record)
         return self._tool_model(record)

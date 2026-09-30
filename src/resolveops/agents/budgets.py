@@ -16,12 +16,29 @@ class BudgetLedger:
     started_at: datetime
     usage: AgentBudgetUsage = field(default_factory=AgentBudgetUsage)
 
-    def consume_model_call(self, *, input_tokens: int = 0, output_tokens: int = 0) -> None:
+    def reserve_model_call(self, *, estimated_input_tokens: int = 0) -> None:
         next_usage = self.usage.model_copy(
             update={
                 "agent_steps": self.usage.agent_steps + 1,
                 "model_calls": self.usage.model_calls + 1,
-                "input_tokens": self.usage.input_tokens + input_tokens,
+                "input_tokens": self.usage.input_tokens + estimated_input_tokens,
+            }
+        )
+        self._validate(next_usage)
+        self.usage = next_usage
+
+    def record_model_usage(
+        self,
+        *,
+        actual_input_tokens: int,
+        output_tokens: int,
+        reserved_input_tokens: int = 0,
+    ) -> None:
+        next_usage = self.usage.model_copy(
+            update={
+                "input_tokens": (
+                    self.usage.input_tokens - reserved_input_tokens + actual_input_tokens
+                ),
                 "output_tokens": self.usage.output_tokens + output_tokens,
             }
         )

@@ -261,3 +261,21 @@ class ToolCallRecord(DomainModel):
     argument_keys: list[Identifier] = Field(default_factory=list, max_length=20)
     result_category: Identifier | None = None
     error_classification: Identifier | None = None
+
+
+class MultiAgentReasoningResult(DomainModel):
+    workflow_id: Identifier
+    case_id: Identifier
+    tenant_id: Identifier
+    domain: AgentDomain
+    supervisor: SupervisorPlan
+    investigation: InvestigationTurn
+    policy: PolicyTurn
+    resolution: ResolutionProposal
+    critic: CriticReport
+    status: Literal["ready_for_control_plane", "escalated"]
+    replan_count: int = Field(ge=0)
+    agent_call_count: int = Field(ge=5)
+    tool_call_count: int = Field(ge=0)
+    usage: AgentBudgetUsage
+    agent_run_ids: list[Identifier] = Field(min_length=5, max_length=30)
