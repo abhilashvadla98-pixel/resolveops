@@ -52,9 +52,11 @@ replan and model-call budgets; a rejection or exhausted budget escalates safely.
 - policy and prior-agent text are always untrusted data;
 - the simpler `CaseReasoner` remains available as the low-cost baseline for ablation.
 
-These controls reduce avoidable usage without weakening the deterministic safety boundary. A
-multi-agent path will still cost more than one advisory call; measured ablation must determine when
-that cost earns better outcomes.
+These controls reduce avoidable usage without weakening the deterministic safety boundary. The
+22-case offline trajectory run made 182 model-double invocations (8.27 per case) and estimated
+71,991 input-context tokens (3,272 per case). It made no provider calls, so dollar cost and live
+provider latency remain unknown. The multi-agent path necessarily costs more than the single-call
+advisory baseline and is therefore operator-triggered rather than automatic.
 
 ## Persistence
 
@@ -94,8 +96,8 @@ console consumes this stream and keeps polling job status as a recovery path.
 
 ## Current limitations
 
-The optional local worker/Redis profile and SSE path are implemented and tested, but they have not
-been load/soak tested or deployed to a public cloud. The AWS Terraform does not yet provision a
-managed Redis service or worker tasks. Role-specific gold evaluations, retrieval/reranking
-experiments, authenticated production MCP transport, public hosting and cloud worker deployment
-remain planned work and must not be claimed as implemented.
+The local worker/Redis profile, SSE path, managed-Valkey/worker Terraform, role trajectory gate, and
+retrieval/reranking experiments are implemented and tested. A PostgreSQL benchmark claimed 200 jobs
+exactly once across eight workers, but it deliberately did not invoke a model. The cloud design has
+not been applied, and public hosting, authenticated production MCP transport, live-model multi-agent
+quality evidence, calibrated human labels, and multi-hour soak evidence remain unproven.

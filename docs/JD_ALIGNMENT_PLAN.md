@@ -4,6 +4,9 @@ Status: **audit only — implementation is not approved by this document**
 Audit date: 2026-09-29  
 Audited revision: `d6a7b89` (`codex-build`)  
 
+> Historical baseline: this file intentionally preserves the pre-implementation audit. For the
+> completed evidence map and current limitations, see [JD_ALIGNMENT_REPORT.md](JD_ALIGNMENT_REPORT.md).
+
 This document is the required pre-implementation gate for the proposed transition from two
 deterministic LangGraph domain workflows with one bounded advisory reasoner to a production-minded,
 hierarchical multi-agent system. It distinguishes existing evidence from proposed work. It does not

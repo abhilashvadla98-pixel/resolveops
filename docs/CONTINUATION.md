@@ -4,57 +4,55 @@ Last verified: 2026-09-29
 
 ## Current state
 
-- Branch: `codex-build`.
-- Final-pass commits are pushed to `origin/codex-build`; the latest GitHub CI run is the release
-  gate for any public presentation.
-- The complete local suite passes with 195 tests and 4 environment-dependent skips.
-- Ruff formatting/linting and MyPy pass across 130 source files.
-- The real Chromium test completes complaint intake, refund approval, verified execution, reliability
-  inspection, and the Employee/IT access workflow.
-- Real PostgreSQL concurrency tests passed for simultaneous refund execution, duplicate approval,
-  and duplicate webhook delivery.
-- PostgreSQL migration upgrade → downgrade → re-upgrade passed through migration 0011.
-- The guarded PostgreSQL backup/restore drill passed and verified both scenario A and `CASE-1001`.
-- The locked non-root Docker image built and ran as UID 10001.
-- Existing local demo containers were not removed or modified by temporary verification containers.
+- Branch: `codex-build`; all 17 planned implementation packets are committed and pushed.
+- Final local suite before the documentation-only packet: 243 passed, 5 environment-dependent
+  skips. Ruff, strict MyPy, medium/high Bandit, Compose config, and Terraform validation pass.
+- Real Chromium covers complaint intake, refund approval, verified execution, reliability, IT
+  approval/access, MFA safety stop, and demo reset.
+- PostgreSQL concurrency covers duplicate money movement, approvals, webhooks and queue claims.
+- Migration head is `0018_agent_workflow_jobs`; the current-head logical backup/restore drill passed
+  and verified business records plus all agent durability tables.
+- The Docker/Compose implementation includes PostgreSQL, API, migrations, demo seed, Redis and a
+  worker. Validated AWS Terraform includes private ECS API/worker, RDS, TLS Valkey, ALB, ECR,
+  Secrets Manager and CloudWatch.
+- No public cloud resources were created.
 
 ## Current evidence
 
-- Customer workflow evaluation: 24/24.
-- Employee/IT workflow evaluation: 14/14.
-- Customer response automated safety/grounding evaluation: 24/24.
-- Customer response human review: **0/24; pending**.
-- Retrieval: 50 hand-authored queries. FastEmbed vector 0.9200 Recall@3, 0.9100 MRR,
-  0.9024 nDCG@3; BM25 0.9800/0.9467/0.9418; hybrid 0.9800/0.9233/0.9363.
-- Offline performance artifact: 72 workflows, p50 19.29 ms and p95 34.92 ms. This is a local
-  regression sample, not a production SLO.
-- Optional recorded Gemini gate: 3/3 synthetic cases passed on 2026-09-28. Live model access is not
-  required for the product or its tests.
+- Customer workflow: 24/24; Employee/IT: 14/14; multi-agent trajectories: 22/22.
+- Response automated safety/grounding: 24/24; human review: **0/24 pending**.
+- Adversarial complaint/policy inputs: 17/17.
+- Seven versioned manifests contain 154 records.
+- Hybrid retrieval: 0.9800 Recall@3, 0.9233 MRR, 0.9363 nDCG@3. The reranker improved ranking
+  slightly but failed the 250 ms p95 rule and was not adopted.
+- Pgvector exact search at 10,000 synthetic vectors: 8.02 ms p95 versus 363.24 ms Python exact;
+  online search remains in process for the real 17-chunk corpus.
+- Scale: 151,862 records. Mixed API: 232/232 requests including 30 writes. Durable queue: 200/200
+  claims exactly once across eight workers.
+- Offline trajectory usage: 182 model-double calls and 71,991 estimated input tokens over 22 cases.
+  Live multi-agent provider cost is unknown.
 
-## Important boundaries to preserve
+## Boundaries to preserve
 
-- Model output is advisory. It cannot choose an actor, approve, execute, or verify an action.
-- Identity, tenant, and role come from the authenticated server boundary, never a request body.
-- Refund and access actions remain permission-checked, idempotent, audited, and freshly verified.
-- Possible post-commit failures use verify-only recovery; do not blindly repeat a side effect.
-- Demo sessions may access only synthetic data. Normal production mode cannot enable the demo.
-- Simulator routes stay read-only. Mutations use authenticated operations endpoints and the same
-  deterministic action layer as internal workflows.
-- Do not claim external provider settlement, live vendor integrations, human review, a public cloud
-  deployment, or production-scale performance without direct evidence.
-- Do not expose `.env`, API keys, account pages, credentials, or real customer/employee data in a
-  screenshot, commit, log, trace, metric, or response.
+- Agents recommend; deterministic software authenticates, authorizes, approves, executes, audits,
+  and verifies.
+- Never expose or commit `.env`, provider keys, credentials, prompts, raw model output, or real PII.
+- Do not claim public deployment, human review, production SLOs, production scale, or live vendor
+  integration without direct evidence.
+- PostgreSQL is durable job truth. Redis/Valkey is coordination only.
+- Reviewed memory is tenant scoped, policy-version matched, expiring and advisory.
+- Do not add Kubernetes, Kafka, another agent framework, more agents, GraphRAG, fine-tuning, another
+  vector database or microservices without measured need.
 
-## What remains owner-dependent
+## Owner-dependent next steps
 
-1. Read and score the 24 response candidates using `evals/responses/README.md`; add a real reviewer
-   and note for each reviewed item.
-2. Decide whether the repository should become public. Before changing visibility, run the final
-   credential/history review and confirm that the displayed GitHub profile is the intended account.
-3. Record a short local demo video or approved synthetic screenshots if desired.
-4. Choose whether to stay local/free or authorize a cloud provider and budget. No cloud resources
-   are currently deployed. The checked-in AWS reference can incur charges.
-5. Add the final public repository/demo link to the resume only after it exists and is verified.
+1. Revoke and replace the Gemini key that was pasted into chat; save the replacement only in the
+   ignored local `.env` or a cloud secret manager.
+2. Review the 24 responses using `evals/responses/README.md`; only the owner can provide honest human
+   labels.
+3. Decide whether to make the GitHub repository public after a final history/credential review.
+4. Optionally record `docs/DEMO_SCRIPT.md` after checking the video for secrets and notifications.
+5. Optionally authorize an AWS account and budget. The checked-in architecture can incur charges.
 
 ## Resume instruction
 

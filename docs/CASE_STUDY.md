@@ -32,6 +32,12 @@ records, durable LangGraph workflows, versioned policy retrieval, optional struc
 human approval, controlled actions, final-state verification, Prometheus metrics, and ordered audit
 events. SQLite supports the no-cost local demo; PostgreSQL is used for concurrency and scale proof.
 
+The optional deep-analysis path uses a LangGraph supervisor over Customer Operations and Employee/IT
+subgraphs. Five separately invoked roles plan, select allowlisted reads, retrieve policy, propose an
+issue-separated resolution, and independently criticize it. They exchange typed state and persist
+run/tool telemetry. They cannot approve or execute. PostgreSQL owns queued work; Redis/Valkey only
+wakes workers and coordinates shared rate limits.
+
 The operator console has five working areas:
 
 1. **Cases** — searchable, paginated customer queue and three-pane investigation workspace.
@@ -56,7 +62,7 @@ tenant isolation, currency consistency, refund limits, return chronology, approv
 verification, active policy, timestamp order, and supported states. The validator reports exact
 failures and never silently repairs data.
 
-Five evaluation datasets are independently versioned and hashed:
+Seven evaluation datasets are independently versioned and hashed:
 
 | Dataset | Examples | Purpose |
 | --- | ---: | --- |
@@ -65,6 +71,8 @@ Five evaluation datasets are independently versioned and hashed:
 | Employee/IT workflow | 14 | identity, MFA, approval, access, conflict, and replay paths |
 | Response candidates | 24 | deterministic safety checks plus separate human review |
 | Live reasoning | 3 | optional external-model structured reasoning boundary |
+| Agent trajectories | 22 | five-role routing, tools, replanning, escalation, and budgets |
+| Adversarial security | 17 | known prompt/tool/secret attacks plus benign controls |
 
 Experiment artifacts record the Git revision, dataset ID/version/hash, model/provider, prompt and
 schema versions, embedding/retrieval configuration, policy index version, metrics, latency,
@@ -97,6 +105,13 @@ boundary. That run is preserved as saturation evidence, not presented as normal 
 paced follow-up sent 90 read-only requests over 60.58 seconds at 1.486 requests/second: all 90
 returned HTTP 200, with 16 ms p50 and 47 ms p95 client-observed latency.
 
+### 4. Reranking improved quality but failed the latency rule
+
+The measured cross-encoder reranker moved MRR from 0.9233 to 0.9367 and nDCG from 0.9363 to 0.9531,
+but increased local p95 from about 45.75 ms to 1,179.72 ms. Because the adoption rule required p95
+at or below 250 ms, the system retained the simpler hybrid retriever. The rejected feature and its
+artifact remain in the repository rather than being presented as a production improvement.
+
 ## Measured evidence
 
 The isolated PostgreSQL benchmark completed at 1,523, 15,178, and 151,862 generated records. The
@@ -110,6 +125,11 @@ cases passing. The retrieval set reports Recall@3 of 0.920 for FastEmbed, 0.980 
 for hybrid. BM25 beat hybrid on MRR and nDCG in this small corpus; the less flattering result is
 kept visible. These are repository regression and local benchmark results, not production accuracy,
 SLO, or business-impact claims.
+
+The five-role trajectory suite reports 22/22 contract cases passing, including replanning,
+escalation, forbidden writes, tenant/memory safety, and both domains. A mixed API run completed
+232/232 requests with 30 case writes, while eight PostgreSQL workers claimed 200/200 durable jobs
+once with no duplicate claim. Both are bounded desktop evidence, not production capacity.
 
 ## Reliability, security, and recovery
 
@@ -126,7 +146,8 @@ secrets, unsafe demo settings, and missing identities.
 ## Deployment position
 
 The repository contains a locked non-root container, migration-gated Compose stack, CI, and an AWS
-ECS/RDS/ALB/ECR/Secrets Manager/CloudWatch Terraform design. No public cloud environment is claimed.
+ECS API/worker, RDS, TLS Valkey, ALB, ECR, Secrets Manager, and CloudWatch Terraform design. No
+public cloud environment is claimed.
 Launching it would require the owner's account, cost choice, credentials/OIDC, secrets, and explicit
 authorization. The complete recruiter walkthrough remains available locally at no paid cost.
 
@@ -134,9 +155,9 @@ authorization. The complete recruiter walkthrough remains available locally at n
 
 The completed 10,000-case measurement is a useful local proof, not a forecast. A 10× production
 path would require representative traffic mixes, PostgreSQL server metrics, connection-pool tuning,
-shared rate limiting, load tests for mutation and approval paths, and SLOs based on real demand. A
-100× path would additionally require partitioning/retention decisions for audit history, asynchronous
-work queues, horizontally scalable workflow workers, managed observability, disaster-recovery
+shared rate limiting, deeper mutation and approval tests, and SLOs based on real demand. A 100× path
+would additionally require partitioning/retention decisions for audit history, worker autoscaling,
+managed observability, disaster-recovery
 targets, realistic external-provider fault testing, and security/operational review.
 
 The most important remaining product gaps are real system connectors, enterprise SSO, calibrated

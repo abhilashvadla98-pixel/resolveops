@@ -6,7 +6,7 @@ case resolution.
 
 Every evaluation set has a manifest under `evals/manifests/` with a stable dataset ID, semantic
 version, exact record count, SHA-256 hash, task type, split, creation method, and review status. The
-six manifests currently cover 137 records. Tests verify every hash so a changed dataset cannot be
+seven manifests currently cover 154 records. Tests verify every hash so a changed dataset cannot be
 mistaken for the previous baseline.
 
 ## Multi-agent trajectory contracts
@@ -27,6 +27,20 @@ It measures Recall@K, MRR, and nDCG independently for vector, BM25, and hybrid r
 category-level results for direct lookups, hard negatives, similar policies, wrong-issue terms,
 multi-section answers, and confusing terminology. Its dataset, measured baseline, and reproduction
 command are in `evals/retrieval/README.md`.
+
+The cross-encoder experiment improved hybrid MRR from 0.9233 to 0.9367 and nDCG from 0.9363 to
+0.9531, but local p95 rose from about 45.75 ms to 1,179.72 ms. The predeclared adoption rule rejected
+it, so the production path remains hybrid without reranking. Exact pgvector serving at 10,000
+synthetic vectors measured 8.02 ms p95 versus 363.24 ms for Python exact search with full top-five
+agreement. The real corpus has only 17 chunks, so online serving remains in process until growth
+justifies the database path.
+
+## Adversarial security evaluation
+
+`python scripts/run_security_evaluation.py` runs 17 versioned complaint-intake and policy-ingestion
+cases covering instruction override, secret extraction/exfiltration, unsafe tool requests, hidden
+HTML, Unicode controls, executable markup, and benign controls. The stored result is 17/17. This is
+a deterministic known-pattern gate, not proof against novel semantic attacks or provider behavior.
 
 ## Workflow regression evaluation
 
@@ -61,7 +75,7 @@ an estimate of general accuracy, business savings, or production readiness.
 
 ## Employee and IT workflow regression
 
-Packet 15 adds a separate 14-case dataset for `EmployeeAccessWorkflow`. It covers the successful ML
+A separate 14-case dataset for `EmployeeAccessWorkflow` covers the successful ML
 Platform access grant, supported and non-supportive advisory reasoning, role denial, employment and
 identity eligibility, MFA, team membership, Git account state, manager approval, partial-state
 conflicts, existing-access idempotency, and missing active policy. Every case gets an isolated
@@ -145,8 +159,8 @@ cases when they can be represented safely.
 
 ## Current limitations
 
-- The workflow sets have 38 carefully reviewed cases in total, not the longer-term 300–500 case
-  target.
+- The customer and IT workflow sets have 38 carefully reviewed cases; the separate trajectory set
+  brings operational workflow/trajectory coverage to 60, not the longer-term 300–500 case target.
 - It varies a realistic flagship case topology; it is not a statistically representative customer
   distribution.
 - The required regression gates use deterministic offline embeddings and a scripted reasoning

@@ -10,12 +10,14 @@ following are deliberate non-goals until measurements show a need.
 - **GraphRAG:** policies have explicit metadata, headings, and few cross-document relationships;
   hybrid lexical/vector retrieval is easier to inspect.
 - **A separate vector database:** exact search over the current corpus is measurable and fast.
-- **Cross-encoder reranking:** the current retrieval set does not demonstrate enough ranking loss to
-  justify another model call. Reconsider after corpus and hard-negative growth.
+- **Cross-encoder reranking in production:** the experiment improved MRR and nDCG slightly but
+  raised local p95 from about 46 ms to about 1,180 ms, violating the adoption rule. Reconsider after
+  corpus growth or a materially faster serving path.
 - **Fine-tuning:** structured prompts, policy evidence, and deterministic gates address the current
   task without training data or model hosting.
-- **Additional agents:** one bounded reasoning component is easier to evaluate and cannot hide
-  authority in agent-to-agent delegation.
+- **Additional agents beyond five justified roles:** Supervisor, Investigation, Policy, Resolution,
+  and independent Critic cover the current reasoning boundaries. More roles would add calls and
+  coordination without a measured gap.
 - **A React/Vue frontend:** the current console is small enough that a second toolchain and service
   would add operational work without improving the workflow.
 - **LLM-as-judge for deterministic facts:** refund persistence, IDs, policy citations, approval

@@ -20,6 +20,15 @@ reliability evidence, browser automation, deployment infrastructure, and recover
 checked-in business data is synthetic. No live payment, CRM, identity, Git, ticketing, or cloud
 account is connected.
 
+**Portfolio links:** [run the local demo](#try-the-complete-demo-locally) ·
+[90-second walkthrough](docs/DEMO_SCRIPT.md) ·
+[multi-agent architecture](docs/MULTI_AGENT_ARCHITECTURE.md) ·
+[measured evidence](#evaluation-evidence) ·
+[engineering case study](docs/CASE_STUDY.md)
+
+There is no hosted “Live Demo” link because no public cloud environment has been deployed. The
+complete synthetic demo runs locally without a model key or paid service.
+
 Long multi-agent analysis also has an optional background path: PostgreSQL owns durable jobs and
 events, a leased worker executes them, Redis carries wake-up markers and shared rate-limit state,
 and the console receives safe role progress over authenticated SSE. The normal local demo still
@@ -68,6 +77,33 @@ flowchart LR
     API --> OBS[Metrics and structured traces]
     ACTIONS --> AUDIT[Audit and reliability events]
     AUDIT --> DB
+```
+
+The optional agent path is a real five-role hierarchy rather than five names around one call:
+
+```mermaid
+sequenceDiagram
+    participant O as Operator
+    participant S as Supervisor
+    participant I as Investigator
+    participant P as Policy agent
+    participant R as Resolution agent
+    participant C as Independent critic
+    participant D as Deterministic control plane
+    O->>S: Start bounded analysis
+    S->>I: Typed goal and evidence needs
+    S->>P: Typed policy task
+    par Independent reads
+        I->>I: Choose allowlisted read tools
+        P->>P: Search and refine retrieval
+    end
+    I-->>S: Facts, provenance, gaps
+    P-->>S: Citations, versions, conflicts
+    S->>R: Scoped evidence and policy
+    R-->>C: Issue-separated proposal
+    C-->>S: Accept, revise, or escalate
+    S-->>D: Advisory result only
+    D->>D: Authorize, approve, execute, verify
 ```
 
 ```mermaid
@@ -175,13 +211,17 @@ These are reproducible repository results, not production accuracy or scale clai
 | --- | --- |
 | Customer workflow regression | 24/24 passed |
 | Employee/IT workflow regression | 14/14 passed |
+| Multi-agent trajectory regression | 22/22 passed across five roles, replanning, escalation, tools, and safety |
 | Response safety/grounding candidates | 24/24 automated checks passed; **0/24 human-reviewed** |
+| Adversarial input gate | 17/17 attack and benign-control cases passed |
 | Retrieval set | 50 hand-authored queries |
 | FastEmbed vector Recall@3 / MRR / nDCG@3 | 0.9200 / 0.9100 / 0.9024 |
 | BM25 Recall@3 / MRR / nDCG@3 | 0.9800 / 0.9467 / 0.9418 |
 | Hybrid Recall@3 / MRR / nDCG@3 | 0.9800 / 0.9233 / 0.9363 |
 | Offline workflow timing sample | 72 workflows; p50 19.29 ms, p95 34.92 ms |
 | Optional Gemini synthetic gate | 3/3 passed on the recorded 2026-09-28 run |
+| Mixed API soak | 232/232 requests; 30 writes; p50 16 ms, p95 47 ms |
+| PostgreSQL queue race | 200/200 jobs claimed once by 8 workers; 0 duplicates |
 
 BM25 beat hybrid on MRR and nDCG in the measured small corpus. That result is kept visible instead of
 selecting only the most flattering metric. The 24 response candidates have deterministic safety and
@@ -193,6 +233,8 @@ Reproduce the main gates:
 uv run --locked python -m resolveops.evaluation.run
 uv run --locked python -m resolveops.evaluation.run_employee
 uv run --locked python scripts/run_response_evaluation.py
+uv run --locked python scripts/run_agent_evaluation.py
+uv run --locked python scripts/run_security_evaluation.py
 uv run --locked python -m resolveops.knowledge.evaluate --provider fastembed --k 3
 uv run --locked python -m pytest
 ```
@@ -217,7 +259,7 @@ The console can save structured operator corrections with case/workflow/trace co
 corrected values, reason, operator, and model/prompt metadata. Corrections remain pending until a
 separate human review. They are never silently converted into evaluation ground truth.
 
-Versioned manifests currently cover all five evaluation sets—115 examples total. Lightweight
+Seven versioned manifests currently cover 154 examples. Lightweight
 experiment artifacts bind results to a Git revision, exact dataset hash, model/prompt/schema,
 retrieval/index configuration, latency, provider-reported usage/cost, and failure counts.
 
@@ -243,9 +285,9 @@ The console and authenticated APIs expose:
 - a request trace ID for correlation with structured server logs.
 
 Trace attributes exclude credentials, request bodies, prompts, model outputs, policy text, evidence,
-and customer PII. OpenTelemetry export was not added: the current single-service demo has structured
-traces and Prometheus metrics, and adding an exporter without a real backend would create setup with
-no new evidence.
+and customer PII. An optional OTLP/HTTP exporter maps completed internal trace events to standard
+OpenTelemetry spans while always retaining the local structured-log sink. Export failure cannot
+break a workflow. No collector backend is bundled or claimed as deployed.
 
 ## Security boundaries
 
@@ -260,12 +302,13 @@ no new evidence.
 - The console keeps its token only in JavaScript memory and loads no CDN script, analytics, or remote
   font.
 
-See [Security](docs/SECURITY.md) and the six decisions in [ADRs](docs/adr/).
+See [Security](docs/SECURITY.md) and the nine focused decisions in [ADRs](docs/adr/).
 
 ## Deployment status
 
 The repository contains a locked, non-root multi-stage image, a migration-gated Compose stack, and
-Terraform for private ECS Fargate, RDS PostgreSQL, ALB, ECR, Secrets Manager, and CloudWatch. CI
+Terraform for private ECS Fargate API/worker services, RDS PostgreSQL, TLS Valkey, ALB, ECR,
+Secrets Manager, and CloudWatch. CI
 checks quality, security, PostgreSQL, the container, browser behavior, and Terraform.
 
 No public cloud environment is currently deployed, and the repository does not claim otherwise.
@@ -286,6 +329,10 @@ requests/second, with 16 ms p50 and 47 ms p95 client-observed latency. The earli
 run hit the designed rate limit; it is preserved as protection/saturation evidence and not presented
 as backend capacity. See [Performance](docs/PERFORMANCE.md) and
 [the index decision](benchmarks/scale/CASE_QUEUE_INDEX.md).
+
+The isolated mixed follow-up completed 232/232 requests, including 30 case-intake writes, at 7.638
+requests/second with 16 ms p50 / 47 ms p95. A separate PostgreSQL queue race claimed 200/200 jobs
+exactly once across eight workers. These bounded desktop measurements are not production SLOs.
 
 ## Repository map
 
@@ -340,7 +387,9 @@ uv run --locked python -m pytest -m postgres
 - SQLite demo checkpoints are process-local; durable restart uses PostgreSQL.
 - Rate limiting uses Redis when configured and a bounded process-local fallback during an outage;
   that fallback is not a substitute for distributed quota enforcement at sustained scale.
-- There is no enterprise SSO, customer-facing portal, or public cloud instance. The background
-  worker is locally implemented but not cloud deployed or load/soak proven.
+- There is no enterprise SSO, customer-facing portal, or public cloud instance. The worker/Valkey
+  cloud architecture is validated Terraform, not a running deployment.
 - The retrieval corpus is deliberately small, and the measured scores must not be generalized.
 - Human review of the 24 customer-response candidates is still pending.
+- The five-role offline trajectory gate validates orchestration contracts, not broad live-model
+  quality. Dollar cost remains unknown until explicit provider pricing is configured and measured.
