@@ -49,6 +49,23 @@ The operator console has five working areas:
 Operators can correct an AI assessment with structured feedback. Feedback begins as pending, is
 reviewed separately, and is never promoted into evaluation truth automatically.
 
+## Closed owner-feedback loop
+
+On September 30, 2026, the live multi-agent and walkthrough checks exposed a real operator-facing
+failure: after agent validation failed, the case panel continued to show the generic
+`Workflow outcome · Not started` state. The owner explicitly approved this correction:
+
+> Do not present a refund as ready for approval when evidence or policy citations are incomplete;
+> disclose the validation failure and block approval.
+
+The reviewed correction was promoted as `FDBK-EX-owner-ui-001` in owner-corrections dataset
+version 1.0.0. The console now renders `Investigation stopped safely`, marks approval blocked,
+states that no sensitive action ran, and identifies complete evidence and policy citations as the
+required next step. The focused Playwright regression
+`test_failed_agent_validation_blocks_approval_and_explains_safe_stop` reproduces a failed agent
+request and verifies those controls. This is one real closed loop, not an automated or invented
+labeling claim.
+
 ## Data and evaluation design
 
 A deterministic generator creates connected customer, order, payment, return, refund, case,

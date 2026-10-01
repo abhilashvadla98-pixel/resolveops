@@ -13,12 +13,13 @@ from resolveops.agents.models import (
     PolicyTurn,
     ResolutionProposal,
     SupervisorPlan,
+    ToolArguments,
     ToolCallStatus,
     ToolRequest,
 )
 from resolveops.agents.persistence import AgentRunStore
 from resolveops.agents.skills import skill_for_role
-from resolveops.agents.tools import AgentToolResult
+from resolveops.agents.tools import AgentToolResult, argument_contracts
 from resolveops.memory.retrieval import (
     ReviewedMemoryRetriever,
     issue_types_from_tool_results,
@@ -43,6 +44,7 @@ class MultiAgentReasoningRuntime:
         max_investigation_turns: int = 4,
         max_policy_turns: int = 3,
         memory_retriever: ReviewedMemoryRetriever | None = None,
+        context_tool_allowlists: dict[AgentRole, list[str]] | None = None,
     ) -> None:
         if not 1 <= max_investigation_turns <= 10:
             raise ValueError("investigation turns must be between 1 and 10")
@@ -56,6 +58,12 @@ class MultiAgentReasoningRuntime:
         self.max_investigation_turns = max_investigation_turns
         self.max_policy_turns = max_policy_turns
         self.memory_retriever = memory_retriever
+        self.context_tool_allowlists = context_tool_allowlists or {}
+        for role, role_tools in self.context_tool_allowlists.items():
+            skill = skill_for_role(role)
+            declared = set(skill.allowed_tools) if skill is not None else set()
+            if not set(role_tools).issubset(declared):
+                raise ValueError(f"context tool allowlist exceeds the declared {role.value} skill")
 
     def run(
         self,
@@ -240,7 +248,9 @@ class MultiAgentReasoningRuntime:
         results: list[AgentToolResult] = []
         runs: list[str] = []
         turn: InvestigationTurn | None = None
-        for _ in range(self.max_investigation_turns):
+        rejected_turns: list[dict[str, object]] = []
+        validation_feedback: list[str] = []
+        for turn_number in range(self.max_investigation_turns):
             context = self._context(
                 role=AgentRole.INVESTIGATION,
                 workflow_id=workflow_id,
@@ -248,9 +258,9 @@ class MultiAgentReasoningRuntime:
                 tenant_id=tenant_id,
                 objective=objective,
                 facts=[{"case_id": case_id}],
-                prior_outputs=[supervisor.model_dump(mode="json")],
+                prior_outputs=[supervisor.model_dump(mode="json"), *rejected_turns],
                 tool_results=[item.model_dump(mode="json") for item in results],
-                required_evidence=list(supervisor.required_evidence),
+                required_evidence=[*supervisor.required_evidence, *validation_feedback],
             )
             turn, run_id = self.invoker.invoke(
                 tenant_id=tenant_id,
@@ -270,18 +280,29 @@ class MultiAgentReasoningRuntime:
                     or turn.missing_evidence
                     or any(not fact.fresh for fact in turn.facts)
                 ):
+                    if turn_number + 1 < self.max_investigation_turns:
+                        rejected_turns.append(turn.model_dump(mode="json"))
+                        validation_feedback = [
+                            (
+                                "The previous complete output was rejected: completion requires "
+                                "fresh facts, evidence IDs, provenance, and an empty "
+                                "missing_evidence list."
+                            )
+                        ]
+                        continue
                     raise ValueError(
                         "completed investigation requires fresh evidence, provenance, and no gaps"
                     )
                 return turn, results, runs
             if turn.next_tool is None:
                 break
+            scoped_request = self._bind_primary_scope(turn.next_tool, case_id)
             results.append(
                 self._execute_tool(
                     tenant_id=tenant_id,
                     role=AgentRole.INVESTIGATION,
                     run_id=run_id,
-                    request=turn.next_tool,
+                    request=scoped_request,
                 )
             )
         if turn is None:
@@ -303,7 +324,8 @@ class MultiAgentReasoningRuntime:
         results: list[AgentToolResult] = []
         runs: list[str] = []
         turn: PolicyTurn | None = None
-        for _ in range(self.max_policy_turns):
+        rejected_turns: list[dict[str, object]] = []
+        for turn_number in range(self.max_policy_turns):
             context = self._context(
                 role=AgentRole.POLICY,
                 workflow_id=workflow_id,
@@ -311,7 +333,7 @@ class MultiAgentReasoningRuntime:
                 tenant_id=tenant_id,
                 objective=objective,
                 facts=[investigation.model_dump(mode="json")],
-                prior_outputs=[supervisor.model_dump(mode="json")],
+                prior_outputs=[supervisor.model_dump(mode="json"), *rejected_turns],
                 policy_results=[item.model_dump(mode="json") for item in results],
             )
             turn, run_id = self.invoker.invoke(
@@ -325,7 +347,26 @@ class MultiAgentReasoningRuntime:
             )
             runs.append(run_id)
             if turn.complete:
+                if not results:
+                    request = ToolRequest(
+                        tool_name="search_policies",
+                        arguments=ToolArguments(query=objective, top_k=5),
+                        purpose="Retrieve active policy evidence before completing the assessment",
+                    )
+                    results.append(
+                        self._execute_tool(
+                            tenant_id=tenant_id,
+                            role=AgentRole.POLICY,
+                            run_id=run_id,
+                            request=request,
+                        )
+                    )
+                    continue
+                turn = self._ground_policy_turn(turn, results)
                 if not turn.missing_policy and (not turn.citations or not turn.policy_versions):
+                    if turn_number + 1 < self.max_policy_turns:
+                        rejected_turns.append(turn.model_dump(mode="json"))
+                        continue
                     raise ValueError(
                         "completed policy research requires citations and policy versions"
                     )
@@ -334,7 +375,7 @@ class MultiAgentReasoningRuntime:
                 break
             request = ToolRequest(
                 tool_name="search_policies",
-                arguments={"query": turn.next_query, "top_k": "5"},
+                arguments=ToolArguments(query=turn.next_query, top_k=5),
                 purpose="Retrieve active policy evidence for the case",
             )
             results.append(
@@ -348,6 +389,35 @@ class MultiAgentReasoningRuntime:
         if turn is None:
             raise RuntimeError("policy research did not start")
         raise AgentBudgetExceeded("policy_turn_limit_exceeded")
+
+    @staticmethod
+    def _ground_policy_turn(
+        turn: PolicyTurn, results: list[AgentToolResult]
+    ) -> PolicyTurn:
+        citations: list[str] = []
+        versions: dict[str, int] = {}
+        for tool_result in results:
+            records = tool_result.data.get("results")
+            if not isinstance(records, list):
+                continue
+            for record in records:
+                if not isinstance(record, dict):
+                    continue
+                chunk_id = record.get("chunk_id")
+                policy_id = record.get("document_id", record.get("policy_id"))
+                version = record.get("document_version", record.get("version"))
+                if isinstance(chunk_id, str) and chunk_id not in citations:
+                    citations.append(chunk_id)
+                if isinstance(policy_id, str) and isinstance(version, int):
+                    versions[policy_id] = version
+        if turn.missing_policy:
+            return turn.model_copy(update={"citations": [], "policy_versions": {}})
+        return turn.model_copy(
+            update={
+                "citations": citations,
+                "policy_versions": versions,
+            }
+        )
 
     def criticize(
         self,
@@ -435,7 +505,7 @@ class MultiAgentReasoningRuntime:
             tenant_id=tenant_id,
             agent_run_id=run_id,
             tool_name=request.tool_name,
-            arguments=dict(request.arguments),
+            arguments=request.arguments.model_dump(mode="json", exclude_none=True),
         )
         try:
             result = self.tools.execute(role, request)
@@ -455,5 +525,22 @@ class MultiAgentReasoningRuntime:
         record_agent_tool_call(request.tool_name, "completed")
         return result
 
+    @staticmethod
+    def _bind_primary_scope(request: ToolRequest, case_id: str) -> ToolRequest:
+        """Bind primary-case reads in code; the model cannot select another case."""
+        if request.tool_name == "get_case":
+            return request.model_copy(update={"arguments": ToolArguments(case_id=case_id)})
+        if request.tool_name == "get_it_snapshot":
+            return request.model_copy(update={"arguments": ToolArguments(it_case_id=case_id)})
+        return request
+
     def _context(self, **kwargs: object):  # type: ignore[no-untyped-def]
+        role = kwargs.get("role")
+        if isinstance(role, AgentRole) and "allowed_tools" not in kwargs:
+            skill = skill_for_role(role)
+            declared = list(skill.allowed_tools) if skill is not None else []
+            kwargs["allowed_tools"] = self.context_tool_allowlists.get(role, declared)
+        allowed_tools = kwargs.get("allowed_tools")
+        if isinstance(allowed_tools, list) and "tool_contracts" not in kwargs:
+            kwargs["tool_contracts"] = argument_contracts(allowed_tools)
         return self.context_builder.build(**kwargs)  # type: ignore[arg-type]

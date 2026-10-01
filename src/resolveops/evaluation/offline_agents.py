@@ -22,6 +22,7 @@ from resolveops.agents.models import (
     PolicyTurn,
     ResolutionProposal,
     SupervisorPlan,
+    ToolArguments,
     ToolRequest,
 )
 from resolveops.agents.persistence import AgentRunStore
@@ -101,7 +102,7 @@ class OfflineTrajectoryProvider:
                     recommended_next_investigation="Read the current resource.",
                     next_tool=ToolRequest(
                         tool_name=tool_name,
-                        arguments={"resource_id": self.case.evaluation_id},
+                        arguments=ToolArguments(resource_id=self.case.evaluation_id),
                         purpose="Read scoped synthetic evidence.",
                     ),
                     complete=False,
@@ -177,16 +178,60 @@ class OfflineTrajectoryProvider:
 
 
 class OfflineTrajectoryTools:
+    def __init__(self, case: AgentTrajectoryCase | None = None) -> None:
+        self.case = case
+
     def execute(self, role: AgentRole, request: ToolRequest) -> AgentToolResult:
         if request.tool_name not in {"get_case", "get_it_snapshot", "search_policies"}:
             raise AssertionError(f"forbidden offline tool: {request.tool_name}")
         data: dict[str, object]
         if request.tool_name == "get_case":
-            data = {"issues": [{"issue_type": "duplicate_charge"}], "synthetic": True}
+            data = {
+                "case_id": request.arguments.resource_id or "SYNTHETIC-CASE",
+                "issues": [{"issue_type": "duplicate_charge", "status": "open"}],
+                "payment_evidence": {
+                    "capture_count": 2,
+                    "matching_order": True,
+                    "currency": "USD",
+                    "amounts_match": True,
+                    "prior_refund_exists": False,
+                },
+                "evidence_status": (
+                    "conflicting_or_incomplete"
+                    if self.case is not None
+                    and self.case.scenario in {"revise_once", "escalate"}
+                    else "current_and_complete"
+                ),
+                "evaluation_scenario": self.case.scenario if self.case is not None else "accept",
+                "synthetic": True,
+            }
         elif request.tool_name == "get_it_snapshot":
-            data = {"access_state": "review_required", "synthetic": True}
+            data = {
+                "access_state": "review_required",
+                "identity_match": True,
+                "mfa_enrolled": True,
+                "manager_approval": "verified",
+                "repository_owner_match": True,
+                "evaluation_scenario": self.case.scenario if self.case is not None else "accept",
+                "synthetic": True,
+            }
         else:
-            data = {"results": [{"chunk_id": "CHUNK-OFFLINE-1", "version": 1}]}
+            data = {
+                "results": [
+                    {
+                        "chunk_id": "CHUNK-OFFLINE-1",
+                        "policy_id": "POLICY-OFFLINE",
+                        "version": 1,
+                        "section": "Human review and deterministic controls",
+                        "text": (
+                            "A supported advisory proposal may proceed to deterministic review. "
+                            "Sensitive actions require human approval and fresh verification."
+                        ),
+                        "active": True,
+                    }
+                ],
+                "synthetic": True,
+            }
         return AgentToolResult(
             tool_name=request.tool_name,
             result_category=request.tool_name.removeprefix("get_"),

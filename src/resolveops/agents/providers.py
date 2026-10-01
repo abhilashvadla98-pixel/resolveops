@@ -109,16 +109,21 @@ class GeminiStructuredAgentProvider:
                 config=types.GenerateContentConfig(
                     system_instruction=instructions,
                     response_mime_type="application/json",
-                    response_json_schema=response_model.model_json_schema(),
+                    response_json_schema=_gemini_response_schema(response_model),
                     automatic_function_calling=types.AutomaticFunctionCallingConfig(disable=True),
                     candidate_count=1,
                     max_output_tokens=self._max_output_tokens,
                     temperature=0,
+                    thinking_config=(
+                        None
+                        if "flash-lite" in self._model
+                        else types.ThinkingConfig(thinking_budget=0)
+                    ),
                 ),
             )
         except (errors.APIError, httpx.HTTPError) as exc:
             raise ReasoningProviderError(
-                "agent_provider_failed", "The agent provider request failed."
+                _provider_error_code(exc), "The agent provider request failed."
             ) from exc
         self._last_usage = _gemini_usage(response.usage_metadata)
         try:
@@ -128,7 +133,16 @@ class GeminiStructuredAgentProvider:
                 return response_model.model_validate(response.parsed)
             if response.text:
                 return response_model.model_validate_json(response.text)
-        except (ValidationError, ValueError) as exc:
+        except ValidationError as exc:
+            problems = "; ".join(
+                f"{'.'.join(str(part) for part in error['loc'])}:{error['type']}"
+                for error in exc.errors(include_input=False)[:5]
+            )
+            raise ReasoningProviderError(
+                "agent_output_invalid",
+                f"The agent provider returned invalid structured output ({problems}).",
+            ) from exc
+        except ValueError as exc:
             raise ReasoningProviderError(
                 "agent_output_invalid", "The agent provider returned invalid structured output."
             ) from exc
@@ -193,6 +207,60 @@ class OpenAIStructuredAgentProvider:
 def _context_json(context: BaseModel | dict[str, object]) -> str:
     value = context.model_dump(mode="json") if isinstance(context, BaseModel) else context
     return json.dumps(value, sort_keys=True, separators=(",", ":"))
+
+
+def _provider_error_code(exc: Exception) -> str:
+    status = getattr(exc, "status_code", getattr(exc, "code", None))
+    if not isinstance(status, int):
+        return "agent_provider_failed"
+    if status >= 500:
+        return "agent_provider_unavailable"
+    return {
+        400: "agent_provider_invalid_request",
+        401: "agent_provider_auth_failed",
+        403: "agent_provider_denied",
+        404: "agent_model_unavailable",
+        429: "agent_provider_rate_limited",
+    }.get(status, "agent_provider_failed")
+
+
+def _gemini_response_schema(response_model: type[BaseModel]) -> dict[str, object]:
+    """Return the JSON Schema subset accepted by Gemini generateContent.
+
+    Pydantic emits validation-only keywords that remain enforced when we validate the
+    response locally, but some Gemini model endpoints reject those keywords at request time.
+    """
+    raw = response_model.model_json_schema()
+    definitions = raw.get("$defs", {})
+    unsupported = {
+        "$defs",
+        "additionalProperties",
+        "default",
+        "description",
+        "maxItems",
+        "maxLength",
+        "maximum",
+        "minItems",
+        "minLength",
+        "minimum",
+        "pattern",
+        "title",
+    }
+
+    def clean(value: object) -> object:
+        if isinstance(value, dict):
+            reference = value.get("$ref")
+            if isinstance(reference, str) and reference.startswith("#/$defs/"):
+                definition = definitions.get(reference.rsplit("/", 1)[-1])
+                if definition is None:
+                    raise ValueError(f"Unknown local schema reference: {reference}")
+                return clean(definition)
+            return {key: clean(item) for key, item in value.items() if key not in unsupported}
+        if isinstance(value, list):
+            return [clean(item) for item in value]
+        return value
+
+    return clean(raw)  # type: ignore[return-value]
 
 
 def _gemini_usage(

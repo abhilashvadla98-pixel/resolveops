@@ -26,6 +26,7 @@ from resolveops.agents.models import (
 )
 from resolveops.agents.permissions import AgentToolDenied, require_agent_tool
 from resolveops.agents.persistence import AgentRunStore, safe_context_hash
+from resolveops.agents.providers import GeminiStructuredAgentProvider, _provider_error_code
 from resolveops.agents.runtime import MultiAgentReasoningRuntime
 from resolveops.agents.skills import skill_catalog, skill_for_role
 from resolveops.agents.tools import AgentReadToolRegistry, AgentToolResult
@@ -39,6 +40,112 @@ from resolveops.memory.store import ReviewedResolutionMemoryStore
 from resolveops.orchestration.graph import HierarchicalAgentOrchestrator
 
 NOW = datetime(2026, 9, 29, 12, tzinfo=UTC)
+
+
+@pytest.mark.parametrize(
+    ("status", "expected"),
+    [
+        (400, "agent_provider_invalid_request"),
+        (429, "agent_provider_rate_limited"),
+        (503, "agent_provider_unavailable"),
+    ],
+)
+def test_provider_errors_keep_safe_actionable_classification(status: int, expected: str) -> None:
+    error = RuntimeError("provider request failed")
+    error.status_code = status  # type: ignore[attr-defined]
+    assert _provider_error_code(error) == expected
+
+
+def test_gemini_agent_provider_uses_supported_json_schema_subset() -> None:
+    plan = SupervisorPlan(
+        goal="Investigate safely.",
+        issues=["duplicate payment"],
+        plan_steps=[
+            PlanStep(
+                step_id="investigate",
+                objective="Read evidence",
+                assigned_role=AgentRole.INVESTIGATION,
+            )
+        ],
+        required_evidence=["case state"],
+        delegations=[AgentRole.INVESTIGATION],
+        parallelizable_tasks=[],
+        missing_information=[],
+        next_agent=AgentRole.INVESTIGATION,
+        stopping_condition="Evidence is sufficient.",
+    )
+
+    class Models:
+        config = None
+
+        def generate_content(self, *, model, contents, config):  # type: ignore[no-untyped-def]
+            self.config = config
+            return type(
+                "Response",
+                (),
+                {"parsed": plan, "text": None, "usage_metadata": None},
+            )()
+
+    models = Models()
+    client = type("Client", (), {"models": models})()
+    provider = GeminiStructuredAgentProvider(client, model="gemini-test")  # type: ignore[arg-type]
+
+    assert (
+        provider.invoke(
+            instructions="Return a safe plan.",
+            context={"case_id": "CASE-1"},
+            response_model=SupervisorPlan,
+        )
+        == plan
+    )
+    assert models.config is not None
+    assert models.config.response_schema is None
+    schema = models.config.response_json_schema
+    assert schema is not None
+    serialized = str(schema)
+    assert "additionalProperties" not in serialized
+    assert "maxLength" not in serialized
+    assert "minLength" not in serialized
+    assert "$defs" not in serialized
+    assert "$ref" not in serialized
+    assert "maxItems" not in serialized
+    assert "title" not in serialized
+    assert models.config.thinking_config.thinking_budget == 0
+
+
+def test_gemini_flash_lite_omits_unsupported_zero_thinking_budget() -> None:
+    class Models:
+        config = None
+
+        def generate_content(self, *, model, contents, config):  # type: ignore[no-untyped-def]
+            self.config = config
+            return type(
+                "Response",
+                (),
+                {
+                    "parsed": CriticReport(
+                        decision=CriticDecision.ACCEPT,
+                        summary="The advisory output is supported.",
+                    ),
+                    "text": None,
+                    "usage_metadata": None,
+                },
+            )()
+
+    models = Models()
+    client = type("Client", (), {"models": models})()
+    provider = GeminiStructuredAgentProvider(  # type: ignore[arg-type]
+        client,
+        model="gemini-3.5-flash-lite",
+    )
+
+    provider.invoke(
+        instructions="Review the proposal.",
+        context={"case_id": "CASE-1"},
+        response_model=CriticReport,
+    )
+
+    assert models.config.thinking_config is None
 
 
 def test_public_agent_skill_catalog_has_four_enforced_domain_capabilities() -> None:
@@ -96,6 +203,53 @@ def test_context_builder_marks_untrusted_content_and_rejects_stale_evidence_when
         )
 
 
+def test_runtime_context_exposes_only_declared_role_tools() -> None:
+    runtime = object.__new__(MultiAgentReasoningRuntime)
+    runtime.context_builder = AgentContextBuilder()
+    runtime.context_tool_allowlists = {}
+
+    context = runtime._context(
+        role=AgentRole.INVESTIGATION,
+        workflow_id="WF-TOOLS-1",
+        case_id="CASE-1",
+        tenant_id="TENANT-A",
+        objective="Inspect the case.",
+    )
+
+    assert context.allowed_tools == skill_for_role(AgentRole.INVESTIGATION).allowed_tools
+    assert context.tool_contracts["get_case"]["required"] == ["case_id"]
+    assert "create_refund" not in context.allowed_tools
+
+
+def test_runtime_context_can_narrow_but_not_expand_declared_tools() -> None:
+    runtime = object.__new__(MultiAgentReasoningRuntime)
+    runtime.context_builder = AgentContextBuilder()
+    runtime.context_tool_allowlists = {AgentRole.INVESTIGATION: ["get_case"]}
+
+    context = runtime._context(
+        role=AgentRole.INVESTIGATION,
+        workflow_id="WF-TOOLS-2",
+        case_id="CASE-1",
+        tenant_id="TENANT-A",
+        objective="Inspect the case.",
+    )
+
+    assert context.allowed_tools == ["get_case"]
+    assert set(context.tool_contracts) == {"get_case"}
+
+
+def test_runtime_binds_primary_case_read_to_workflow_scope() -> None:
+    requested = ToolRequest(
+        tool_name="get_case",
+        arguments={"case_id": "CASE-OTHER"},
+        purpose="Inspect the case.",
+    )
+
+    scoped = MultiAgentReasoningRuntime._bind_primary_scope(requested, "CASE-1")
+
+    assert scoped.arguments.case_id == "CASE-1"
+
+
 def test_agent_outputs_enforce_stop_and_independent_critic_contracts() -> None:
     with pytest.raises(ValueError, match="completed investigation"):
         InvestigationTurn(
@@ -113,6 +267,41 @@ def test_agent_outputs_enforce_stop_and_independent_critic_contracts() -> None:
             },
             complete=True,
         )
+
+
+def test_policy_citations_are_grounded_from_authoritative_tool_results() -> None:
+    ungrounded = PolicyTurn(
+        applicable_policy="A reviewed action may proceed to deterministic controls.",
+        policy_interpretation="The active policy supports a bounded proposal.",
+        complete=True,
+    )
+    tool_result = AgentToolResult(
+        tool_name="search_policies",
+        result_category="policy_results",
+        source="test://search_policies",
+        observed_at=NOW,
+        data={
+            "results": [
+                {
+                    "chunk_id": "CHUNK-1",
+                    "document_id": "POLICY-1",
+                    "document_version": 3,
+                }
+            ]
+        },
+    )
+
+    grounded = MultiAgentReasoningRuntime._ground_policy_turn(ungrounded, [tool_result])
+
+    assert grounded.citations == ["CHUNK-1"]
+    assert grounded.policy_versions == {"POLICY-1": 3}
+    hallucinated = ungrounded.model_copy(
+        update={"citations": ["CHUNK-MADE-UP"], "policy_versions": {"POLICY-X": 99}}
+    )
+    empty_search = tool_result.model_copy(update={"data": {"results": []}})
+    rejected = MultiAgentReasoningRuntime._ground_policy_turn(hallucinated, [empty_search])
+    assert rejected.citations == []
+    assert rejected.policy_versions == {}
     with pytest.raises(ValueError, match="accepting critic"):
         CriticReport(
             decision=CriticDecision.ACCEPT,
@@ -327,12 +516,23 @@ class ScriptedProvider:
 class ScriptedTools:
     def execute(self, role: AgentRole, request: ToolRequest) -> AgentToolResult:
         assert request.tool_name in {"get_case", "search_policies"}
+        data: dict[str, object] = {"verified": True}
+        if request.tool_name == "search_policies":
+            data = {
+                "results": [
+                    {
+                        "chunk_id": "CHUNK-1",
+                        "document_id": "POLICY-1",
+                        "document_version": 1,
+                    }
+                ]
+            }
         return AgentToolResult(
             tool_name=request.tool_name,
             result_category="case" if request.tool_name == "get_case" else "policy_results",
             source=f"test://{request.tool_name}",
             observed_at=NOW,
-            data={"verified": True},
+            data=data,
         )
 
 
@@ -642,7 +842,7 @@ def test_agent_case_read_falls_back_only_when_mcp_is_unavailable() -> None:
         AgentRole.INVESTIGATION,
         ToolRequest(
             tool_name="get_case",
-            arguments={"resource_id": "CASE-1001"},
+            arguments={"case_id": "CASE-1001"},
             purpose="Inspect the case.",
         ),
     )

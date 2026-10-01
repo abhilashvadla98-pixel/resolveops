@@ -57,7 +57,7 @@ def _run_trial(
         timeout_seconds=45,
         max_attempts=2,
         max_input_characters=16_000,
-        max_output_tokens=600,
+        max_output_tokens=1_200,
     )
     runtime = MultiAgentReasoningRuntime(
         invoker=AgentInvoker(
@@ -67,9 +67,19 @@ def _run_trial(
             input_cost_per_million_usd=settings.input_cost_per_million_usd,
             output_cost_per_million_usd=settings.output_cost_per_million_usd,
         ),
-        tools=OfflineTrajectoryTools(),
+        tools=OfflineTrajectoryTools(case),
         run_store=store,
         ledger=ledger,
+        context_tool_allowlists={
+            AgentRole.INVESTIGATION: [
+                "get_case"
+                if case.domain.value == "customer_operations"
+                else "get_it_snapshot"
+            ],
+            AgentRole.POLICY: ["search_policies"],
+            AgentRole.RESOLUTION: [],
+            AgentRole.CRITIC: [],
+        },
     )
     workflow_id = f"LIVE-{case.evaluation_id}-T{trial}"
     started = perf_counter()
@@ -83,9 +93,17 @@ def _run_trial(
             trace_id=f"{case.evaluation_id}-{trial}".encode().hex()[:32].ljust(32, "0"),
         )
         error_code = None
-    except (ReasoningProviderError, ValueError, RuntimeError) as exc:
+        error_detail = None
+    except (
+        AssertionError,
+        ReasoningProviderError,
+        ValueError,
+        RuntimeError,
+        PermissionError,
+    ) as exc:
         result = None
         error_code = getattr(exc, "code", type(exc).__name__)
+        error_detail = str(exc)[:300]
     latency_ms = (perf_counter() - started) * 1_000
     runs = store.list_for_workflow(workflow_id)
     tools = store.list_tool_calls_for_workflow(workflow_id)
@@ -129,6 +147,7 @@ def _run_trial(
         "output_tokens": ledger.usage.output_tokens,
         "cost_usd": ledger.usage.estimated_cost_usd,
         "error_code": error_code,
+        "error_detail": error_detail,
         "per_agent": [
             {
                 "role": run.role.value,
@@ -137,6 +156,7 @@ def _run_trial(
                 "output_tokens": run.output_tokens,
                 "model_calls": 1,
                 "tool_calls": run.tool_call_count,
+                "output_contract": _output_contract(run.structured_output),
                 "cost_usd": (
                     (
                         (run.input_tokens or 0) * settings.input_cost_per_million_usd
@@ -153,6 +173,34 @@ def _run_trial(
     }
     engine.dispose()
     return record
+
+
+def _output_contract(output: dict[str, object] | None) -> dict[str, object] | None:
+    if output is None:
+        return None
+    facts = output.get("facts")
+    evidence_ids = output.get("evidence_ids")
+    provenance = output.get("source_provenance")
+    missing = output.get("missing_evidence")
+    citations = output.get("citations")
+    policy_versions = output.get("policy_versions")
+    return {
+        "complete": output.get("complete"),
+        "fact_count": len(facts) if isinstance(facts, list) else None,
+        "evidence_id_count": len(evidence_ids) if isinstance(evidence_ids, list) else None,
+        "provenance_count": len(provenance) if isinstance(provenance, list) else None,
+        "missing_evidence_count": len(missing) if isinstance(missing, list) else None,
+        "citation_count": len(citations) if isinstance(citations, list) else None,
+        "policy_version_count": (
+            len(policy_versions) if isinstance(policy_versions, dict) else None
+        ),
+        "missing_policy": output.get("missing_policy"),
+        "all_facts_fresh": (
+            all(isinstance(fact, dict) and fact.get("fresh") is True for fact in facts)
+            if isinstance(facts, list) and facts
+            else None
+        ),
+    }
 
 
 def main() -> int:

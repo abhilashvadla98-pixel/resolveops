@@ -21,7 +21,7 @@ def test_operator_console_serves_secure_shell_and_local_assets() -> None:
     assert ">Audit<" in page.text
     assert "Open customer workflow" in page.text
     assert "Open employee IT workflow" in page.text
-    assert 'src="/console/app.js?v=20260930c"' in page.text
+    assert 'src="/console/app.js?v=20260930d"' in page.text
     assert 'href="/console/app.css?v=20260930c"' in page.text
     assert 'role="dialog"' in page.text
     assert 'aria-modal="true"' in page.text
@@ -48,6 +48,10 @@ def test_operator_console_serves_secure_shell_and_local_assets() -> None:
     assert 'apiFetch("/api/v1/agent-workflows/jobs"' not in script.text
     assert "Specialist review · decision support only" in page.text
     assert "CSS.escape" in script.text
+    assert "Investigation stopped safely" in script.text
+    assert "No approval created" in script.text
+    assert "ResolveOps stopped before approval or execution" in script.text
+    assert "renderWorkflowFailure(issueId, error)" in script.text
 
 
 def test_product_home_redirects_to_operator_console() -> None:

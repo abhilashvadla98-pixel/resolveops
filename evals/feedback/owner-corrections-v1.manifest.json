@@ -1,0 +1,8 @@
+{
+  "dataset_id": "resolveops.feedback.owner_corrections",
+  "version": "1.0.0",
+  "record_count": 1,
+  "sha256": "d27da8268dd0fd49b73947d11d1ea38f2167457d2b6f998e87b2f841da933cc2",
+  "generated_at": "2026-10-01T01:01:36.939933Z",
+  "source": "owner-reviewed operator corrections only"
+}

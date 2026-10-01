@@ -12,7 +12,9 @@
 - The 10-task × 3-trial live runner records routing, tools, citations, critic behavior, latency,
   tokens, calls and cost when known.
 - Human response-review export/import requires explicit owner labels.
-- Reviewed operator feedback can become a versioned dataset candidate only after human review.
+- Reviewed operator feedback can become a versioned dataset candidate only after human review. One
+  real example is retained in `evals/feedback/owner-corrections-v1.jsonl` with a hashed manifest and
+  focused browser regression.
 - README, project rules, license and the technical walkthrough script are release-oriented.
 
 ## Public v1 status
@@ -30,9 +32,7 @@ These are limitations of v1, not silently treated as complete:
    `RESOLVEOPS_GEMINI_KEY_ROTATED=true`.
 3. Run the 30-trial live multi-agent evaluation and retain its honest report.
 4. Manually label all 24 response-review rows. Code must not create these labels.
-5. Submit and review one genuine operator correction, promote it to a versioned dataset, make the
-   resulting change, and add/pass the focused regression test. Do not invent this example.
-6. Record the 60–90 second technical walkthrough using a verified live provider trace.
+5. Record the 60–90 second technical walkthrough using a verified live provider trace.
 
 Until those gates close, ResolveOps is a released, production-minded reference implementation with
 a public synthetic demo—not a production deployment or a validated business system.

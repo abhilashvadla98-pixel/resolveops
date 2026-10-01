@@ -59,7 +59,7 @@ def promote_reviewed_feedback(
     examples = sorted([*existing, example], key=lambda item: item.example_id)
     payload = "".join(item.model_dump_json() + "\n" for item in examples)
     dataset_path.parent.mkdir(parents=True, exist_ok=True)
-    dataset_path.write_text(payload, encoding="utf-8")
+    dataset_path.write_bytes(payload.encode("utf-8"))
     manifest = FeedbackDatasetManifest(
         dataset_id="resolveops.feedback.owner_corrections",
         version=version,

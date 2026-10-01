@@ -200,3 +200,42 @@ def test_operator_completes_demo_approval_workflow(running_demo: str, tmp_path: 
             full_page=True,
         )
         browser.close()
+
+
+@pytest.mark.browser
+def test_failed_agent_validation_blocks_approval_and_explains_safe_stop(
+    running_demo: str,
+) -> None:
+    with sync_playwright() as playwright:
+        browser = playwright.chromium.launch()
+        page: Page = browser.new_page(viewport={"width": 1440, "height": 1000})
+        page.route(
+            "**/api/v1/workflows",
+            lambda route: route.fulfill(
+                status=503,
+                content_type="application/json",
+                body=json.dumps(
+                    {
+                        "detail": (
+                            "Multi-agent investigation failed validation: evidence or policy "
+                            "citations are incomplete."
+                        )
+                    }
+                ),
+            ),
+        )
+        page.goto(f"{running_demo}/console")
+        expect(page.locator("#sidebar-connection")).to_have_text("Connected")
+        page.locator('[data-view="cases"]').click()
+        page.locator("#scenario-select").select_option("CASE-DEMO-D")
+        page.locator("#detail-issues .start-workflow").click()
+
+        expect(page.locator("#workflow-summary")).to_be_visible()
+        expect(page.locator("#workflow-title")).to_have_text("Investigation stopped safely")
+        expect(page.locator("#workflow-result")).to_contain_text("ApprovalBlocked")
+        expect(page.locator("#workflow-result")).to_contain_text("Sensitive actionNot executed")
+        expect(page.locator("#workflow-result")).to_contain_text(
+            "Complete evidence and policy citations"
+        )
+        expect(page.locator("#workflow-next-action")).to_be_hidden()
+        browser.close()

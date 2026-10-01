@@ -7,6 +7,7 @@ import os
 import shutil
 import socket
 import subprocess
+import sys
 import tempfile
 import time
 import urllib.request
@@ -56,44 +57,54 @@ def caption(page: Page, title: str, detail: str, milliseconds: int = 3300) -> No
 
 
 def run_walkthrough(page: Page, base_url: str) -> None:
+    page.set_default_timeout(45_000)
+    expect.set_options(timeout=45_000)
     page.goto(f"{base_url}/console", wait_until="networkidle")
-    page.locator("#try-demo").click()
+    if page.locator("#try-demo").is_visible():
+        page.locator("#try-demo").click()
     expect(page.locator("#sidebar-connection")).to_have_text("Connected")
     expect(page.locator("#case-table")).to_contain_text("CASE-1001")
     caption(
         page,
-        "ResolveOps · Production AI Operations System",
-        "Synthetic data only · agents advise · deterministic controls authorize and verify",
-        4200,
+        "ResolveOps · Operations that stay under human control",
+        "This walkthrough uses fictional records. Agents investigate and recommend; people and deterministic controls decide what changes.",
+        5200,
     )
 
     caption(
         page,
-        "1 · One operational workspace",
-        "Persisted customer cases, evidence, approvals, IT requests, reliability, and audit history.",
+        "1 · Start with the work, not the model",
+        "The operator sees customer cases, evidence, approvals, IT requests, reliability, and audit history in one place.",
+        4500,
     )
 
+    page.locator('[data-view="cases"]').click()
     page.locator("#scenario-select").select_option("CASE-DEMO-D")
     expect(page.locator("#detail-case-id")).to_have_text("CASE-DEMO-D")
     caption(
         page,
-        "2 · Evidence-grounded investigation",
-        "A duplicate-charge case keeps the complaint, payment facts, and versioned policy evidence separate.",
+        "2 · A real decision starts with evidence",
+        "Aaron reports a duplicate charge. ResolveOps keeps his complaint, payment records, and policy evidence separate and traceable.",
+        4800,
     )
 
     page.locator("#detail-issues .start-workflow").click()
     expect(page.locator("#workflow-summary")).to_contain_text("Human approval required")
     expect(page.locator("#agent-summary")).to_be_visible()
+    expect(page.locator("#agent-summary-result")).to_contain_text("Independent review")
+    expect(page.locator("#agent-summary-result")).to_contain_text("Outcome: Accept")
+    trace_summary = page.locator("#agent-summary-subtitle").inner_text()
     caption(
         page,
-        "3 · Integrated five-role investigation",
-        "The verified live trace shows supervisor routing, evidence reads, policy citations, a bounded proposal, and an independent critic.",
-        6500,
+        "3 · Five roles, one controlled investigation",
+        f"This is the live trace: {trace_summary}. The supervisor routes the work, specialists read evidence and policy, and an independent critic checks the proposal.",
+        7200,
     )
     caption(
         page,
-        "4 · Sensitive actions pause",
-        "The proposed refund cannot move forward until a separate human reviews the amount, reason, and evidence.",
+        "4 · The system stops before money moves",
+        "The agents can recommend a refund, but they cannot approve it. The amount, payment, reason, and evidence wait for a separate human decision.",
+        5000,
     )
 
     page.locator('[data-view="approvals"]').click()
@@ -103,24 +114,26 @@ def run_walkthrough(page: Page, base_url: str) -> None:
     )
     caption(
         page,
-        "5 · Human-in-the-loop decision",
-        "The operator records an accountable reason before approving the controlled action.",
+        "5 · A person owns the decision",
+        "The approver reviews the evidence and records a reason. That decision becomes part of the audit trail.",
+        4800,
     )
     page.locator('.approval-decision[data-decision="approve"]').click()
     expect(page.locator("#workflow-summary")).to_contain_text("Action Verified")
     caption(
         page,
-        "6 · Execute, then independently verify",
-        "An idempotent simulated refund record is created, verified from fresh state, and explained without overstating settlement.",
-        4500,
+        "6 · Execute once, then read the result back",
+        "ResolveOps creates one simulated refund, prevents duplicate execution, and checks fresh state before reporting the outcome.",
+        5400,
     )
 
     page.locator('[data-view="reliability"]').click()
     expect(page.locator("#reliability-total")).to_have_text("1")
     caption(
         page,
-        "7 · Reliability is part of the product",
-        "Attempts, recovery, verification, latency, and trace IDs are visible instead of hidden in a black box.",
+        "7 · Operators can see how it behaved",
+        "Attempts, verification, recovery events, latency, and trace IDs are visible instead of disappearing inside a black box.",
+        4800,
     )
 
     page.locator('[data-view="it"]').click()
@@ -130,17 +143,17 @@ def run_walkthrough(page: Page, base_url: str) -> None:
     expect(page.locator("#it-result-status")).to_have_text("Escalated")
     caption(
         page,
-        "8 · Fail closed on unsafe access",
-        "Missing MFA creates a durable safety stop. No repository permission is granted.",
-        4500,
+        "8 · Unsafe requests stop clearly",
+        "This employee is missing MFA. The request is escalated, the reason is stored, and no repository permission is granted.",
+        5200,
     )
 
     page.locator('[data-view="audit"]').click()
     caption(
         page,
         "ResolveOps",
-        "Auditable AI advice, deterministic control, human approval, idempotent execution, and fresh verification.",
-        5200,
+        "Evidence first. Agents advise. People approve. Deterministic controls execute once, verify fresh state, and keep the history.",
+        6000,
     )
 
 
@@ -179,16 +192,18 @@ def main() -> None:
         config.set_main_option("sqlalchemy.url", database_url)
         command.upgrade(config, "head")
         subprocess.run(
-            [os.sys.executable, "-m", "resolveops.database.seed"],
+            [sys.executable, "-m", "resolveops.database.seed"],
             check=True,
             cwd=ROOT,
             env=environment,
             capture_output=True,
             text=True,
         )
+        server_log_path = temp / "server.log"
+        server_log = server_log_path.open("w", encoding="utf-8")
         server = subprocess.Popen(
             [
-                os.sys.executable,
+                sys.executable,
                 "-m",
                 "uvicorn",
                 "resolveops.api.main:app",
@@ -199,8 +214,8 @@ def main() -> None:
             ],
             cwd=ROOT,
             env=environment,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
+            stdout=server_log,
+            stderr=subprocess.STDOUT,
         )
         base_url = f"http://127.0.0.1:{port}"
         try:
@@ -230,6 +245,13 @@ def main() -> None:
                 if video is None:
                     raise RuntimeError("Playwright did not create a demo video")
                 shutil.copy2(video.path(), OUTPUT)
+        except Exception:
+            server_log.flush()
+            diagnostics = server_log_path.read_text(encoding="utf-8", errors="replace")
+            if diagnostics:
+                print("Demo server diagnostics (last 80 lines):")
+                print("\n".join(diagnostics.splitlines()[-80:]))
+            raise
         finally:
             server.terminate()
             try:
@@ -237,6 +259,7 @@ def main() -> None:
             except subprocess.TimeoutExpired:
                 server.kill()
                 server.wait(timeout=5)
+            server_log.close()
 
     print(f"Product demo recorded: {OUTPUT}")
 

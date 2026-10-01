@@ -1,4 +1,7 @@
+import hashlib
+import json
 from datetime import UTC, datetime
+from pathlib import Path
 
 import pytest
 
@@ -44,3 +47,19 @@ def test_only_human_reviewed_feedback_can_create_versioned_dataset_candidate(tmp
     assert example.expected_value == {"issue_type": "authorization_hold"}
     assert manifest.record_count == 1
     assert len(manifest.sha256) == 64
+
+
+def test_checked_in_owner_correction_dataset_is_versioned_and_integral() -> None:
+    dataset_path = Path("evals/feedback/owner-corrections-v1.jsonl")
+    manifest = json.loads(
+        Path("evals/feedback/owner-corrections-v1.manifest.json").read_text(encoding="utf-8")
+    )
+    payload = dataset_path.read_bytes()
+    examples = [json.loads(line) for line in payload.decode().splitlines() if line.strip()]
+
+    assert manifest["version"] == "1.0.0"
+    assert manifest["record_count"] == len(examples) == 1
+    assert manifest["sha256"] == hashlib.sha256(payload).hexdigest()
+    assert examples[0]["example_id"] == "FDBK-EX-owner-ui-001"
+    assert examples[0]["expected_value"]["approval_state"] == "blocked"
+    assert examples[0]["expected_value"]["sensitive_action"] == "not_executed"

@@ -3,6 +3,7 @@ from typing import Literal
 
 from pydantic import Field, model_validator
 
+from resolveops.models.case import CaseIssueType
 from resolveops.models.common import AwareDatetime, DomainModel, Identifier, NonEmptyText
 
 
@@ -68,9 +69,25 @@ class SupervisorPlan(DomainModel):
     escalation_reason: NonEmptyText | None = None
 
 
+class ToolArguments(DomainModel):
+    """Finite read-tool inputs so provider schemas never contain an untyped object."""
+
+    resource_id: Identifier | None = None
+    case_id: Identifier | None = None
+    customer_id: Identifier | None = None
+    order_id: Identifier | None = None
+    payment_id: Identifier | None = None
+    return_id: Identifier | None = None
+    refund_id: Identifier | None = None
+    it_case_id: Identifier | None = None
+    query: NonEmptyText | None = None
+    issue_type: CaseIssueType | None = None
+    top_k: int | None = Field(default=None, ge=1, le=10)
+
+
 class ToolRequest(DomainModel):
     tool_name: Identifier
-    arguments: dict[str, str] = Field(default_factory=dict, max_length=10)
+    arguments: ToolArguments = Field(default_factory=ToolArguments)
     purpose: NonEmptyText
 
 

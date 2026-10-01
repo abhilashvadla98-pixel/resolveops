@@ -131,11 +131,13 @@ def durable_workflow(
     lifecycle: WorkflowLifecycleStore,
     *,
     action_tools: ActionTools | None = None,
+    agent_runtime: IntegratedAgentRuntime | None = None,
 ) -> CustomerIssueWorkflow:
     return CustomerIssueWorkflow(
         factory,
         FeatureHashEmbeddingProvider(dimensions=128),
         action_tools=action_tools,
+        agent_runtime=agent_runtime,
         checkpointer=checkpointer,
         lifecycle_store=lifecycle,
         clock=lambda: NOW,
@@ -558,13 +560,20 @@ def test_durable_workflow_pauses_and_resumes_after_service_restart(
         proposed_refund=refund_request(key="durable-refund-1"),
     )
 
-    paused = durable_workflow(factory, checkpointer, lifecycle, action_tools=tools).start(
-        initial_request
-    )
+    agents = RecordingIntegratedAgentRuntime()
+    paused = durable_workflow(
+        factory,
+        checkpointer,
+        lifecycle,
+        action_tools=tools,
+        agent_runtime=agents,
+    ).start(initial_request)
 
     assert isinstance(paused, WorkflowPause)
     assert paused.status == WorkflowStatus.WAITING_APPROVAL
     assert paused.approval.status == ApprovalStatus.PENDING
+    assert paused.agent_assessment is not None
+    assert paused.agent_assessment.critic.decision.value == "accept"
     assert lifecycle.get_run(initial_request.workflow_id).status == (
         WorkflowLifecycleStatus.WAITING_APPROVAL
     )

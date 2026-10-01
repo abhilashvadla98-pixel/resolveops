@@ -29,6 +29,10 @@ class AgentContext(DomainModel):
     policy_results: list[dict[str, object]] = Field(default_factory=list, max_length=30)
     memory_results: list[dict[str, object]] = Field(default_factory=list, max_length=10)
     required_evidence: list[NonEmptyText] = Field(default_factory=list, max_length=30)
+    allowed_tools: list[Identifier] = Field(default_factory=list, max_length=20)
+    tool_contracts: dict[Identifier, dict[str, object]] = Field(
+        default_factory=dict, max_length=20
+    )
     freshness_cutoff: AwareDatetime
     redaction_policy: Identifier = "agent-masked-pii-v1"
     content_is_untrusted: bool = True
@@ -70,6 +74,8 @@ class AgentContextBuilder:
         policy_results: list[dict[str, object]] | None = None,
         memory_results: list[dict[str, object]] | None = None,
         required_evidence: list[str] | None = None,
+        allowed_tools: list[str] | None = None,
+        tool_contracts: dict[str, dict[str, object]] | None = None,
         token_budget: int = 4_000,
         max_evidence_age: timedelta = timedelta(hours=24),
         reject_stale_evidence: bool = False,
@@ -115,6 +121,8 @@ class AgentContextBuilder:
             policy_results=supplied["policy_results"],
             memory_results=supplied["memory_results"],
             required_evidence=required_evidence or [],
+            allowed_tools=allowed_tools or [],
+            tool_contracts=tool_contracts or {},
             freshness_cutoff=freshness_cutoff,
             token_budget=token_budget,
             metrics=ContextMetrics(

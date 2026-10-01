@@ -1,3 +1,4 @@
+import logging
 from collections.abc import Callable
 from datetime import UTC, datetime
 from typing import Any, Protocol, cast
@@ -7,6 +8,7 @@ from langgraph.checkpoint.base import BaseCheckpointSaver
 from langgraph.graph import END, START, StateGraph
 from langgraph.graph.state import CompiledStateGraph
 from langgraph.types import Command, interrupt
+from pydantic import ValidationError
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -71,6 +73,8 @@ ACTIVE_REFUND_STATUSES = {
     RefundStatus.PROCESSING,
     RefundStatus.COMPLETED,
 }
+
+LOGGER = logging.getLogger(__name__)
 
 POLICY_QUERY = {
     CaseIssueType.DUPLICATE_CHARGE: (
@@ -280,6 +284,7 @@ class CustomerIssueWorkflow:
         snapshot = self.graph.get_state(config)
         if snapshot.interrupts:
             raw = snapshot.interrupts[0].value
+            values = cast(WorkflowState, snapshot.values)
             approval = (
                 raw if isinstance(raw, WorkflowApproval) else WorkflowApproval.model_validate(raw)
             )
@@ -288,6 +293,7 @@ class CustomerIssueWorkflow:
                 case_id=approval.case_id,
                 issue_id=approval.issue_id,
                 approval=approval,
+                agent_assessment=values.get("agent_assessment"),
             )
             synchronize_case_state(self.session_factory, pause, self.clock)
             return pause
@@ -589,6 +595,17 @@ class CustomerIssueWorkflow:
                     trace_id=current_trace_id() or state["workflow_id"],
                 )
             except (AgentBudgetExceeded, ReasoningProviderError, ValueError) as exc:
+                diagnostic = (
+                    exc.errors(include_input=False, include_context=False)
+                    if isinstance(exc, ValidationError)
+                    else str(exc)
+                )
+                LOGGER.warning(
+                    "Integrated agent assessment stopped for workflow %s (%s): %s",
+                    state["workflow_id"],
+                    type(exc).__name__,
+                    diagnostic,
+                )
                 return {
                     "status": WorkflowStatus.ESCALATED,
                     "agent_assessment": None,

@@ -32,11 +32,15 @@ def build_agent_runtime(
         timeout_seconds=settings.gemini_timeout_seconds,
         max_attempts=settings.gemini_max_attempts,
         max_input_characters=min(settings.gemini_max_input_characters, 16_000),
-        max_output_tokens=min(settings.gemini_max_output_tokens, 600),
+        max_output_tokens=min(settings.gemini_max_output_tokens, 1_200),
     )
     store = AgentRunStore(session_factory)
     ledger = BudgetLedger(
-        AgentBudget(optional_cost_limit_usd=settings.agent_cost_limit_usd),
+        AgentBudget(
+            max_agent_steps=10,
+            max_model_calls=10,
+            optional_cost_limit_usd=settings.agent_cost_limit_usd,
+        ),
         datetime.now(UTC),
     )
     return MultiAgentReasoningRuntime(

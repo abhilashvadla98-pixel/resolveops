@@ -147,6 +147,7 @@ class WorkflowPause(DomainModel):
     issue_id: Identifier
     status: WorkflowStatus = WorkflowStatus.WAITING_APPROVAL
     approval: WorkflowApproval
+    agent_assessment: MultiAgentReasoningResult | None = None
 
 
 class WorkflowRun(DomainModel):

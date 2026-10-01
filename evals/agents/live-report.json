@@ -1,0 +1,1862 @@
+{
+  "measured_at": "2026-10-01T00:43:36.673224+00:00",
+  "provider": "google",
+  "model": "gemini-3.5-flash-lite",
+  "task_count": 10,
+  "trials_per_task": 3,
+  "trial_count": 30,
+  "passed_trials": 0,
+  "latency_ms": {
+    "p50": 2128.054000000702,
+    "p95": 8786.263499991037
+  },
+  "input_tokens": 35592,
+  "output_tokens": 9008,
+  "model_calls": 65,
+  "tool_calls": 16,
+  "cost_usd": null,
+  "results": [
+    {
+      "evaluation_id": "AGENT-EVAL-001",
+      "trial": 1,
+      "passed": false,
+      "status": "error",
+      "roles": [
+        "supervisor",
+        "investigation",
+        "investigation",
+        "policy",
+        "policy"
+      ],
+      "tools": [
+        "get_case",
+        "search_policies"
+      ],
+      "citations": [
+        "CHUNK-OFFLINE-1"
+      ],
+      "critic_decisions": [],
+      "latency_ms": 6261.769200005801,
+      "model_calls": 5,
+      "tool_calls": 2,
+      "input_tokens": 3794,
+      "output_tokens": 1051,
+      "cost_usd": null,
+      "error_code": "ValueError",
+      "error_detail": "completed policy research requires citations and policy versions",
+      "per_agent": [
+        {
+          "role": "supervisor",
+          "latency_ms": 1836.11,
+          "input_tokens": 354,
+          "output_tokens": 418,
+          "model_calls": 1,
+          "tool_calls": 0,
+          "output_contract": {
+            "complete": null,
+            "fact_count": null,
+            "evidence_id_count": null,
+            "provenance_count": null,
+            "missing_evidence_count": null,
+            "all_facts_fresh": null
+          },
+          "cost_usd": null
+        },
+        {
+          "role": "investigation",
+          "latency_ms": 1113.1770000000001,
+          "input_tokens": 765,
+          "output_tokens": 163,
+          "model_calls": 1,
+          "tool_calls": 1,
+          "output_contract": {
+            "complete": false,
+            "fact_count": 0,
+            "evidence_id_count": 0,
+            "provenance_count": 0,
+            "missing_evidence_count": 2,
+            "all_facts_fresh": null
+          },
+          "cost_usd": null
+        },
+        {
+          "role": "investigation",
+          "latency_ms": 1324.94,
+          "input_tokens": 893,
+          "output_tokens": 218,
+          "model_calls": 1,
+          "tool_calls": 0,
+          "output_contract": {
+            "complete": true,
+            "fact_count": 1,
+            "evidence_id_count": 1,
+            "provenance_count": 1,
+            "missing_evidence_count": 0,
+            "all_facts_fresh": true
+          },
+          "cost_usd": null
+        },
+        {
+          "role": "policy",
+          "latency_ms": 1077.041,
+          "input_tokens": 833,
+          "output_tokens": 118,
+          "model_calls": 1,
+          "tool_calls": 1,
+          "output_contract": {
+            "complete": false,
+            "fact_count": null,
+            "evidence_id_count": null,
+            "provenance_count": null,
+            "missing_evidence_count": null,
+            "all_facts_fresh": null
+          },
+          "cost_usd": null
+        },
+        {
+          "role": "policy",
+          "latency_ms": 890.654,
+          "input_tokens": 949,
+          "output_tokens": 134,
+          "model_calls": 1,
+          "tool_calls": 0,
+          "output_contract": {
+            "complete": true,
+            "fact_count": null,
+            "evidence_id_count": null,
+            "provenance_count": null,
+            "missing_evidence_count": null,
+            "all_facts_fresh": null
+          },
+          "cost_usd": null
+        }
+      ]
+    },
+    {
+      "evaluation_id": "AGENT-EVAL-001",
+      "trial": 2,
+      "passed": false,
+      "status": "error",
+      "roles": [
+        "supervisor",
+        "investigation",
+        "investigation",
+        "policy",
+        "policy"
+      ],
+      "tools": [
+        "get_case",
+        "search_policies"
+      ],
+      "citations": [
+        "CHUNK-OFFLINE-1"
+      ],
+      "critic_decisions": [],
+      "latency_ms": 5239.124300002004,
+      "model_calls": 5,
+      "tool_calls": 2,
+      "input_tokens": 3748,
+      "output_tokens": 827,
+      "cost_usd": null,
+      "error_code": "ValueError",
+      "error_detail": "completed policy research requires citations and policy versions",
+      "per_agent": [
+        {
+          "role": "supervisor",
+          "latency_ms": 1528.454,
+          "input_tokens": 354,
+          "output_tokens": 254,
+          "model_calls": 1,
+          "tool_calls": 0,
+          "output_contract": {
+            "complete": null,
+            "fact_count": null,
+            "evidence_id_count": null,
+            "provenance_count": null,
+            "missing_evidence_count": null,
+            "all_facts_fresh": null
+          },
+          "cost_usd": null
+        },
+        {
+          "role": "investigation",
+          "latency_ms": 889.615,
+          "input_tokens": 758,
+          "output_tokens": 166,
+          "model_calls": 1,
+          "tool_calls": 1,
+          "output_contract": {
+            "complete": false,
+            "fact_count": 0,
+            "evidence_id_count": 0,
+            "provenance_count": 0,
+            "missing_evidence_count": 2,
+            "all_facts_fresh": null
+          },
+          "cost_usd": null
+        },
+        {
+          "role": "investigation",
+          "latency_ms": 1061.093,
+          "input_tokens": 886,
+          "output_tokens": 210,
+          "model_calls": 1,
+          "tool_calls": 0,
+          "output_contract": {
+            "complete": true,
+            "fact_count": 1,
+            "evidence_id_count": 1,
+            "provenance_count": 1,
+            "missing_evidence_count": 0,
+            "all_facts_fresh": true
+          },
+          "cost_usd": null
+        },
+        {
+          "role": "policy",
+          "latency_ms": 954.523,
+          "input_tokens": 817,
+          "output_tokens": 114,
+          "model_calls": 1,
+          "tool_calls": 1,
+          "output_contract": {
+            "complete": false,
+            "fact_count": null,
+            "evidence_id_count": null,
+            "provenance_count": null,
+            "missing_evidence_count": null,
+            "all_facts_fresh": null
+          },
+          "cost_usd": null
+        },
+        {
+          "role": "policy",
+          "latency_ms": 789.729,
+          "input_tokens": 933,
+          "output_tokens": 83,
+          "model_calls": 1,
+          "tool_calls": 0,
+          "output_contract": {
+            "complete": true,
+            "fact_count": null,
+            "evidence_id_count": null,
+            "provenance_count": null,
+            "missing_evidence_count": null,
+            "all_facts_fresh": null
+          },
+          "cost_usd": null
+        }
+      ]
+    },
+    {
+      "evaluation_id": "AGENT-EVAL-001",
+      "trial": 3,
+      "passed": false,
+      "status": "error",
+      "roles": [
+        "supervisor",
+        "investigation",
+        "investigation"
+      ],
+      "tools": [
+        "get_case"
+      ],
+      "citations": [],
+      "critic_decisions": [],
+      "latency_ms": 4584.719999998924,
+      "model_calls": 3,
+      "tool_calls": 1,
+      "input_tokens": 2016,
+      "output_tokens": 819,
+      "cost_usd": null,
+      "error_code": "ValueError",
+      "error_detail": "completed investigation requires fresh evidence, provenance, and no gaps",
+      "per_agent": [
+        {
+          "role": "supervisor",
+          "latency_ms": 2417.707,
+          "input_tokens": 354,
+          "output_tokens": 416,
+          "model_calls": 1,
+          "tool_calls": 0,
+          "output_contract": {
+            "complete": null,
+            "fact_count": null,
+            "evidence_id_count": null,
+            "provenance_count": null,
+            "missing_evidence_count": null,
+            "all_facts_fresh": null
+          },
+          "cost_usd": null
+        },
+        {
+          "role": "investigation",
+          "latency_ms": 948.611,
+          "input_tokens": 767,
+          "output_tokens": 167,
+          "model_calls": 1,
+          "tool_calls": 1,
+          "output_contract": {
+            "complete": false,
+            "fact_count": 0,
+            "evidence_id_count": 0,
+            "provenance_count": 0,
+            "missing_evidence_count": 2,
+            "all_facts_fresh": null
+          },
+          "cost_usd": null
+        },
+        {
+          "role": "investigation",
+          "latency_ms": 1195.6299999999999,
+          "input_tokens": 895,
+          "output_tokens": 236,
+          "model_calls": 1,
+          "tool_calls": 0,
+          "output_contract": {
+            "complete": true,
+            "fact_count": 1,
+            "evidence_id_count": 1,
+            "provenance_count": 1,
+            "missing_evidence_count": 2,
+            "all_facts_fresh": true
+          },
+          "cost_usd": null
+        }
+      ]
+    },
+    {
+      "evaluation_id": "AGENT-EVAL-002",
+      "trial": 1,
+      "passed": false,
+      "status": "error",
+      "roles": [
+        "supervisor",
+        "investigation",
+        "investigation",
+        "policy",
+        "policy"
+      ],
+      "tools": [
+        "get_case",
+        "search_policies"
+      ],
+      "citations": [],
+      "critic_decisions": [],
+      "latency_ms": 8370.676599995932,
+      "model_calls": 5,
+      "tool_calls": 2,
+      "input_tokens": 3621,
+      "output_tokens": 869,
+      "cost_usd": null,
+      "error_code": "agent_provider_failed",
+      "error_detail": "The agent provider request failed.",
+      "per_agent": [
+        {
+          "role": "supervisor",
+          "latency_ms": 2032.311,
+          "input_tokens": 354,
+          "output_tokens": 487,
+          "model_calls": 1,
+          "tool_calls": 0,
+          "output_contract": {
+            "complete": null,
+            "fact_count": null,
+            "evidence_id_count": null,
+            "provenance_count": null,
+            "missing_evidence_count": null,
+            "all_facts_fresh": null
+          },
+          "cost_usd": null
+        },
+        {
+          "role": "investigation",
+          "latency_ms": 1429.9759999999999,
+          "input_tokens": 795,
+          "output_tokens": 177,
+          "model_calls": 1,
+          "tool_calls": 1,
+          "output_contract": {
+            "complete": false,
+            "fact_count": 0,
+            "evidence_id_count": 0,
+            "provenance_count": 0,
+            "missing_evidence_count": 5,
+            "all_facts_fresh": null
+          },
+          "cost_usd": null
+        },
+        {
+          "role": "investigation",
+          "latency_ms": 1530.375,
+          "input_tokens": 923,
+          "output_tokens": 123,
+          "model_calls": 1,
+          "tool_calls": 0,
+          "output_contract": {
+            "complete": true,
+            "fact_count": 1,
+            "evidence_id_count": 1,
+            "provenance_count": 1,
+            "missing_evidence_count": 0,
+            "all_facts_fresh": true
+          },
+          "cost_usd": null
+        },
+        {
+          "role": "policy",
+          "latency_ms": 1433.3229999999999,
+          "input_tokens": 837,
+          "output_tokens": 82,
+          "model_calls": 1,
+          "tool_calls": 1,
+          "output_contract": {
+            "complete": false,
+            "fact_count": null,
+            "evidence_id_count": null,
+            "provenance_count": null,
+            "missing_evidence_count": null,
+            "all_facts_fresh": null
+          },
+          "cost_usd": null
+        },
+        {
+          "role": "policy",
+          "latency_ms": 1927.9660000000001,
+          "input_tokens": null,
+          "output_tokens": null,
+          "model_calls": 1,
+          "tool_calls": 0,
+          "output_contract": {
+            "complete": null,
+            "fact_count": null,
+            "evidence_id_count": null,
+            "provenance_count": null,
+            "missing_evidence_count": null,
+            "all_facts_fresh": null
+          },
+          "cost_usd": null
+        }
+      ]
+    },
+    {
+      "evaluation_id": "AGENT-EVAL-002",
+      "trial": 2,
+      "passed": false,
+      "status": "error",
+      "roles": [
+        "supervisor",
+        "investigation"
+      ],
+      "tools": [],
+      "citations": [],
+      "critic_decisions": [],
+      "latency_ms": 3782.2201999952085,
+      "model_calls": 2,
+      "tool_calls": 0,
+      "input_tokens": 799,
+      "output_tokens": 239,
+      "cost_usd": null,
+      "error_code": "agent_provider_failed",
+      "error_detail": "The agent provider request failed.",
+      "per_agent": [
+        {
+          "role": "supervisor",
+          "latency_ms": 1513.643,
+          "input_tokens": 354,
+          "output_tokens": 239,
+          "model_calls": 1,
+          "tool_calls": 0,
+          "output_contract": {
+            "complete": null,
+            "fact_count": null,
+            "evidence_id_count": null,
+            "provenance_count": null,
+            "missing_evidence_count": null,
+            "all_facts_fresh": null
+          },
+          "cost_usd": null
+        },
+        {
+          "role": "investigation",
+          "latency_ms": 2260.6440000000002,
+          "input_tokens": null,
+          "output_tokens": null,
+          "model_calls": 1,
+          "tool_calls": 0,
+          "output_contract": {
+            "complete": null,
+            "fact_count": null,
+            "evidence_id_count": null,
+            "provenance_count": null,
+            "missing_evidence_count": null,
+            "all_facts_fresh": null
+          },
+          "cost_usd": null
+        }
+      ]
+    },
+    {
+      "evaluation_id": "AGENT-EVAL-002",
+      "trial": 3,
+      "passed": false,
+      "status": "error",
+      "roles": [
+        "supervisor"
+      ],
+      "tools": [],
+      "citations": [],
+      "critic_decisions": [],
+      "latency_ms": 1824.592400007532,
+      "model_calls": 1,
+      "tool_calls": 0,
+      "input_tokens": 169,
+      "output_tokens": 0,
+      "cost_usd": null,
+      "error_code": "agent_provider_failed",
+      "error_detail": "The agent provider request failed.",
+      "per_agent": [
+        {
+          "role": "supervisor",
+          "latency_ms": 1829.456,
+          "input_tokens": null,
+          "output_tokens": null,
+          "model_calls": 1,
+          "tool_calls": 0,
+          "output_contract": {
+            "complete": null,
+            "fact_count": null,
+            "evidence_id_count": null,
+            "provenance_count": null,
+            "missing_evidence_count": null,
+            "all_facts_fresh": null
+          },
+          "cost_usd": null
+        }
+      ]
+    },
+    {
+      "evaluation_id": "AGENT-EVAL-003",
+      "trial": 1,
+      "passed": false,
+      "status": "error",
+      "roles": [
+        "supervisor"
+      ],
+      "tools": [],
+      "citations": [],
+      "critic_decisions": [],
+      "latency_ms": 2008.463699996355,
+      "model_calls": 1,
+      "tool_calls": 0,
+      "input_tokens": 168,
+      "output_tokens": 0,
+      "cost_usd": null,
+      "error_code": "agent_provider_failed",
+      "error_detail": "The agent provider request failed.",
+      "per_agent": [
+        {
+          "role": "supervisor",
+          "latency_ms": 2000.0059999999999,
+          "input_tokens": null,
+          "output_tokens": null,
+          "model_calls": 1,
+          "tool_calls": 0,
+          "output_contract": {
+            "complete": null,
+            "fact_count": null,
+            "evidence_id_count": null,
+            "provenance_count": null,
+            "missing_evidence_count": null,
+            "all_facts_fresh": null
+          },
+          "cost_usd": null
+        }
+      ]
+    },
+    {
+      "evaluation_id": "AGENT-EVAL-003",
+      "trial": 2,
+      "passed": false,
+      "status": "error",
+      "roles": [
+        "supervisor"
+      ],
+      "tools": [],
+      "citations": [],
+      "critic_decisions": [],
+      "latency_ms": 2128.054000000702,
+      "model_calls": 1,
+      "tool_calls": 0,
+      "input_tokens": 168,
+      "output_tokens": 0,
+      "cost_usd": null,
+      "error_code": "agent_provider_failed",
+      "error_detail": "The agent provider request failed.",
+      "per_agent": [
+        {
+          "role": "supervisor",
+          "latency_ms": 2128.653,
+          "input_tokens": null,
+          "output_tokens": null,
+          "model_calls": 1,
+          "tool_calls": 0,
+          "output_contract": {
+            "complete": null,
+            "fact_count": null,
+            "evidence_id_count": null,
+            "provenance_count": null,
+            "missing_evidence_count": null,
+            "all_facts_fresh": null
+          },
+          "cost_usd": null
+        }
+      ]
+    },
+    {
+      "evaluation_id": "AGENT-EVAL-003",
+      "trial": 3,
+      "passed": false,
+      "status": "error",
+      "roles": [
+        "supervisor",
+        "investigation",
+        "investigation"
+      ],
+      "tools": [
+        "get_case"
+      ],
+      "citations": [],
+      "critic_decisions": [],
+      "latency_ms": 7986.504400003469,
+      "model_calls": 3,
+      "tool_calls": 1,
+      "input_tokens": 1643,
+      "output_tokens": 551,
+      "cost_usd": null,
+      "error_code": "agent_provider_failed",
+      "error_detail": "The agent provider request failed.",
+      "per_agent": [
+        {
+          "role": "supervisor",
+          "latency_ms": 3942.485,
+          "input_tokens": 352,
+          "output_tokens": 397,
+          "model_calls": 1,
+          "tool_calls": 0,
+          "output_contract": {
+            "complete": null,
+            "fact_count": null,
+            "evidence_id_count": null,
+            "provenance_count": null,
+            "missing_evidence_count": null,
+            "all_facts_fresh": null
+          },
+          "cost_usd": null
+        },
+        {
+          "role": "investigation",
+          "latency_ms": 2707.4519999999998,
+          "input_tokens": 734,
+          "output_tokens": 154,
+          "model_calls": 1,
+          "tool_calls": 1,
+          "output_contract": {
+            "complete": false,
+            "fact_count": 0,
+            "evidence_id_count": 0,
+            "provenance_count": 0,
+            "missing_evidence_count": 2,
+            "all_facts_fresh": null
+          },
+          "cost_usd": null
+        },
+        {
+          "role": "investigation",
+          "latency_ms": 1328.9189999999999,
+          "input_tokens": null,
+          "output_tokens": null,
+          "model_calls": 1,
+          "tool_calls": 0,
+          "output_contract": {
+            "complete": null,
+            "fact_count": null,
+            "evidence_id_count": null,
+            "provenance_count": null,
+            "missing_evidence_count": null,
+            "all_facts_fresh": null
+          },
+          "cost_usd": null
+        }
+      ]
+    },
+    {
+      "evaluation_id": "AGENT-EVAL-004",
+      "trial": 1,
+      "passed": false,
+      "status": "error",
+      "roles": [
+        "supervisor"
+      ],
+      "tools": [],
+      "citations": [],
+      "critic_decisions": [],
+      "latency_ms": 2039.4630999944638,
+      "model_calls": 1,
+      "tool_calls": 0,
+      "input_tokens": 167,
+      "output_tokens": 0,
+      "cost_usd": null,
+      "error_code": "agent_provider_failed",
+      "error_detail": "The agent provider request failed.",
+      "per_agent": [
+        {
+          "role": "supervisor",
+          "latency_ms": 2018.4030000000002,
+          "input_tokens": null,
+          "output_tokens": null,
+          "model_calls": 1,
+          "tool_calls": 0,
+          "output_contract": {
+            "complete": null,
+            "fact_count": null,
+            "evidence_id_count": null,
+            "provenance_count": null,
+            "missing_evidence_count": null,
+            "all_facts_fresh": null
+          },
+          "cost_usd": null
+        }
+      ]
+    },
+    {
+      "evaluation_id": "AGENT-EVAL-004",
+      "trial": 2,
+      "passed": false,
+      "status": "error",
+      "roles": [
+        "supervisor"
+      ],
+      "tools": [],
+      "citations": [],
+      "critic_decisions": [],
+      "latency_ms": 2144.8662000038894,
+      "model_calls": 1,
+      "tool_calls": 0,
+      "input_tokens": 167,
+      "output_tokens": 0,
+      "cost_usd": null,
+      "error_code": "agent_provider_failed",
+      "error_detail": "The agent provider request failed.",
+      "per_agent": [
+        {
+          "role": "supervisor",
+          "latency_ms": 2138.775,
+          "input_tokens": null,
+          "output_tokens": null,
+          "model_calls": 1,
+          "tool_calls": 0,
+          "output_contract": {
+            "complete": null,
+            "fact_count": null,
+            "evidence_id_count": null,
+            "provenance_count": null,
+            "missing_evidence_count": null,
+            "all_facts_fresh": null
+          },
+          "cost_usd": null
+        }
+      ]
+    },
+    {
+      "evaluation_id": "AGENT-EVAL-004",
+      "trial": 3,
+      "passed": false,
+      "status": "error",
+      "roles": [
+        "supervisor"
+      ],
+      "tools": [],
+      "citations": [],
+      "critic_decisions": [],
+      "latency_ms": 2024.8350000038045,
+      "model_calls": 1,
+      "tool_calls": 0,
+      "input_tokens": 167,
+      "output_tokens": 0,
+      "cost_usd": null,
+      "error_code": "agent_provider_failed",
+      "error_detail": "The agent provider request failed.",
+      "per_agent": [
+        {
+          "role": "supervisor",
+          "latency_ms": 2024.2330000000002,
+          "input_tokens": null,
+          "output_tokens": null,
+          "model_calls": 1,
+          "tool_calls": 0,
+          "output_contract": {
+            "complete": null,
+            "fact_count": null,
+            "evidence_id_count": null,
+            "provenance_count": null,
+            "missing_evidence_count": null,
+            "all_facts_fresh": null
+          },
+          "cost_usd": null
+        }
+      ]
+    },
+    {
+      "evaluation_id": "AGENT-EVAL-005",
+      "trial": 1,
+      "passed": false,
+      "status": "error",
+      "roles": [
+        "supervisor"
+      ],
+      "tools": [],
+      "citations": [],
+      "critic_decisions": [],
+      "latency_ms": 2036.1905999889132,
+      "model_calls": 1,
+      "tool_calls": 0,
+      "input_tokens": 168,
+      "output_tokens": 0,
+      "cost_usd": null,
+      "error_code": "agent_provider_failed",
+      "error_detail": "The agent provider request failed.",
+      "per_agent": [
+        {
+          "role": "supervisor",
+          "latency_ms": 2031.212,
+          "input_tokens": null,
+          "output_tokens": null,
+          "model_calls": 1,
+          "tool_calls": 0,
+          "output_contract": {
+            "complete": null,
+            "fact_count": null,
+            "evidence_id_count": null,
+            "provenance_count": null,
+            "missing_evidence_count": null,
+            "all_facts_fresh": null
+          },
+          "cost_usd": null
+        }
+      ]
+    },
+    {
+      "evaluation_id": "AGENT-EVAL-005",
+      "trial": 2,
+      "passed": false,
+      "status": "error",
+      "roles": [
+        "supervisor"
+      ],
+      "tools": [],
+      "citations": [],
+      "critic_decisions": [],
+      "latency_ms": 2244.5662999962224,
+      "model_calls": 1,
+      "tool_calls": 0,
+      "input_tokens": 168,
+      "output_tokens": 0,
+      "cost_usd": null,
+      "error_code": "agent_provider_failed",
+      "error_detail": "The agent provider request failed.",
+      "per_agent": [
+        {
+          "role": "supervisor",
+          "latency_ms": 2235.522,
+          "input_tokens": null,
+          "output_tokens": null,
+          "model_calls": 1,
+          "tool_calls": 0,
+          "output_contract": {
+            "complete": null,
+            "fact_count": null,
+            "evidence_id_count": null,
+            "provenance_count": null,
+            "missing_evidence_count": null,
+            "all_facts_fresh": null
+          },
+          "cost_usd": null
+        }
+      ]
+    },
+    {
+      "evaluation_id": "AGENT-EVAL-005",
+      "trial": 3,
+      "passed": false,
+      "status": "error",
+      "roles": [
+        "supervisor"
+      ],
+      "tools": [],
+      "citations": [],
+      "critic_decisions": [],
+      "latency_ms": 1527.1036000049207,
+      "model_calls": 1,
+      "tool_calls": 0,
+      "input_tokens": 168,
+      "output_tokens": 0,
+      "cost_usd": null,
+      "error_code": "agent_provider_failed",
+      "error_detail": "The agent provider request failed.",
+      "per_agent": [
+        {
+          "role": "supervisor",
+          "latency_ms": 1520.918,
+          "input_tokens": null,
+          "output_tokens": null,
+          "model_calls": 1,
+          "tool_calls": 0,
+          "output_contract": {
+            "complete": null,
+            "fact_count": null,
+            "evidence_id_count": null,
+            "provenance_count": null,
+            "missing_evidence_count": null,
+            "all_facts_fresh": null
+          },
+          "cost_usd": null
+        }
+      ]
+    },
+    {
+      "evaluation_id": "AGENT-EVAL-006",
+      "trial": 1,
+      "passed": false,
+      "status": "error",
+      "roles": [
+        "supervisor"
+      ],
+      "tools": [],
+      "citations": [],
+      "critic_decisions": [],
+      "latency_ms": 1825.1581999938935,
+      "model_calls": 1,
+      "tool_calls": 0,
+      "input_tokens": 167,
+      "output_tokens": 0,
+      "cost_usd": null,
+      "error_code": "agent_provider_failed",
+      "error_detail": "The agent provider request failed.",
+      "per_agent": [
+        {
+          "role": "supervisor",
+          "latency_ms": 1818.424,
+          "input_tokens": null,
+          "output_tokens": null,
+          "model_calls": 1,
+          "tool_calls": 0,
+          "output_contract": {
+            "complete": null,
+            "fact_count": null,
+            "evidence_id_count": null,
+            "provenance_count": null,
+            "missing_evidence_count": null,
+            "all_facts_fresh": null
+          },
+          "cost_usd": null
+        }
+      ]
+    },
+    {
+      "evaluation_id": "AGENT-EVAL-006",
+      "trial": 2,
+      "passed": false,
+      "status": "error",
+      "roles": [
+        "supervisor",
+        "investigation",
+        "investigation",
+        "policy",
+        "policy"
+      ],
+      "tools": [
+        "get_case",
+        "search_policies"
+      ],
+      "citations": [
+        "CHUNK-OFFLINE-1"
+      ],
+      "critic_decisions": [],
+      "latency_ms": 8268.472699986887,
+      "model_calls": 5,
+      "tool_calls": 2,
+      "input_tokens": 3846,
+      "output_tokens": 1024,
+      "cost_usd": null,
+      "error_code": "ValueError",
+      "error_detail": "completed policy research requires citations and policy versions",
+      "per_agent": [
+        {
+          "role": "supervisor",
+          "latency_ms": 3661.9359999999997,
+          "input_tokens": 354,
+          "output_tokens": 418,
+          "model_calls": 1,
+          "tool_calls": 0,
+          "output_contract": {
+            "complete": null,
+            "fact_count": null,
+            "evidence_id_count": null,
+            "provenance_count": null,
+            "missing_evidence_count": null,
+            "all_facts_fresh": null
+          },
+          "cost_usd": null
+        },
+        {
+          "role": "investigation",
+          "latency_ms": 917.846,
+          "input_tokens": 757,
+          "output_tokens": 79,
+          "model_calls": 1,
+          "tool_calls": 1,
+          "output_contract": {
+            "complete": false,
+            "fact_count": 0,
+            "evidence_id_count": 0,
+            "provenance_count": 0,
+            "missing_evidence_count": 2,
+            "all_facts_fresh": null
+          },
+          "cost_usd": null
+        },
+        {
+          "role": "investigation",
+          "latency_ms": 1314.009,
+          "input_tokens": 887,
+          "output_tokens": 261,
+          "model_calls": 1,
+          "tool_calls": 0,
+          "output_contract": {
+            "complete": true,
+            "fact_count": 1,
+            "evidence_id_count": 1,
+            "provenance_count": 1,
+            "missing_evidence_count": 0,
+            "all_facts_fresh": true
+          },
+          "cost_usd": null
+        },
+        {
+          "role": "policy",
+          "latency_ms": 1033.482,
+          "input_tokens": 866,
+          "output_tokens": 122,
+          "model_calls": 1,
+          "tool_calls": 1,
+          "output_contract": {
+            "complete": false,
+            "fact_count": null,
+            "evidence_id_count": null,
+            "provenance_count": null,
+            "missing_evidence_count": null,
+            "all_facts_fresh": null
+          },
+          "cost_usd": null
+        },
+        {
+          "role": "policy",
+          "latency_ms": 1327.468,
+          "input_tokens": 982,
+          "output_tokens": 144,
+          "model_calls": 1,
+          "tool_calls": 0,
+          "output_contract": {
+            "complete": true,
+            "fact_count": null,
+            "evidence_id_count": null,
+            "provenance_count": null,
+            "missing_evidence_count": null,
+            "all_facts_fresh": null
+          },
+          "cost_usd": null
+        }
+      ]
+    },
+    {
+      "evaluation_id": "AGENT-EVAL-006",
+      "trial": 3,
+      "passed": false,
+      "status": "error",
+      "roles": [
+        "supervisor",
+        "investigation",
+        "investigation",
+        "policy",
+        "policy"
+      ],
+      "tools": [
+        "get_case",
+        "search_policies"
+      ],
+      "citations": [
+        "CHUNK-OFFLINE-1"
+      ],
+      "critic_decisions": [],
+      "latency_ms": 8786.263499991037,
+      "model_calls": 5,
+      "tool_calls": 2,
+      "input_tokens": 3758,
+      "output_tokens": 898,
+      "cost_usd": null,
+      "error_code": "ValueError",
+      "error_detail": "completed policy research requires citations and policy versions",
+      "per_agent": [
+        {
+          "role": "supervisor",
+          "latency_ms": 4070.428,
+          "input_tokens": 354,
+          "output_tokens": 391,
+          "model_calls": 1,
+          "tool_calls": 0,
+          "output_contract": {
+            "complete": null,
+            "fact_count": null,
+            "evidence_id_count": null,
+            "provenance_count": null,
+            "missing_evidence_count": null,
+            "all_facts_fresh": null
+          },
+          "cost_usd": null
+        },
+        {
+          "role": "investigation",
+          "latency_ms": 1477.6039999999998,
+          "input_tokens": 747,
+          "output_tokens": 102,
+          "model_calls": 1,
+          "tool_calls": 1,
+          "output_contract": {
+            "complete": false,
+            "fact_count": 0,
+            "evidence_id_count": 0,
+            "provenance_count": 0,
+            "missing_evidence_count": 2,
+            "all_facts_fresh": null
+          },
+          "cost_usd": null
+        },
+        {
+          "role": "investigation",
+          "latency_ms": 1311.633,
+          "input_tokens": 877,
+          "output_tokens": 236,
+          "model_calls": 1,
+          "tool_calls": 0,
+          "output_contract": {
+            "complete": true,
+            "fact_count": 1,
+            "evidence_id_count": 1,
+            "provenance_count": 1,
+            "missing_evidence_count": 0,
+            "all_facts_fresh": true
+          },
+          "cost_usd": null
+        },
+        {
+          "role": "policy",
+          "latency_ms": 991.957,
+          "input_tokens": 832,
+          "output_tokens": 83,
+          "model_calls": 1,
+          "tool_calls": 1,
+          "output_contract": {
+            "complete": false,
+            "fact_count": null,
+            "evidence_id_count": null,
+            "provenance_count": null,
+            "missing_evidence_count": null,
+            "all_facts_fresh": null
+          },
+          "cost_usd": null
+        },
+        {
+          "role": "policy",
+          "latency_ms": 920.372,
+          "input_tokens": 948,
+          "output_tokens": 86,
+          "model_calls": 1,
+          "tool_calls": 0,
+          "output_contract": {
+            "complete": true,
+            "fact_count": null,
+            "evidence_id_count": null,
+            "provenance_count": null,
+            "missing_evidence_count": null,
+            "all_facts_fresh": null
+          },
+          "cost_usd": null
+        }
+      ]
+    },
+    {
+      "evaluation_id": "AGENT-EVAL-007",
+      "trial": 1,
+      "passed": false,
+      "status": "error",
+      "roles": [
+        "supervisor",
+        "investigation",
+        "investigation",
+        "policy",
+        "policy"
+      ],
+      "tools": [
+        "get_case",
+        "search_policies"
+      ],
+      "citations": [
+        "CHUNK-OFFLINE-1"
+      ],
+      "critic_decisions": [],
+      "latency_ms": 12590.463299988187,
+      "model_calls": 5,
+      "tool_calls": 2,
+      "input_tokens": 3821,
+      "output_tokens": 1070,
+      "cost_usd": null,
+      "error_code": "ValueError",
+      "error_detail": "completed policy research requires citations and policy versions",
+      "per_agent": [
+        {
+          "role": "supervisor",
+          "latency_ms": 2142.267,
+          "input_tokens": 351,
+          "output_tokens": 370,
+          "model_calls": 1,
+          "tool_calls": 0,
+          "output_contract": {
+            "complete": null,
+            "fact_count": null,
+            "evidence_id_count": null,
+            "provenance_count": null,
+            "missing_evidence_count": null,
+            "all_facts_fresh": null
+          },
+          "cost_usd": null
+        },
+        {
+          "role": "investigation",
+          "latency_ms": 1126.919,
+          "input_tokens": 762,
+          "output_tokens": 165,
+          "model_calls": 1,
+          "tool_calls": 1,
+          "output_contract": {
+            "complete": false,
+            "fact_count": 0,
+            "evidence_id_count": 0,
+            "provenance_count": 0,
+            "missing_evidence_count": 2,
+            "all_facts_fresh": null
+          },
+          "cost_usd": null
+        },
+        {
+          "role": "investigation",
+          "latency_ms": 1734.4409999999998,
+          "input_tokens": 892,
+          "output_tokens": 249,
+          "model_calls": 1,
+          "tool_calls": 0,
+          "output_contract": {
+            "complete": true,
+            "fact_count": 1,
+            "evidence_id_count": 1,
+            "provenance_count": 1,
+            "missing_evidence_count": 0,
+            "all_facts_fresh": true
+          },
+          "cost_usd": null
+        },
+        {
+          "role": "policy",
+          "latency_ms": 6247.073,
+          "input_tokens": 850,
+          "output_tokens": 88,
+          "model_calls": 1,
+          "tool_calls": 1,
+          "output_contract": {
+            "complete": false,
+            "fact_count": null,
+            "evidence_id_count": null,
+            "provenance_count": null,
+            "missing_evidence_count": null,
+            "all_facts_fresh": null
+          },
+          "cost_usd": null
+        },
+        {
+          "role": "policy",
+          "latency_ms": 1328.7469999999998,
+          "input_tokens": 966,
+          "output_tokens": 198,
+          "model_calls": 1,
+          "tool_calls": 0,
+          "output_contract": {
+            "complete": true,
+            "fact_count": null,
+            "evidence_id_count": null,
+            "provenance_count": null,
+            "missing_evidence_count": null,
+            "all_facts_fresh": null
+          },
+          "cost_usd": null
+        }
+      ]
+    },
+    {
+      "evaluation_id": "AGENT-EVAL-007",
+      "trial": 2,
+      "passed": false,
+      "status": "error",
+      "roles": [
+        "supervisor",
+        "investigation"
+      ],
+      "tools": [],
+      "citations": [],
+      "critic_decisions": [],
+      "latency_ms": 3884.3599000101676,
+      "model_calls": 2,
+      "tool_calls": 0,
+      "input_tokens": 821,
+      "output_tokens": 378,
+      "cost_usd": null,
+      "error_code": "agent_provider_failed",
+      "error_detail": "The agent provider request failed.",
+      "per_agent": [
+        {
+          "role": "supervisor",
+          "latency_ms": 1784.054,
+          "input_tokens": 351,
+          "output_tokens": 378,
+          "model_calls": 1,
+          "tool_calls": 0,
+          "output_contract": {
+            "complete": null,
+            "fact_count": null,
+            "evidence_id_count": null,
+            "provenance_count": null,
+            "missing_evidence_count": null,
+            "all_facts_fresh": null
+          },
+          "cost_usd": null
+        },
+        {
+          "role": "investigation",
+          "latency_ms": 2094.0249999999996,
+          "input_tokens": null,
+          "output_tokens": null,
+          "model_calls": 1,
+          "tool_calls": 0,
+          "output_contract": {
+            "complete": null,
+            "fact_count": null,
+            "evidence_id_count": null,
+            "provenance_count": null,
+            "missing_evidence_count": null,
+            "all_facts_fresh": null
+          },
+          "cost_usd": null
+        }
+      ]
+    },
+    {
+      "evaluation_id": "AGENT-EVAL-007",
+      "trial": 3,
+      "passed": false,
+      "status": "error",
+      "roles": [
+        "supervisor"
+      ],
+      "tools": [],
+      "citations": [],
+      "critic_decisions": [],
+      "latency_ms": 1366.1393000074895,
+      "model_calls": 1,
+      "tool_calls": 0,
+      "input_tokens": 165,
+      "output_tokens": 0,
+      "cost_usd": null,
+      "error_code": "agent_provider_failed",
+      "error_detail": "The agent provider request failed.",
+      "per_agent": [
+        {
+          "role": "supervisor",
+          "latency_ms": 1362.4940000000001,
+          "input_tokens": null,
+          "output_tokens": null,
+          "model_calls": 1,
+          "tool_calls": 0,
+          "output_contract": {
+            "complete": null,
+            "fact_count": null,
+            "evidence_id_count": null,
+            "provenance_count": null,
+            "missing_evidence_count": null,
+            "all_facts_fresh": null
+          },
+          "cost_usd": null
+        }
+      ]
+    },
+    {
+      "evaluation_id": "AGENT-EVAL-008",
+      "trial": 1,
+      "passed": false,
+      "status": "error",
+      "roles": [
+        "supervisor",
+        "investigation"
+      ],
+      "tools": [],
+      "citations": [],
+      "critic_decisions": [],
+      "latency_ms": 8236.106900003506,
+      "model_calls": 2,
+      "tool_calls": 0,
+      "input_tokens": 875,
+      "output_tokens": 325,
+      "cost_usd": null,
+      "error_code": "agent_provider_failed",
+      "error_detail": "The agent provider request failed.",
+      "per_agent": [
+        {
+          "role": "supervisor",
+          "latency_ms": 5979.243,
+          "input_tokens": 356,
+          "output_tokens": 325,
+          "model_calls": 1,
+          "tool_calls": 0,
+          "output_contract": {
+            "complete": null,
+            "fact_count": null,
+            "evidence_id_count": null,
+            "provenance_count": null,
+            "missing_evidence_count": null,
+            "all_facts_fresh": null
+          },
+          "cost_usd": null
+        },
+        {
+          "role": "investigation",
+          "latency_ms": 2249.213,
+          "input_tokens": null,
+          "output_tokens": null,
+          "model_calls": 1,
+          "tool_calls": 0,
+          "output_contract": {
+            "complete": null,
+            "fact_count": null,
+            "evidence_id_count": null,
+            "provenance_count": null,
+            "missing_evidence_count": null,
+            "all_facts_fresh": null
+          },
+          "cost_usd": null
+        }
+      ]
+    },
+    {
+      "evaluation_id": "AGENT-EVAL-008",
+      "trial": 2,
+      "passed": false,
+      "status": "error",
+      "roles": [
+        "supervisor"
+      ],
+      "tools": [],
+      "citations": [],
+      "critic_decisions": [],
+      "latency_ms": 1737.5433999986853,
+      "model_calls": 1,
+      "tool_calls": 0,
+      "input_tokens": 172,
+      "output_tokens": 0,
+      "cost_usd": null,
+      "error_code": "agent_provider_failed",
+      "error_detail": "The agent provider request failed.",
+      "per_agent": [
+        {
+          "role": "supervisor",
+          "latency_ms": 1737.816,
+          "input_tokens": null,
+          "output_tokens": null,
+          "model_calls": 1,
+          "tool_calls": 0,
+          "output_contract": {
+            "complete": null,
+            "fact_count": null,
+            "evidence_id_count": null,
+            "provenance_count": null,
+            "missing_evidence_count": null,
+            "all_facts_fresh": null
+          },
+          "cost_usd": null
+        }
+      ]
+    },
+    {
+      "evaluation_id": "AGENT-EVAL-008",
+      "trial": 3,
+      "passed": false,
+      "status": "error",
+      "roles": [
+        "supervisor"
+      ],
+      "tools": [],
+      "citations": [],
+      "critic_decisions": [],
+      "latency_ms": 1951.5332000009948,
+      "model_calls": 1,
+      "tool_calls": 0,
+      "input_tokens": 172,
+      "output_tokens": 0,
+      "cost_usd": null,
+      "error_code": "agent_provider_failed",
+      "error_detail": "The agent provider request failed.",
+      "per_agent": [
+        {
+          "role": "supervisor",
+          "latency_ms": 1943.864,
+          "input_tokens": null,
+          "output_tokens": null,
+          "model_calls": 1,
+          "tool_calls": 0,
+          "output_contract": {
+            "complete": null,
+            "fact_count": null,
+            "evidence_id_count": null,
+            "provenance_count": null,
+            "missing_evidence_count": null,
+            "all_facts_fresh": null
+          },
+          "cost_usd": null
+        }
+      ]
+    },
+    {
+      "evaluation_id": "AGENT-EVAL-009",
+      "trial": 1,
+      "passed": false,
+      "status": "error",
+      "roles": [
+        "supervisor"
+      ],
+      "tools": [],
+      "citations": [],
+      "critic_decisions": [],
+      "latency_ms": 1961.773400005768,
+      "model_calls": 1,
+      "tool_calls": 0,
+      "input_tokens": 168,
+      "output_tokens": 0,
+      "cost_usd": null,
+      "error_code": "agent_provider_failed",
+      "error_detail": "The agent provider request failed.",
+      "per_agent": [
+        {
+          "role": "supervisor",
+          "latency_ms": 1957.1970000000001,
+          "input_tokens": null,
+          "output_tokens": null,
+          "model_calls": 1,
+          "tool_calls": 0,
+          "output_contract": {
+            "complete": null,
+            "fact_count": null,
+            "evidence_id_count": null,
+            "provenance_count": null,
+            "missing_evidence_count": null,
+            "all_facts_fresh": null
+          },
+          "cost_usd": null
+        }
+      ]
+    },
+    {
+      "evaluation_id": "AGENT-EVAL-009",
+      "trial": 2,
+      "passed": false,
+      "status": "error",
+      "roles": [
+        "supervisor"
+      ],
+      "tools": [],
+      "citations": [],
+      "critic_decisions": [],
+      "latency_ms": 2026.1547000118298,
+      "model_calls": 1,
+      "tool_calls": 0,
+      "input_tokens": 168,
+      "output_tokens": 0,
+      "cost_usd": null,
+      "error_code": "agent_provider_failed",
+      "error_detail": "The agent provider request failed.",
+      "per_agent": [
+        {
+          "role": "supervisor",
+          "latency_ms": 2015.304,
+          "input_tokens": null,
+          "output_tokens": null,
+          "model_calls": 1,
+          "tool_calls": 0,
+          "output_contract": {
+            "complete": null,
+            "fact_count": null,
+            "evidence_id_count": null,
+            "provenance_count": null,
+            "missing_evidence_count": null,
+            "all_facts_fresh": null
+          },
+          "cost_usd": null
+        }
+      ]
+    },
+    {
+      "evaluation_id": "AGENT-EVAL-009",
+      "trial": 3,
+      "passed": false,
+      "status": "error",
+      "roles": [
+        "supervisor"
+      ],
+      "tools": [],
+      "citations": [],
+      "critic_decisions": [],
+      "latency_ms": 1934.721500001615,
+      "model_calls": 1,
+      "tool_calls": 0,
+      "input_tokens": 168,
+      "output_tokens": 0,
+      "cost_usd": null,
+      "error_code": "agent_provider_failed",
+      "error_detail": "The agent provider request failed.",
+      "per_agent": [
+        {
+          "role": "supervisor",
+          "latency_ms": 1936.396,
+          "input_tokens": null,
+          "output_tokens": null,
+          "model_calls": 1,
+          "tool_calls": 0,
+          "output_contract": {
+            "complete": null,
+            "fact_count": null,
+            "evidence_id_count": null,
+            "provenance_count": null,
+            "missing_evidence_count": null,
+            "all_facts_fresh": null
+          },
+          "cost_usd": null
+        }
+      ]
+    },
+    {
+      "evaluation_id": "AGENT-EVAL-010",
+      "trial": 1,
+      "passed": false,
+      "status": "error",
+      "roles": [
+        "supervisor"
+      ],
+      "tools": [],
+      "citations": [],
+      "critic_decisions": [],
+      "latency_ms": 1926.457699999446,
+      "model_calls": 1,
+      "tool_calls": 0,
+      "input_tokens": 169,
+      "output_tokens": 0,
+      "cost_usd": null,
+      "error_code": "agent_provider_failed",
+      "error_detail": "The agent provider request failed.",
+      "per_agent": [
+        {
+          "role": "supervisor",
+          "latency_ms": 1919.2579999999998,
+          "input_tokens": null,
+          "output_tokens": null,
+          "model_calls": 1,
+          "tool_calls": 0,
+          "output_contract": {
+            "complete": null,
+            "fact_count": null,
+            "evidence_id_count": null,
+            "provenance_count": null,
+            "missing_evidence_count": null,
+            "all_facts_fresh": null
+          },
+          "cost_usd": null
+        }
+      ]
+    },
+    {
+      "evaluation_id": "AGENT-EVAL-010",
+      "trial": 2,
+      "passed": false,
+      "status": "error",
+      "roles": [
+        "supervisor"
+      ],
+      "tools": [],
+      "citations": [],
+      "critic_decisions": [],
+      "latency_ms": 2335.297100013122,
+      "model_calls": 1,
+      "tool_calls": 0,
+      "input_tokens": 169,
+      "output_tokens": 0,
+      "cost_usd": null,
+      "error_code": "agent_provider_failed",
+      "error_detail": "The agent provider request failed.",
+      "per_agent": [
+        {
+          "role": "supervisor",
+          "latency_ms": 2330.306,
+          "input_tokens": null,
+          "output_tokens": null,
+          "model_calls": 1,
+          "tool_calls": 0,
+          "output_contract": {
+            "complete": null,
+            "fact_count": null,
+            "evidence_id_count": null,
+            "provenance_count": null,
+            "missing_evidence_count": null,
+            "all_facts_fresh": null
+          },
+          "cost_usd": null
+        }
+      ]
+    },
+    {
+      "evaluation_id": "AGENT-EVAL-010",
+      "trial": 3,
+      "passed": false,
+      "status": "error",
+      "roles": [
+        "supervisor",
+        "investigation",
+        "investigation",
+        "policy",
+        "policy"
+      ],
+      "tools": [
+        "get_case",
+        "search_policies"
+      ],
+      "citations": [
+        "CHUNK-OFFLINE-1"
+      ],
+      "critic_decisions": [],
+      "latency_ms": 10535.713299992494,
+      "model_calls": 5,
+      "tool_calls": 2,
+      "input_tokens": 3822,
+      "output_tokens": 957,
+      "cost_usd": null,
+      "error_code": "ValueError",
+      "error_detail": "completed policy research requires citations and policy versions",
+      "per_agent": [
+        {
+          "role": "supervisor",
+          "latency_ms": 1840.8400000000001,
+          "input_tokens": 354,
+          "output_tokens": 433,
+          "model_calls": 1,
+          "tool_calls": 0,
+          "output_contract": {
+            "complete": null,
+            "fact_count": null,
+            "evidence_id_count": null,
+            "provenance_count": null,
+            "missing_evidence_count": null,
+            "all_facts_fresh": null
+          },
+          "cost_usd": null
+        },
+        {
+          "role": "investigation",
+          "latency_ms": 5527.072999999999,
+          "input_tokens": 785,
+          "output_tokens": 97,
+          "model_calls": 1,
+          "tool_calls": 1,
+          "output_contract": {
+            "complete": false,
+            "fact_count": 0,
+            "evidence_id_count": 0,
+            "provenance_count": 0,
+            "missing_evidence_count": 1,
+            "all_facts_fresh": null
+          },
+          "cost_usd": null
+        },
+        {
+          "role": "investigation",
+          "latency_ms": 1226.626,
+          "input_tokens": 913,
+          "output_tokens": 192,
+          "model_calls": 1,
+          "tool_calls": 0,
+          "output_contract": {
+            "complete": true,
+            "fact_count": 1,
+            "evidence_id_count": 1,
+            "provenance_count": 1,
+            "missing_evidence_count": 0,
+            "all_facts_fresh": true
+          },
+          "cost_usd": null
+        },
+        {
+          "role": "policy",
+          "latency_ms": 773.159,
+          "input_tokens": 827,
+          "output_tokens": 88,
+          "model_calls": 1,
+          "tool_calls": 1,
+          "output_contract": {
+            "complete": false,
+            "fact_count": null,
+            "evidence_id_count": null,
+            "provenance_count": null,
+            "missing_evidence_count": null,
+            "all_facts_fresh": null
+          },
+          "cost_usd": null
+        },
+        {
+          "role": "policy",
+          "latency_ms": 1163.887,
+          "input_tokens": 943,
+          "output_tokens": 147,
+          "model_calls": 1,
+          "tool_calls": 0,
+          "output_contract": {
+            "complete": true,
+            "fact_count": null,
+            "evidence_id_count": null,
+            "provenance_count": null,
+            "missing_evidence_count": null,
+            "all_facts_fresh": null
+          },
+          "cost_usd": null
+        }
+      ]
+    }
+  ],
+  "limitations": [
+    "Synthetic evidence only; no external business system is modified.",
+    "Unknown provider pricing remains null rather than being invented.",
+    "Quota failures remain visible as failed trials."
+  ]
+}

@@ -1,0 +1,186 @@
+{
+  "measured_at": "2026-10-01T01:07:47.689515+00:00",
+  "provider_backed": true,
+  "synthetic_data_only": true,
+  "credential_stored": false,
+  "result": {
+    "evaluation_id": "AGENT-EVAL-001",
+    "trial": 1,
+    "passed": true,
+    "status": "ready_for_control_plane",
+    "roles": [
+      "supervisor",
+      "investigation",
+      "investigation",
+      "policy",
+      "policy",
+      "resolution",
+      "critic"
+    ],
+    "tools": [
+      "get_case",
+      "search_policies"
+    ],
+    "citations": [
+      "CHUNK-OFFLINE-1"
+    ],
+    "critic_decisions": [
+      "accept"
+    ],
+    "latency_ms": 8074.080999998841,
+    "model_calls": 7,
+    "tool_calls": 2,
+    "input_tokens": 5598,
+    "output_tokens": 1424,
+    "cost_usd": null,
+    "error_code": null,
+    "error_detail": null,
+    "per_agent": [
+      {
+        "role": "supervisor",
+        "latency_ms": 1646.384,
+        "input_tokens": 354,
+        "output_tokens": 399,
+        "model_calls": 1,
+        "tool_calls": 0,
+        "output_contract": {
+          "complete": null,
+          "fact_count": null,
+          "evidence_id_count": null,
+          "provenance_count": null,
+          "missing_evidence_count": null,
+          "citation_count": null,
+          "policy_version_count": null,
+          "missing_policy": null,
+          "all_facts_fresh": null
+        },
+        "cost_usd": null
+      },
+      {
+        "role": "investigation",
+        "latency_ms": 989.654,
+        "input_tokens": 745,
+        "output_tokens": 106,
+        "model_calls": 1,
+        "tool_calls": 1,
+        "output_contract": {
+          "complete": false,
+          "fact_count": 0,
+          "evidence_id_count": 0,
+          "provenance_count": 0,
+          "missing_evidence_count": 2,
+          "citation_count": null,
+          "policy_version_count": null,
+          "missing_policy": null,
+          "all_facts_fresh": null
+        },
+        "cost_usd": null
+      },
+      {
+        "role": "investigation",
+        "latency_ms": 1126.855,
+        "input_tokens": 873,
+        "output_tokens": 207,
+        "model_calls": 1,
+        "tool_calls": 0,
+        "output_contract": {
+          "complete": true,
+          "fact_count": 1,
+          "evidence_id_count": 1,
+          "provenance_count": 1,
+          "missing_evidence_count": 0,
+          "citation_count": null,
+          "policy_version_count": null,
+          "missing_policy": null,
+          "all_facts_fresh": true
+        },
+        "cost_usd": null
+      },
+      {
+        "role": "policy",
+        "latency_ms": 939.215,
+        "input_tokens": 803,
+        "output_tokens": 116,
+        "model_calls": 1,
+        "tool_calls": 1,
+        "output_contract": {
+          "complete": false,
+          "fact_count": null,
+          "evidence_id_count": null,
+          "provenance_count": null,
+          "missing_evidence_count": null,
+          "citation_count": 0,
+          "policy_version_count": 0,
+          "missing_policy": true,
+          "all_facts_fresh": null
+        },
+        "cost_usd": null
+      },
+      {
+        "role": "policy",
+        "latency_ms": 987.407,
+        "input_tokens": 919,
+        "output_tokens": 134,
+        "model_calls": 1,
+        "tool_calls": 0,
+        "output_contract": {
+          "complete": true,
+          "fact_count": null,
+          "evidence_id_count": null,
+          "provenance_count": null,
+          "missing_evidence_count": null,
+          "citation_count": 1,
+          "policy_version_count": 0,
+          "missing_policy": false,
+          "all_facts_fresh": null
+        },
+        "cost_usd": null
+      },
+      {
+        "role": "resolution",
+        "latency_ms": 1428.976,
+        "input_tokens": 1046,
+        "output_tokens": 343,
+        "model_calls": 1,
+        "tool_calls": 0,
+        "output_contract": {
+          "complete": null,
+          "fact_count": null,
+          "evidence_id_count": null,
+          "provenance_count": null,
+          "missing_evidence_count": null,
+          "citation_count": null,
+          "policy_version_count": null,
+          "missing_policy": null,
+          "all_facts_fresh": null
+        },
+        "cost_usd": null
+      },
+      {
+        "role": "critic",
+        "latency_ms": 927.224,
+        "input_tokens": 858,
+        "output_tokens": 119,
+        "model_calls": 1,
+        "tool_calls": 0,
+        "output_contract": {
+          "complete": null,
+          "fact_count": null,
+          "evidence_id_count": null,
+          "provenance_count": null,
+          "missing_evidence_count": 0,
+          "citation_count": null,
+          "policy_version_count": null,
+          "missing_policy": null,
+          "all_facts_fresh": null
+        },
+        "cost_usd": null
+      }
+    ]
+  },
+  "limitations": [
+    "This is one verified trace, not a general model-quality claim.",
+    "No external business system was modified.",
+    "Cost remains null when provider pricing is not configured."
+  ]
+}

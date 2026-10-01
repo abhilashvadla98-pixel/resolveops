@@ -19,6 +19,36 @@ from resolveops.security.pii import redact_employee_access_snapshot
 
 AGENT_READER = Actor(actor_id="MULTI-AGENT-READER", role=ActorRole.AGENT)
 
+RESOURCE_READ_TOOL_ARGUMENTS = {
+    "get_case": "case_id",
+    "get_customer": "customer_id",
+    "get_order": "order_id",
+    "get_payment": "payment_id",
+    "get_return": "return_id",
+    "get_refund": "refund_id",
+    "get_it_snapshot": "it_case_id",
+}
+
+
+def argument_contracts(tool_names: list[str]) -> dict[str, dict[str, object]]:
+    """Return the exact, provider-visible argument contract for allowlisted tools."""
+    contracts: dict[str, dict[str, object]] = {}
+    for tool_name in tool_names:
+        if tool_name in RESOURCE_READ_TOOL_ARGUMENTS:
+            argument_name = RESOURCE_READ_TOOL_ARGUMENTS[tool_name]
+            contracts[tool_name] = {
+                "required": [argument_name],
+                "optional": [],
+                "example": {argument_name: "identifier from the supplied context"},
+            }
+        elif tool_name == "search_policies":
+            contracts[tool_name] = {
+                "required": ["query"],
+                "optional": ["issue_type", "top_k"],
+                "example": {"query": "focused policy question", "top_k": "5"},
+            }
+    return contracts
+
 
 class ResourceIdInput(DomainModel):
     resource_id: Identifier
@@ -38,7 +68,7 @@ class AgentToolResult(DomainModel):
     data: dict[str, object]
 
 
-ToolHandler = Callable[[dict[str, str]], AgentToolResult]
+ToolHandler = Callable[[dict[str, object]], AgentToolResult]
 
 
 class AgentReadToolRegistry:
@@ -72,10 +102,12 @@ class AgentReadToolRegistry:
         handler = self._handlers.get(request.tool_name)
         if handler is None:
             raise ValueError(f"unknown agent tool {request.tool_name}")
-        return handler(request.arguments)
+        return handler(request.arguments.model_dump(mode="json", exclude_none=True))
 
-    def _customer_resource(self, resource_type: str, arguments: dict[str, str]) -> AgentToolResult:
-        parsed = ResourceIdInput.model_validate(arguments)
+    def _customer_resource(
+        self, resource_type: str, arguments: dict[str, object]
+    ) -> AgentToolResult:
+        parsed = _parse_resource_id(resource_type, arguments)
         if (
             resource_type == "case"
             and self.external_read_client is not None
@@ -129,8 +161,8 @@ class AgentReadToolRegistry:
             data=value.model_dump(mode="json"),
         )
 
-    def _it_snapshot(self, arguments: dict[str, str]) -> AgentToolResult:
-        parsed = ResourceIdInput.model_validate(arguments)
+    def _it_snapshot(self, arguments: dict[str, object]) -> AgentToolResult:
+        parsed = _parse_resource_id("it_case", arguments)
         with self.session_factory() as session:
             snapshot = redact_employee_access_snapshot(
                 EmployeeITStore(session).get_snapshot(parsed.resource_id)
@@ -143,7 +175,7 @@ class AgentReadToolRegistry:
             data=snapshot.model_dump(mode="json"),
         )
 
-    def _search_policies(self, arguments: dict[str, str]) -> AgentToolResult:
+    def _search_policies(self, arguments: dict[str, object]) -> AgentToolResult:
         parsed = PolicySearchInput.model_validate(arguments)
         with self.session_factory() as session:
             results = HybridPolicyRetriever(session, self.embedding_provider).search(
@@ -159,3 +191,17 @@ class AgentReadToolRegistry:
             observed_at=self.clock(),
             data={"results": [item.model_dump(mode="json") for item in results]},
         )
+
+
+def _parse_resource_id(resource_type: str, arguments: dict[str, object]) -> ResourceIdInput:
+    """Validate a natural tool-specific ID while retaining the v1 generic alias."""
+    expected_key = f"{resource_type}_id"
+    supplied_keys = set(arguments)
+    accepted_keys = {expected_key, "resource_id"}
+    if len(supplied_keys) != 1 or not supplied_keys <= accepted_keys:
+        raise ValueError(
+            f"{resource_type} read requires exactly one {expected_key}; "
+            f"received keys {sorted(supplied_keys)}"
+        )
+    supplied_key = next(iter(supplied_keys))
+    return ResourceIdInput.model_validate({"resource_id": arguments[supplied_key]})
