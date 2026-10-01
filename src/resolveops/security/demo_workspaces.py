@@ -2,6 +2,7 @@ import hashlib
 from collections import OrderedDict
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 from threading import RLock
 
 from sqlalchemy import Engine, inspect
@@ -11,6 +12,8 @@ from sqlalchemy.schema import CreateSchema, DropSchema
 from resolveops.database.base import Base
 from resolveops.database.demo_scenarios import reset_demo_scenarios
 from resolveops.database.session import create_session_factory
+from resolveops.knowledge.embeddings import FeatureHashEmbeddingProvider
+from resolveops.knowledge.ingestion import ingest_directory
 from resolveops.security.models import SecurityPrincipal
 
 
@@ -34,12 +37,14 @@ class DemoWorkspaceRegistry:
         *,
         ttl_seconds: int,
         max_sessions: int,
+        policy_directory: Path = Path("domain_packs"),
     ) -> None:
         if engine.dialect.name != "postgresql":
             raise ValueError("isolated demo workspaces require PostgreSQL")
         self.engine = engine
         self.ttl = timedelta(seconds=ttl_seconds)
         self.max_sessions = max_sessions
+        self.policy_directory = policy_directory
         self._workspaces: OrderedDict[str, DemoWorkspace] = OrderedDict()
         self._lock = RLock()
         self._drop_orphaned_schemas()
@@ -70,6 +75,12 @@ class DemoWorkspaceRegistry:
         factory = create_session_factory(workspace_engine)
         with factory.begin() as session:
             reset_demo_scenarios(session)
+            ingest_directory(
+                session,
+                self.policy_directory,
+                FeatureHashEmbeddingProvider(dimensions=128),
+                ingested_at=now,
+            )
         return DemoWorkspace(
             schema_name=schema_name,
             session_factory=factory,
