@@ -64,9 +64,7 @@ def test_demo_sessions_have_physically_isolated_workspaces() -> None:
                 issue_type=CaseIssueType.DUPLICATE_CHARGE,
                 top_k=3,
             )
-            assert any(
-                policy.document_id == "POLICY-DUPLICATE-CHARGE" for policy in policies
-            )
+            assert any(policy.document_id == "POLICY-DUPLICATE-CHARGE" for policy in policies)
     finally:
         registry.close()
         engine.dispose()
