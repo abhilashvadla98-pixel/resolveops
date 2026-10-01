@@ -43,6 +43,8 @@ verification are all checked independently.
 
 ## Product walkthrough
 
+Watch the [72-second technical walkthrough](https://github.com/abhilashvadla98-pixel/resolveops/releases/download/v1.1.0/resolveops-technical-walkthrough.webm) for the complete path: live specialist investigation, policy evidence, human approval, controlled action, fresh verification and a fail-closed employee-access check.
+
 ### 1. Choose the workflow
 
 The landing view loads a repeatable fictional workspace automatically. Each visitor receives a
