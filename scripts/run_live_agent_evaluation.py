@@ -72,9 +72,7 @@ def _run_trial(
         ledger=ledger,
         context_tool_allowlists={
             AgentRole.INVESTIGATION: [
-                "get_case"
-                if case.domain.value == "customer_operations"
-                else "get_it_snapshot"
+                "get_case" if case.domain.value == "customer_operations" else "get_it_snapshot"
             ],
             AgentRole.POLICY: ["search_policies"],
             AgentRole.RESOLUTION: [],

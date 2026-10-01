@@ -30,9 +30,7 @@ class AgentContext(DomainModel):
     memory_results: list[dict[str, object]] = Field(default_factory=list, max_length=10)
     required_evidence: list[NonEmptyText] = Field(default_factory=list, max_length=30)
     allowed_tools: list[Identifier] = Field(default_factory=list, max_length=20)
-    tool_contracts: dict[Identifier, dict[str, object]] = Field(
-        default_factory=dict, max_length=20
-    )
+    tool_contracts: dict[Identifier, dict[str, object]] = Field(default_factory=dict, max_length=20)
     freshness_cutoff: AwareDatetime
     redaction_policy: Identifier = "agent-masked-pii-v1"
     content_is_untrusted: bool = True

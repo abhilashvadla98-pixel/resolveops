@@ -198,8 +198,7 @@ class OfflineTrajectoryTools:
                 },
                 "evidence_status": (
                     "conflicting_or_incomplete"
-                    if self.case is not None
-                    and self.case.scenario in {"revise_once", "escalate"}
+                    if self.case is not None and self.case.scenario in {"revise_once", "escalate"}
                     else "current_and_complete"
                 ),
                 "evaluation_scenario": self.case.scenario if self.case is not None else "accept",

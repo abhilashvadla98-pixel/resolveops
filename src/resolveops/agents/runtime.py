@@ -391,9 +391,7 @@ class MultiAgentReasoningRuntime:
         raise AgentBudgetExceeded("policy_turn_limit_exceeded")
 
     @staticmethod
-    def _ground_policy_turn(
-        turn: PolicyTurn, results: list[AgentToolResult]
-    ) -> PolicyTurn:
+    def _ground_policy_turn(turn: PolicyTurn, results: list[AgentToolResult]) -> PolicyTurn:
         citations: list[str] = []
         versions: dict[str, int] = {}
         for tool_result in results:
