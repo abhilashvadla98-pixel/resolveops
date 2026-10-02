@@ -505,8 +505,10 @@ class CustomerIssueWorkflow:
         if matching:
             match = matching[0]
             facts.append(
-                "Independent payment read found two captured payments for "
-                f"{match.amount} {match.currency}, {match.time_apart.total_seconds():.0f} seconds apart."
+                "Independent payment read found distinct captured payments "
+                f"{match.first_payment_id} and {match.second_payment_id} for order "
+                f"{match.order_id}, both {match.amount} {match.currency}, "
+                f"{match.time_apart.total_seconds():.0f} seconds apart."
             )
         else:
             facts.append("Independent payment read did not confirm a matching captured pair.")

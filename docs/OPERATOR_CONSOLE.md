@@ -21,19 +21,24 @@ invented KPI values.
 3. Wait for the workspace to load automatically. No API key is needed; the signed session receives
    a separate synthetic PostgreSQL workspace and expires after the configured short lifetime.
 4. Submit a natural-language complaint and inspect its persisted classification. Intake never
-   authorizes an action.
-5. Select scenario D, start the investigation, and inspect the pending refund approval.
-6. Enter a decision note and approve or reject. Approval resumes the durable workflow.
-7. Inspect the decision summary, trusted workflow facts, versioned policy citations, ordered
+   authorizes an action. The console and external adapters share the authenticated case-intake API;
+   the refund-status webhook is a separate later-event path.
+5. Select scenario D and inspect the two payment-provider simulator records. The UI shows both
+   payment IDs, capture status, amount, timestamps and the deterministic duplicate-match rule.
+6. Start the investigation and inspect the pending refund approval. The console allows up to 90
+   seconds for a provider-backed run, shows its current routing stages, and scrolls to the result.
+   A connection timeout is not mislabeled as agent validation failure.
+7. Enter a decision note and approve or reject. Approval resumes the durable workflow.
+8. Inspect the decision summary, trusted workflow facts, versioned policy citations, ordered
    timeline, fresh verification, and grounded response. The case and issue statuses move with the
    workflow instead of remaining in their pre-action state. A successful path states that the
    refund record was created and independently verified, not that an external provider completed
    settlement.
-8. Use scenario G to run the Employee/IT flow. It checks employment, identity, MFA, team ownership,
+9. Use scenario G to run the Employee/IT flow. It checks employment, identity, MFA, team ownership,
    manager approval, Git identity, and active policy before granting access, then reloads repository,
    group, ticket, and notification state for verification. Replaying it performs no duplicate grant.
    Use scenario H for verification recovery.
-9. Choose **Reset workspace** to remove prior customer workflows, IT grants, approval decisions,
+10. Choose **Reset workspace** to remove prior customer workflows, IT grants, approval decisions,
    feedback, audit/reliability records, and event cursors before rebuilding the synthetic records.
 
 Pending IT requests show **Approval required** instead of attempting execution. Use **Review

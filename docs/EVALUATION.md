@@ -26,15 +26,28 @@ limitations.
 runs 10 difficult curated tasks three times each and records outcome, role routing, read tools,
 policy citations, critic decisions, per-agent and end-to-end latency, tokens, tool/model calls, and
 cost only when explicit pricing is configured. Quota/provider failures remain visible rather than
-being dropped. The runner refuses to use the previously exposed credential: after the owner rotates
-it, set `RESOLVEOPS_GEMINI_KEY_ROTATED=true` locally and run the script. No live multi-agent report
-is claimed yet.
+being dropped. The runner refuses to use the previously exposed credential and requires the local
+rotation acknowledgement before it starts.
 
 ```powershell
 .\.venv\Scripts\python.exe scripts/run_live_agent_evaluation.py --tasks 10 --trials 3
 ```
 
 The offline 22-case suite remains the required deterministic regression gate.
+
+### Recorded live multi-agent results
+
+The first 10-task × 3-trial run completed on 2026-10-01. It recorded 30/30 failed trials: seven
+strict evidence/policy contract failures and 23 provider failures. Across the full sample it
+recorded 35,592 input tokens, 9,008 output tokens, 65 model calls, 16 read-tool calls, 2.13-second
+p50 latency and 8.79-second p95 latency. Cost is `null` because no price configuration was supplied.
+The complete failure evidence remains in `evals/agents/live-report.json`.
+
+After that run, one separately recorded provider-backed case passed the full seven-call route:
+supervisor, investigation with rework, policy with rework, resolution and critic. It used two read
+tools, cited policy, received an `accept` critic decision and reached `ready_for_control_plane` in
+8.07 seconds. This trace is stored in `evals/agents/verified-live-trace.json`. It proves the path can
+complete, but it is not presented as a replacement for the failed stochastic sample.
 
 ## Reviewed-memory ablation
 

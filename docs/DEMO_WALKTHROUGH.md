@@ -25,20 +25,29 @@ changed by this public demo.
 3. To prove intake, select **+ New case**, enter a complaint and create it. The case is persisted and
    classified, but intake does not authorize any action.
 4. For the flagship path, choose **Demo scenarios**, then **D · High-value refund approval**.
-5. Select **Investigate**. ResolveOps loads the customer, order, payment and current policy evidence.
+5. Before selecting **Investigate**, inspect the Evidence column. It shows `PAY-DEMO-D-1` and
+   `PAY-DEMO-D-2` as separate captured records for the same order and amount, with capture times
+   120 seconds apart. The displayed deterministic rule requires distinct IDs, captured status, the
+   same order, amount and currency, and capture times within 24 hours.
+6. Select **Investigate**. ResolveOps rereads the customer, order, payment and current policy
+   evidence. The button shows the active step and the page moves to the resulting workflow card.
    Complex cases enter the normal five-role graph; any model result remains decision support.
-6. The workflow pauses before the proposed 650 USD simulated refund. Confirm that **Action
+7. The workflow pauses before the proposed 650 USD simulated refund. Confirm that **Action
    recorded** and **Outcome verified** are still incomplete.
 
 ![Customer action paused for a human decision](assets/resolveops-customer-approval.png)
 
-7. Select **Review approval**, enter a decision reason and approve or reject it. The demo uses a
+8. Select **Review approval**, enter a decision reason and approve or reject it. The demo uses a
    separate approver identity so the submission and decision remain distinct audit events.
-8. On approval, deterministic controls execute one idempotent write to the payment-provider
+9. On approval, deterministic controls execute one idempotent write to the payment-provider
    simulator. ResolveOps then performs a separate fresh read and reports completion only when the
    stored state matches the approved action.
-9. Confirm all five data-journey stages are complete. Inspect the policy citations, ordered
+10. Confirm all five data-journey stages are complete. Inspect the policy citations, ordered
    timeline, verification record and draft customer response.
+
+If an investigation is escalated, the issue card shows **Retry investigation**. The new run receives
+a new workflow ID; the earlier safe-stop remains in the timeline. A browser timeout is shown as an
+unknown status and instructs the operator to refresh and reconcile persisted state before retrying.
 
 ![Customer workflow after verified resolution](assets/resolveops-customer-workflow.png)
 

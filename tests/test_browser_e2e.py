@@ -108,6 +108,9 @@ def test_operator_completes_demo_approval_workflow(running_demo: str, tmp_path: 
         expect(page.locator("#case-journey-title")).to_have_text(
             "From complaint to verified outcome"
         )
+        expect(page.locator(".intake-explainer")).to_contain_text(
+            "One intake API, several support channels"
+        )
 
         page.locator("#new-case-button").click()
         expect(page.locator(".drawer-intro")).to_contain_text("support portal")
@@ -122,11 +125,18 @@ def test_operator_completes_demo_approval_workflow(running_demo: str, tmp_path: 
         page.locator("#scenario-select").select_option("CASE-DEMO-D")
         expect(page.locator("#detail-case-id")).to_have_text("CASE-DEMO-D")
         expect(page.locator("#detail-intake-source")).to_have_text("Seeded support example")
+        expect(page.locator("#detail-evidence")).to_contain_text("PAY-DEMO-D-1")
+        expect(page.locator("#detail-evidence")).to_contain_text("PAY-DEMO-D-2")
+        expect(page.locator("#detail-evidence")).to_contain_text(
+            "Why this is a duplicate candidate"
+        )
+        expect(page.locator("#detail-evidence")).to_contain_text("120 seconds apart")
         page.locator("#detail-issues .start-workflow").click()
-        expect(page.locator("#toast")).to_contain_text("paused for approval")
+        expect(page.locator("#toast")).to_contain_text("separate approval is required")
         expect(page.locator("#workflow-summary")).to_be_visible()
         expect(page.locator("#workflow-summary")).to_contain_text("Human approval required")
         expect(page.locator("#workflow-summary")).to_contain_text("Separate human decision")
+        expect(page.locator("#workflow-summary")).to_contain_text("Next operator step")
         page.screenshot(
             path=screenshot_directory / "resolveops-customer-approval.png",
             full_page=True,
@@ -252,4 +262,24 @@ def test_failed_agent_validation_blocks_approval_and_explains_safe_stop(
             "Complete evidence and policy citations"
         )
         expect(page.locator("#workflow-next-action")).to_be_hidden()
+        browser.close()
+
+
+@pytest.mark.browser
+def test_escalated_investigation_can_be_retried(running_demo: str) -> None:
+    with sync_playwright() as playwright:
+        browser = playwright.chromium.launch()
+        page: Page = browser.new_page(viewport={"width": 1440, "height": 1000})
+        page.goto(f"{running_demo}/console")
+        expect(page.locator("#sidebar-connection")).to_have_text("Connected")
+        page.locator('[data-view="cases"]').click()
+        page.locator("#scenario-select").select_option("CASE-DEMO-E")
+
+        expect(page.locator("#detail-evidence")).to_contain_text("No duplicate pair confirmed")
+        expect(page.locator("#detail-evidence")).to_contain_text("Authorized")
+        page.locator("#detail-issues .start-workflow").click()
+
+        expect(page.locator("#workflow-title")).to_have_text("Investigation needs review")
+        expect(page.locator("#workflow-summary")).to_contain_text("No sensitive action executed")
+        expect(page.locator("#detail-issues .start-workflow")).to_have_text("Retry investigation")
         browser.close()

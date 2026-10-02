@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="description" content="ResolveOps operations console">
 <title>ResolveOps | Operations Console</title>
-<link rel="stylesheet" href="/console/app.css?v=20261002a">
-<script src="/console/app.js?v=20261002a" defer>
+<link rel="stylesheet" href="/console/app.css?v=20261002b">
+<script src="/console/app.js?v=20261002b" defer>
 </script>
 </head>
 <body>
@@ -222,6 +222,18 @@
 </div>
 <button class="primary-button" id="notice-demo" type="button">Retry loading</button>
 </div>
+<section class="intake-explainer" aria-labelledby="intake-explainer-title">
+<div>
+<span class="workflow-card-eyebrow">How work reaches this queue</span>
+<h2 id="intake-explainer-title">One intake API, several support channels</h2>
+<p>The public demo submits from this console. A support portal or help-desk adapter can call the same authenticated <code>POST /api/v1/cases</code> endpoint. No live CRM is connected.</p>
+</div>
+<div class="intake-facts">
+<div><strong>Supported complaints</strong><span>Duplicate charge · missing return refund · combined complaint</span></div>
+<div><strong>Investigate routes to</strong><span>Current records → specialist review when enabled → policy and safety controls</span></div>
+<div><strong>Important boundary</strong><span>Investigation may propose an action; it cannot approve or execute one</span></div>
+</div>
+</section>
 <div class="workflow-guide" aria-label="Customer operations workflow steps">
 <span>
 <b>1</b>Complaint intake</span>
@@ -605,7 +617,8 @@
 <h2 id="new-case-title">New complaint</h2>
 <button class="icon-button" id="close-case-drawer" type="button" aria-label="Close">×</button>
 </div>
-<p class="drawer-intro">This simulates a complaint arriving from a support portal or help-desk adapter. It calls the same intake API an external channel would use. Customer and order IDs must already exist in this isolated demo workspace.</p>
+<p class="drawer-intro">This form calls the authenticated complaint-intake API. A production support portal or help-desk adapter would call the same endpoint. Customer and order IDs must already exist in this isolated demo workspace.</p>
+<div class="supported-intake"><strong>Try one of these:</strong><span>“I was charged twice for this order.”</span><span>“I returned the item but still have no refund.”</span><small>Other or unclear complaints are stored for clarification; they do not start an action.</small></div>
 <form id="complaint-form">
 <label>Customer ID<input id="complaint-customer" value="CUST-1001" required maxlength="100">
 </label>

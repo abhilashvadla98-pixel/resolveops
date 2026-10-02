@@ -59,8 +59,9 @@ verification are all checked independently.
 
 ## Customer workflow: complaint to verified outcome
 
-Complaints can arrive through the console, the authenticated intake API or the signed event-ingest
-endpoint. The demo queue is preloaded so the complete flow is reviewable without connecting a CRM.
+Complaints can arrive through the console or the authenticated intake API used by a support-portal
+or help-desk adapter. The separate signed event endpoint accepts later refund-status updates; it is
+not a complaint-intake path. The demo queue is preloaded so the complete flow is reviewable without connecting a CRM.
 The selected-case panel shows where the complaint came from and how its customer, order, payment
 and policy records stay connected.
 

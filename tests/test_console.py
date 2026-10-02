@@ -21,8 +21,8 @@ def test_operator_console_serves_secure_shell_and_local_assets() -> None:
     assert ">Audit<" in page.text
     assert "Open customer workflow" in page.text
     assert "Open employee IT workflow" in page.text
-    assert 'src="/console/app.js?v=20261002a"' in page.text
-    assert 'href="/console/app.css?v=20261002a"' in page.text
+    assert 'src="/console/app.js?v=20261002b"' in page.text
+    assert 'href="/console/app.css?v=20261002b"' in page.text
     assert 'role="dialog"' in page.text
     assert 'aria-modal="true"' in page.text
     assert styles.status_code == 200
@@ -49,6 +49,10 @@ def test_operator_console_serves_secure_shell_and_local_assets() -> None:
     assert "Specialist review · decision support only" in page.text
     assert "CSS.escape" in script.text
     assert "Investigation stopped safely" in script.text
+    assert "Investigation status needs refresh" in script.text
+    assert "timeoutMs: 90000" in script.text
+    assert "Retry investigation" in script.text
+    assert "Why this is a duplicate candidate" in script.text
     assert "No approval created" in script.text
     assert "ResolveOps stopped before approval or execution" in script.text
     assert "renderWorkflowFailure(issueId, error)" in script.text

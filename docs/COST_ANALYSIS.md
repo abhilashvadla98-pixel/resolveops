@@ -18,8 +18,16 @@ for those three synthetic cases only; it is not a multi-agent cost sample.
 The live multi-agent runner records every role invocation and the end-to-end envelope across 10
 tasks and three trials. Its report keeps per-agent latency, input/output tokens, model calls, tool
 calls and end-to-end totals. Per-agent and total dollar cost remain `null` unless both provider
-prices are explicitly configured. This run is currently blocked pending rotation of the exposed
-demo credential, so there is no claimed live multi-agent cost or latency number yet.
+prices are explicitly configured. The first 30-trial run completed on 2026-10-01 with 35,592 input
+tokens, 9,008 output tokens, 65 model calls, 16 tool calls, 2.13-second p50 and 8.79-second p95
+end-to-end latency. All 30 trials failed the strict gate: seven violated an evidence/policy output
+contract and 23 ended in provider failure. Dollar cost remains `null` because pricing was not
+configured. These are failure-envelope measurements, not a model-quality success result.
+
+A separate saved provider-backed trace completed one difficult case through supervisor,
+investigation, policy, resolution and critic roles in 8.07 seconds. It used seven model calls, two
+read tools, 5,598 input tokens and 1,424 output tokens. It proves that the integrated path can reach
+the deterministic control plane; one passing trace does not override the failed 30-trial sample.
 
 ## Runtime controls
 

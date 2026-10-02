@@ -572,6 +572,14 @@ def test_durable_workflow_pauses_and_resumes_after_service_restart(
     assert isinstance(paused, WorkflowPause)
     assert paused.status == WorkflowStatus.WAITING_APPROVAL
     assert paused.approval.status == ApprovalStatus.PENDING
+    execution = durable_workflow(
+        factory,
+        checkpointer,
+        lifecycle,
+        action_tools=tools,
+        agent_runtime=agents,
+    ).get_execution(initial_request.workflow_id)
+    assert isinstance(execution, WorkflowPause)
     assert paused.agent_assessment is not None
     assert paused.agent_assessment.critic.decision.value == "accept"
     assert lifecycle.get_run(initial_request.workflow_id).status == (
@@ -615,6 +623,10 @@ def test_durable_workflow_pauses_and_resumes_after_service_restart(
     assert result.status == WorkflowStatus.COMPLETED
     assert result.operation is not None
     assert result.operation.verified is True
+    assert any(
+        "PAY-1001" in fact and "PAY-1002" in fact and "ORD-48391" in fact
+        for fact in result.evidence
+    )
     assert restarted_lifecycle.get_run(initial_request.workflow_id).status == (
         WorkflowLifecycleStatus.COMPLETED
     )
