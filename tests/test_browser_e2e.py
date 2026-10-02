@@ -116,16 +116,12 @@ def test_operator_completes_demo_approval_workflow(running_demo: str, tmp_path: 
         )
         page.get_by_role("button", name="Create case").click()
         expect(page.locator("#detail-complaint")).to_contain_text("returned my headphones")
-        expect(page.locator("#detail-intake-source")).to_have_text(
-            "Operator/API submission"
-        )
+        expect(page.locator("#detail-intake-source")).to_have_text("Operator/API submission")
         expect(page.locator("#detail-issues")).to_contain_text("Missing Return Refund")
 
         page.locator("#scenario-select").select_option("CASE-DEMO-D")
         expect(page.locator("#detail-case-id")).to_have_text("CASE-DEMO-D")
-        expect(page.locator("#detail-intake-source")).to_have_text(
-            "Seeded support example"
-        )
+        expect(page.locator("#detail-intake-source")).to_have_text("Seeded support example")
         page.locator("#detail-issues .start-workflow").click()
         expect(page.locator("#toast")).to_contain_text("paused for approval")
         expect(page.locator("#workflow-summary")).to_be_visible()
@@ -137,12 +133,8 @@ def test_operator_completes_demo_approval_workflow(running_demo: str, tmp_path: 
         )
 
         page.locator('[data-view="approvals"]').click()
-        expect(page.locator(".approval-explainer")).to_contain_text(
-            "not a real bank transfer"
-        )
-        expect(page.locator(".approval-explainer")).to_contain_text(
-            "payment-provider simulator"
-        )
+        expect(page.locator(".approval-explainer")).to_contain_text("not a real bank transfer")
+        expect(page.locator(".approval-explainer")).to_contain_text("payment-provider simulator")
         expect(page.locator("#approval-list")).to_contain_text("650.00 USD")
         page.get_by_label("Decision note", exact=True).fill(
             "Evidence and policy support this controlled refund."
