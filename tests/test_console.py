@@ -21,8 +21,8 @@ def test_operator_console_serves_secure_shell_and_local_assets() -> None:
     assert ">Audit<" in page.text
     assert "Open customer workflow" in page.text
     assert "Open employee IT workflow" in page.text
-    assert 'src="/console/app.js?v=20260930d"' in page.text
-    assert 'href="/console/app.css?v=20260930c"' in page.text
+    assert 'src="/console/app.js?v=20261002a"' in page.text
+    assert 'href="/console/app.css?v=20261002a"' in page.text
     assert 'role="dialog"' in page.text
     assert 'aria-modal="true"' in page.text
     assert styles.status_code == 200
