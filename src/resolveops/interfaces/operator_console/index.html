@@ -1,15 +1,642 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="description" content="ResolveOps operations console"><title>ResolveOps | Operations Console</title><link rel="stylesheet" href="/console/app.css?v=20260930c"><script src="/console/app.js?v=20260930d" defer></script></head>
-<body><a class="skip-link" href="#main-content">Skip to content</a><div class="app-shell">
-<aside class="sidebar" aria-label="Primary navigation"><div class="brand"><span class="brand-mark">R</span><span><strong>ResolveOps</strong><small>Operations console</small></span></div><nav class="nav-list"><button class="nav-item active" type="button" data-view="overview"><span>Overview</span></button><button class="nav-item" type="button" data-view="cases"><span>Customer Operations</span><span class="nav-count" id="case-count">—</span></button><button class="nav-item" type="button" data-view="approvals"><span>Approvals</span><span class="nav-count" id="approval-count">—</span></button><button class="nav-item" type="button" data-view="it"><span>Employee IT</span><span class="nav-count" id="it-count">—</span></button><button class="nav-item" type="button" data-view="reliability"><span>Reliability</span></button><button class="nav-item" type="button" data-view="audit"><span>Audit</span></button></nav><div class="sidebar-footer"><div class="connection-mini"><span class="connection-pulse" id="sidebar-pulse"></span><span><strong id="sidebar-connection">Loading demo</strong><small id="session-label">Preparing synthetic data</small></span></div><button class="text-button" id="disconnect-button" type="button" hidden>Disconnect</button></div></aside>
-<div class="workspace"><header class="topbar"><button class="mobile-menu" id="mobile-menu" type="button" aria-label="Open navigation">☰</button><div><strong>Operations sandbox</strong><small>Fictional records · isolated workspace</small></div><div class="topbar-actions"><span class="health"><i id="health-dot"></i><span id="health-label">Checking service</span></span><button class="secondary-button" id="theme-toggle" type="button">Dark mode</button><button class="secondary-button" id="reset-demo" type="button" hidden>Reset workspace</button><button class="primary-button" id="try-demo" type="button">Open workspace</button><button class="secondary-button" id="open-connect" type="button">Secure sign in</button><span class="avatar">OP</span></div></header><main id="main-content">
-<section class="view active" data-view-panel="overview"><div class="page-heading"><div><h1>Choose an operations workflow</h1><p>Two complete, synthetic workflows share the same safety and audit controls</p></div><div class="heading-actions"><span id="overview-updated">Loading demo data</span><button class="secondary-button refresh-button" type="button">Refresh</button></div></div><div class="notice" id="overview-notice"><div><strong>Preparing your isolated demo workspace</strong><p>Fictional customer and employee records load automatically. The free host may take about a minute to wake.</p></div><button class="primary-button" id="overview-demo" type="button">Retry loading</button></div><section class="workflow-chooser" aria-label="ResolveOps workflows"><article class="workflow-card customer"><span class="workflow-card-eyebrow">Workflow 1 · External operations</span><h2>Customer Operations</h2><p>Turn a complaint into an evidence-grounded investigation, human-approved action and verified resolution.</p><ol class="workflow-steps"><li>Intake</li><li>Investigate</li><li>Approve</li><li>Act</li><li>Verify</li></ol><button class="primary-button" id="open-customer-workflow" type="button">Open customer workflow</button></article><article class="workflow-card employee"><span class="workflow-card-eyebrow">Workflow 2 · Internal operations</span><h2>Employee IT Operations</h2><p>Process repository access using identity, MFA, manager approval, least privilege and fresh verification.</p><ol class="workflow-steps"><li>Request</li><li>Check identity</li><li>Approve</li><li>Grant</li><li>Verify</li></ol><button class="primary-button" id="open-employee-workflow" type="button">Open employee IT workflow</button></article></section><div class="overview-grid"><article class="metric-card"><span>Customer cases</span><strong id="overview-cases">—</strong><small id="overview-cases-note">Loading records</small></article><article class="metric-card attention"><span>Pending approvals</span><strong id="overview-approvals">—</strong><small>Human decision required</small></article><article class="metric-card"><span>Employee IT requests</span><strong id="overview-it">—</strong><small>Identity and access work</small></article><article class="metric-card"><span>Recorded operations</span><strong id="overview-operations">—</strong><small id="overview-reliability-note">Execution history</small></article></div><div class="overview-columns"><article class="overview-panel"><div class="panel-title"><div><h2>Attention queue</h2><p>Work that cannot complete without review or recovery.</p></div><span class="status-badge neutral" id="overview-attention-status">Not loaded</span></div><div id="overview-attention" class="record-list"><p class="empty-state">Loading work that needs attention…</p></div></article><article class="overview-panel"><div class="panel-title"><div><h2>Control model</h2><p>How ResolveOps separates recommendations from authority.</p></div></div><ol class="control-list"><li><strong>Investigate</strong><span>Specialists gather scoped evidence and cite current policy.</span></li><li><strong>Decide</strong><span>Deterministic rules stop, continue or request human approval.</span></li><li><strong>Execute</strong><span>Typed actions are tenant-scoped and idempotent.</span></li><li><strong>Verify</strong><span>Fresh state—not a model response—determines completion.</span></li></ol></article></div><article class="provenance-strip"><div><span>Workspace data</span><strong>Fictional and deterministic</strong></div><div><span>Data boundary</span><strong>Reserved IDs and example.com contacts</strong></div><div><span>Action boundary</span><strong>Local simulators only</strong></div><div><span>Reset behavior</span><strong>Restores the same reviewable baseline</strong></div></article></section>
-<section class="view" data-view-panel="cases"><div class="page-heading"><div><h1>Customer Operations</h1><p>Complaint intake, investigation, approval, controlled action and verified resolution</p></div><div class="heading-actions"><span id="last-updated">Loading demo data</span><button class="secondary-button refresh-button" type="button">Refresh</button><button class="primary-button" id="new-case-button" type="button">+ New case</button></div></div><div class="notice" id="connection-notice"><div><strong>Preparing the customer workspace</strong><p>The sandbox loads persisted fictional cases and evidence automatically.</p></div><button class="primary-button" id="notice-demo" type="button">Retry loading</button></div><div class="workflow-guide" aria-label="Customer operations workflow steps"><span><b>1</b>Complaint intake</span><span><b>2</b>Evidence investigation</span><span><b>3</b>Human approval</span><span><b>4</b>Controlled action</span><span><b>5</b>Fresh verification</span></div><div class="toolbar"><input id="case-search" type="search" placeholder="Search case, customer, order, or complaint"><select id="case-filter"><option value="">All statuses</option><option value="open">New</option><option value="in_progress">Investigating</option><option value="pending_approval">Approval needed</option><option value="escalated">Needs review</option><option value="resolved">Resolved</option></select><select id="scenario-select" aria-label="Demo scenario"><option value="">Demo scenarios</option></select><span class="status-badge neutral" id="case-list-status">Not loaded</span></div><div class="table-panel"><table><thead><tr><th>Case</th><th>Customer</th><th>Issue</th><th>Status</th><th>Updated</th></tr></thead><tbody id="case-table"><tr><td colspan="5" class="table-empty">Loading synthetic customer cases…</td></tr></tbody></table><div class="pagination"><button id="case-prev" class="secondary-button" type="button">Previous</button><span id="case-page">Page 1</span><button id="case-next" class="secondary-button" type="button">Next</button></div></div>
-<section class="case-workspace" aria-label="Selected case"><aside class="context-pane"><div class="pane-heading"><h2 id="detail-case-id">Select a case</h2><span class="status-badge neutral" id="detail-case-status">Not loaded</span></div><dl><dt>Customer</dt><dd id="detail-customer">—</dd><dt>Order</dt><dd id="detail-order">—</dd><dt>Opened</dt><dd id="detail-opened">—</dd><dt>Updated</dt><dd id="detail-updated">—</dd></dl><h3>Issues and next action</h3><div id="detail-issues" class="issue-list"><p class="empty-state">No case selected.</p></div></aside><article class="activity-pane"><div class="pane-heading"><h2>Activity</h2></div><div class="complaint-box"><span>Customer statement</span><p id="detail-complaint">Select a case to inspect the complaint.</p></div><div class="workflow-summary" id="agent-summary" hidden><div class="pane-heading"><div><h3>Investigation brief</h3><span id="agent-summary-subtitle">Specialist review · decision support only</span></div><span class="status-badge neutral" id="agent-summary-status">Not started</span></div><div id="agent-summary-result"></div></div><div class="workflow-summary" id="workflow-summary" hidden><div class="pane-heading"><div><h3 id="workflow-title">Workflow outcome</h3><span id="workflow-subtitle">—</span></div><span class="status-badge neutral" id="workflow-status">Not started</span></div><div id="workflow-result"></div><div class="action-bar"><button class="primary-button" id="workflow-next-action" type="button" hidden>Review approval</button></div></div><div id="case-timeline" class="timeline"><p class="empty-state">No timeline loaded.</p></div><div class="final-response" id="final-response" hidden><span>Draft customer response · requires operator review before sending</span><p id="final-response-text"></p></div></article><aside class="evidence-pane"><div class="pane-heading"><h2>Evidence</h2></div><div id="detail-evidence" class="record-list"><p class="empty-state">No evidence loaded.</p></div><details class="feedback-box"><summary>Record operator correction</summary><form id="feedback-form"><label>Correction type<select id="feedback-kind"><option value="classification_correction">Classification correction</option><option value="recommendation_rejected">Recommendation rejected</option><option value="evidence_insufficient">Evidence insufficient</option><option value="resolution_changed">Resolution changed</option><option value="customer_response_edited">Customer response edited</option></select></label><label>Correction<textarea id="feedback-correction" rows="2" required></textarea></label><label>Reason<textarea id="feedback-reason" rows="2" required></textarea></label><button class="secondary-button" type="submit">Save for review</button></form></details></aside></section></section>
-<section class="view" data-view-panel="approvals"><div class="page-heading"><div><h1>Approvals</h1><p>Actions waiting for a human decision</p></div><button class="secondary-button refresh-button" type="button">Refresh</button></div><div id="approval-list" class="approval-list"><p class="empty-state">Open the demo to load approvals.</p></div></section>
-<section class="view" data-view-panel="it"><div class="page-heading"><div><h1>Employee IT Operations</h1><p>Identity, manager approval and repository-access workflow</p></div><button class="secondary-button refresh-button" type="button">Refresh</button></div><div class="workflow-guide" aria-label="Employee IT workflow steps"><span><b>1</b>Request</span><span><b>2</b>Identity + MFA</span><span><b>3</b>Manager approval</span><span><b>4</b>Least-privilege grant</span><span><b>5</b>Fresh verification</span></div><div class="split-queue"><div class="table-panel"><table><thead><tr><th>Request</th><th>Employee</th><th>Status</th><th>Updated</th></tr></thead><tbody id="it-case-table"><tr><td colspan="4" class="table-empty">Loading synthetic employee requests…</td></tr></tbody></table></div><article class="detail-panel"><div class="pane-heading"><div><h2 id="it-case-id">Select a request</h2><span id="it-employee-name">—</span></div><span class="status-badge neutral" id="it-status">Not loaded</span></div><div class="detail-grid" id="it-identity"></div><div class="access-path"><div><strong>Request</strong><small id="it-step-request">Awaiting data</small></div><div><strong>Identity + MFA</strong><small id="it-step-identity">Awaiting data</small></div><div><strong>Manager approval</strong><small id="it-step-approval">Awaiting data</small></div><div><strong>Directory group</strong><small id="it-step-group">Awaiting data</small></div><div><strong>Repository grant</strong><small id="it-step-grant">Awaiting data</small></div><div><strong>Ticket + notice</strong><small id="it-step-notification">Awaiting data</small></div></div><div id="it-records" class="record-list"></div><div class="action-bar"><span class="status-badge neutral" id="it-employment">Not loaded</span><button class="secondary-button" id="review-it-approval" type="button" hidden>Review approval</button><button class="primary-button" id="run-it-workflow" type="button">Run safety checks and process</button></div><div class="result-box"><div class="pane-heading"><h3 id="it-result-title">No action taken</h3><span class="status-badge neutral" id="it-result-status">Not started</span></div><div id="it-result" class="empty-state">Select a request to inspect persisted state.</div></div></article></div></section>
-<section class="view" data-view-panel="reliability"><div class="page-heading"><div><h1>Reliability</h1><p>Persisted workflow and action executions</p></div><button class="secondary-button refresh-button" type="button">Refresh</button></div><div class="summary-row"><div><span>Total</span><strong id="reliability-total">—</strong></div><div><span>p50</span><strong id="reliability-p50">—</strong></div><div><span>p95</span><strong id="reliability-p95">—</strong></div><div><span>Failed</span><strong id="reliability-failures">—</strong></div><div><span>Retries</span><strong id="reliability-retries">—</strong></div><div><span>Recoveries</span><strong id="reliability-recoveries">—</strong></div><div><span>Manual review</span><strong id="reliability-reviews">—</strong></div><span id="reliability-waits" hidden></span></div><div class="reliability-grid"><div class="table-panel"><div class="panel-title"><h2>Recent operations</h2><span class="status-badge neutral" id="reliability-status">Not loaded</span></div><div id="reliability-operations" class="record-list"><p class="empty-state">No operations recorded.</p></div></div><article class="detail-panel"><div class="pane-heading"><h2 id="reliability-operation-id">Choose an operation</h2><span class="mono" id="reliability-trace">—</span></div><div id="reliability-events" class="timeline"><p class="empty-state">Select an operation to inspect attempts and recovery.</p></div></article></div><div class="technical-strip"><span>HTTP requests <strong id="metric-requests">—</strong></span><span>Rejected <strong id="metric-rejections">—</strong></span><span id="metrics-status">Not loaded</span></div></section>
-<section class="view" data-view-panel="audit"><div class="page-heading"><div><h1>Audit</h1><p>Recent global operational history</p></div><button class="secondary-button refresh-button" type="button">Refresh</button></div><div class="toolbar"><input id="audit-case-filter" placeholder="Filter by case ID"><button id="audit-filter-button" class="secondary-button" type="button">Apply filter</button><span id="audit-case-id">All cases</span></div><div class="table-panel"><table><thead><tr><th>Time</th><th>Actor</th><th>Case</th><th>Workflow / operation</th><th>Event</th><th>Result</th></tr></thead><tbody id="audit-events"><tr><td colspan="6" class="table-empty">Open the demo to load audit events.</td></tr></tbody></table></div></section>
-</main></div></div>
-<div class="drawer-backdrop" id="case-drawer" hidden><aside class="drawer" role="dialog" aria-modal="true" aria-labelledby="new-case-title"><div class="pane-heading"><h2 id="new-case-title">New case</h2><button class="icon-button" id="close-case-drawer" type="button" aria-label="Close">×</button></div><form id="complaint-form"><label>Customer ID<input id="complaint-customer" value="CUST-1001" required maxlength="100"></label><label>Order ID<input id="complaint-order" value="ORD-48391" required maxlength="100"></label><label>Customer complaint<textarea id="complaint-text" required maxlength="4000" rows="7"></textarea></label><div class="action-bar"><button class="secondary-button" id="cancel-case" type="button">Cancel</button><button class="primary-button" type="submit">Create case</button></div></form></aside></div>
-<div class="connect-dialog" id="connect-dialog" role="dialog" aria-modal="true" aria-labelledby="connect-title" hidden><form id="connect-form"><button class="icon-button dialog-close" id="close-connect" type="button" aria-label="Close">×</button><h2 id="connect-title">Secure operator sign in</h2><p>The key remains only in this page's memory.</p><label for="api-key">Bearer API key</label><div class="secret-input"><input id="api-key" name="api-key" type="password" autocomplete="off"><button id="toggle-key" type="button">Show</button></div><div class="dialog-error" id="connect-error" role="alert" hidden></div><button class="primary-button wide" type="submit">Connect</button></form></div><div class="toast" id="toast" role="status" aria-live="polite"></div></body></html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="ResolveOps operations console">
+<title>ResolveOps | Operations Console</title>
+<link rel="stylesheet" href="/console/app.css?v=20260930c">
+<script src="/console/app.js?v=20260930d" defer>
+</script>
+</head>
+<body>
+<a class="skip-link" href="#main-content">Skip to content</a>
+<div class="app-shell">
+<aside class="sidebar" aria-label="Primary navigation">
+<div class="brand">
+<span class="brand-mark">R</span>
+<span>
+<strong>ResolveOps</strong>
+<small>Operations console</small>
+</span>
+</div>
+<nav class="nav-list">
+<button class="nav-item active" type="button" data-view="overview">
+<span>Overview</span>
+</button>
+<button class="nav-item" type="button" data-view="cases">
+<span>Customer Operations</span>
+<span class="nav-count" id="case-count">—</span>
+</button>
+<button class="nav-item" type="button" data-view="approvals">
+<span>Approvals</span>
+<span class="nav-count" id="approval-count">—</span>
+</button>
+<button class="nav-item" type="button" data-view="it">
+<span>Employee IT</span>
+<span class="nav-count" id="it-count">—</span>
+</button>
+<button class="nav-item" type="button" data-view="reliability">
+<span>Reliability</span>
+</button>
+<button class="nav-item" type="button" data-view="audit">
+<span>Audit</span>
+</button>
+</nav>
+<div class="sidebar-footer">
+<div class="connection-mini">
+<span class="connection-pulse" id="sidebar-pulse">
+</span>
+<span>
+<strong id="sidebar-connection">Loading demo</strong>
+<small id="session-label">Preparing synthetic data</small>
+</span>
+</div>
+<button class="text-button" id="disconnect-button" type="button" hidden>Disconnect</button>
+</div>
+</aside>
+<div class="workspace">
+<header class="topbar">
+<button class="mobile-menu" id="mobile-menu" type="button" aria-label="Open navigation">☰</button>
+<div>
+<strong>Operations sandbox</strong>
+<small>Fictional records · isolated workspace</small>
+</div>
+<div class="topbar-actions">
+<span class="health">
+<i id="health-dot">
+</i>
+<span id="health-label">Checking service</span>
+</span>
+<button class="secondary-button" id="theme-toggle" type="button">Dark mode</button>
+<button class="secondary-button" id="reset-demo" type="button" hidden>Reset workspace</button>
+<button class="primary-button" id="try-demo" type="button">Open workspace</button>
+<button class="secondary-button" id="open-connect" type="button">Secure sign in</button>
+<span class="avatar">OP</span>
+</div>
+</header>
+<main id="main-content">
+<section class="view active" data-view-panel="overview">
+<div class="page-heading">
+<div>
+<h1>Choose an operations workflow</h1>
+<p>Two complete, synthetic workflows share the same safety and audit controls</p>
+</div>
+<div class="heading-actions">
+<span id="overview-updated">Loading demo data</span>
+<button class="secondary-button refresh-button" type="button">Refresh</button>
+</div>
+</div>
+<div class="notice" id="overview-notice">
+<div>
+<strong>Preparing your isolated demo workspace</strong>
+<p>Fictional customer and employee records load automatically. The free host may take about a minute to wake.</p>
+</div>
+<button class="primary-button" id="overview-demo" type="button">Retry loading</button>
+</div>
+<section class="workflow-chooser" aria-label="ResolveOps workflows">
+<article class="workflow-card customer">
+<span class="workflow-card-eyebrow">Workflow 1 · External operations</span>
+<h2>Customer Operations</h2>
+<p>Turn a complaint into an evidence-grounded investigation, human-approved action and verified resolution.</p>
+<ol class="workflow-steps">
+<li>Intake</li>
+<li>Investigate</li>
+<li>Approve</li>
+<li>Act</li>
+<li>Verify</li>
+</ol>
+<button class="primary-button" id="open-customer-workflow" type="button">Open customer workflow</button>
+</article>
+<article class="workflow-card employee">
+<span class="workflow-card-eyebrow">Workflow 2 · Internal operations</span>
+<h2>Employee IT Operations</h2>
+<p>Process repository access using identity, MFA, manager approval, least privilege and fresh verification.</p>
+<ol class="workflow-steps">
+<li>Request</li>
+<li>Check identity</li>
+<li>Approve</li>
+<li>Grant</li>
+<li>Verify</li>
+</ol>
+<button class="primary-button" id="open-employee-workflow" type="button">Open employee IT workflow</button>
+</article>
+</section>
+<div class="overview-grid">
+<article class="metric-card">
+<span>Customer cases</span>
+<strong id="overview-cases">—</strong>
+<small id="overview-cases-note">Loading records</small>
+</article>
+<article class="metric-card attention">
+<span>Pending approvals</span>
+<strong id="overview-approvals">—</strong>
+<small>Human decision required</small>
+</article>
+<article class="metric-card">
+<span>Employee IT requests</span>
+<strong id="overview-it">—</strong>
+<small>Identity and access work</small>
+</article>
+<article class="metric-card">
+<span>Recorded operations</span>
+<strong id="overview-operations">—</strong>
+<small id="overview-reliability-note">Execution history</small>
+</article>
+</div>
+<div class="overview-columns">
+<article class="overview-panel">
+<div class="panel-title">
+<div>
+<h2>Attention queue</h2>
+<p>Work that cannot complete without review or recovery.</p>
+</div>
+<span class="status-badge neutral" id="overview-attention-status">Not loaded</span>
+</div>
+<div id="overview-attention" class="record-list">
+<p class="empty-state">Loading work that needs attention…</p>
+</div>
+</article>
+<article class="overview-panel">
+<div class="panel-title">
+<div>
+<h2>Control model</h2>
+<p>How ResolveOps separates recommendations from authority.</p>
+</div>
+</div>
+<ol class="control-list">
+<li>
+<strong>Investigate</strong>
+<span>Specialists gather scoped evidence and cite current policy.</span>
+</li>
+<li>
+<strong>Decide</strong>
+<span>Deterministic rules stop, continue or request human approval.</span>
+</li>
+<li>
+<strong>Execute</strong>
+<span>Typed actions are tenant-scoped and idempotent.</span>
+</li>
+<li>
+<strong>Verify</strong>
+<span>Fresh state—not a model response—determines completion.</span>
+</li>
+</ol>
+</article>
+</div>
+<article class="provenance-strip">
+<div>
+<span>Workspace data</span>
+<strong>Fictional and deterministic</strong>
+</div>
+<div>
+<span>Data boundary</span>
+<strong>Reserved IDs and example.com contacts</strong>
+</div>
+<div>
+<span>Action boundary</span>
+<strong>Local simulators only</strong>
+</div>
+<div>
+<span>Reset behavior</span>
+<strong>Restores the same reviewable baseline</strong>
+</div>
+</article>
+</section>
+<section class="view" data-view-panel="cases">
+<div class="page-heading">
+<div>
+<h1>Customer Operations</h1>
+<p>Complaint intake, investigation, approval, controlled action and verified resolution</p>
+</div>
+<div class="heading-actions">
+<span id="last-updated">Loading demo data</span>
+<button class="secondary-button refresh-button" type="button">Refresh</button>
+<button class="primary-button" id="new-case-button" type="button">+ New case</button>
+</div>
+</div>
+<div class="notice" id="connection-notice">
+<div>
+<strong>Preparing the customer workspace</strong>
+<p>The sandbox loads persisted fictional cases and evidence automatically.</p>
+</div>
+<button class="primary-button" id="notice-demo" type="button">Retry loading</button>
+</div>
+<div class="workflow-guide" aria-label="Customer operations workflow steps">
+<span>
+<b>1</b>Complaint intake</span>
+<span>
+<b>2</b>Evidence investigation</span>
+<span>
+<b>3</b>Human approval</span>
+<span>
+<b>4</b>Controlled action</span>
+<span>
+<b>5</b>Fresh verification</span>
+</div>
+<section class="case-journey-panel" aria-labelledby="case-journey-title">
+<div>
+<span class="workflow-card-eyebrow">Selected case data journey</span>
+<h2 id="case-journey-title">From complaint to verified outcome</h2>
+<p id="case-journey-summary">Select a case to see where its data came from and what the system has completed.</p>
+</div>
+<ol class="case-journey" id="case-journey">
+<li>Complaint received</li>
+<li>Evidence checked</li>
+<li>Decision controlled</li>
+<li>Action recorded</li>
+<li>Outcome verified</li>
+</ol>
+</section>
+<div class="toolbar">
+<input id="case-search" type="search" placeholder="Search case, customer, order, or complaint">
+<select id="case-filter">
+<option value="">All statuses</option>
+<option value="open">New</option>
+<option value="in_progress">Investigating</option>
+<option value="pending_approval">Approval needed</option>
+<option value="escalated">Needs review</option>
+<option value="resolved">Resolved</option>
+</select>
+<select id="scenario-select" aria-label="Demo scenario">
+<option value="">Demo scenarios</option>
+</select>
+<span class="status-badge neutral" id="case-list-status">Not loaded</span>
+</div>
+<div class="table-panel">
+<table>
+<thead>
+<tr>
+<th>Case</th>
+<th>Customer</th>
+<th>Issue</th>
+<th>Status</th>
+<th>Updated</th>
+</tr>
+</thead>
+<tbody id="case-table">
+<tr>
+<td colspan="5" class="table-empty">Loading synthetic customer cases…</td>
+</tr>
+</tbody>
+</table>
+<div class="pagination">
+<button id="case-prev" class="secondary-button" type="button">Previous</button>
+<span id="case-page">Page 1</span>
+<button id="case-next" class="secondary-button" type="button">Next</button>
+</div>
+</div>
+<section class="case-workspace" aria-label="Selected case">
+<aside class="context-pane">
+<div class="pane-heading">
+<h2 id="detail-case-id">Select a case</h2>
+<span class="status-badge neutral" id="detail-case-status">Not loaded</span>
+</div>
+<dl>
+<dt>Customer</dt>
+<dd id="detail-customer">—</dd>
+<dt>Order</dt>
+<dd id="detail-order">—</dd>
+<dt>Opened</dt>
+<dd id="detail-opened">—</dd>
+<dt>Updated</dt>
+<dd id="detail-updated">—</dd>
+</dl>
+<h3>Issues and next action</h3>
+<div id="detail-issues" class="issue-list">
+<p class="empty-state">No case selected.</p>
+</div>
+</aside>
+<article class="activity-pane">
+<div class="pane-heading">
+<h2>Activity</h2>
+</div>
+<div class="complaint-box">
+<span>Complaint intake · <b id="detail-intake-source">Source not loaded</b></span>
+<p id="detail-complaint">Select a case to inspect the complaint.</p>
+</div>
+<div class="workflow-summary" id="agent-summary" hidden>
+<div class="pane-heading">
+<div>
+<h3>Investigation brief</h3>
+<span id="agent-summary-subtitle">Specialist review · decision support only</span>
+</div>
+<span class="status-badge neutral" id="agent-summary-status">Not started</span>
+</div>
+<div id="agent-summary-result">
+</div>
+</div>
+<div class="workflow-summary" id="workflow-summary" hidden>
+<div class="pane-heading">
+<div>
+<h3 id="workflow-title">Workflow outcome</h3>
+<span id="workflow-subtitle">—</span>
+</div>
+<span class="status-badge neutral" id="workflow-status">Not started</span>
+</div>
+<div id="workflow-result">
+</div>
+<div class="action-bar">
+<button class="primary-button" id="workflow-next-action" type="button" hidden>Review approval</button>
+</div>
+</div>
+<div id="case-timeline" class="timeline">
+<p class="empty-state">No timeline loaded.</p>
+</div>
+<div class="final-response" id="final-response" hidden>
+<span>Draft customer response · requires operator review before sending</span>
+<p id="final-response-text">
+</p>
+</div>
+</article>
+<aside class="evidence-pane">
+<div class="pane-heading">
+<h2>Evidence</h2>
+</div>
+<div id="detail-evidence" class="record-list">
+<p class="empty-state">No evidence loaded.</p>
+</div>
+<details class="feedback-box">
+<summary>Record operator correction</summary>
+<form id="feedback-form">
+<label>Correction type<select id="feedback-kind">
+<option value="classification_correction">Classification correction</option>
+<option value="recommendation_rejected">Recommendation rejected</option>
+<option value="evidence_insufficient">Evidence insufficient</option>
+<option value="resolution_changed">Resolution changed</option>
+<option value="customer_response_edited">Customer response edited</option>
+</select>
+</label>
+<label>Correction<textarea id="feedback-correction" rows="2" required>
+</textarea>
+</label>
+<label>Reason<textarea id="feedback-reason" rows="2" required>
+</textarea>
+</label>
+<button class="secondary-button" type="submit">Save for review</button>
+</form>
+</details>
+</aside>
+</section>
+</section>
+<section class="view" data-view-panel="approvals">
+<div class="page-heading">
+<div>
+<h1>Approvals</h1>
+<p>Human authorization for sensitive actions</p>
+</div>
+<button class="secondary-button refresh-button" type="button">Refresh</button>
+</div>
+<article class="approval-explainer">
+<div>
+<span class="workflow-card-eyebrow">What happens after approval</span>
+<h2>Approval authorizes a controlled simulator action—not a real bank transfer</h2>
+<p>The workflow records the operator decision, rechecks the action contract, writes the refund to the isolated payment-provider simulator, reads the provider state again, and stores the result in the audit and reliability logs.</p>
+</div>
+<ol>
+<li><strong>1 · Authorize</strong><span>Record the named operator and reason.</span></li>
+<li><strong>2 · Recheck</strong><span>Validate tenant, role, limit and idempotency.</span></li>
+<li><strong>3 · Execute</strong><span>Create a refund in the local provider simulator.</span></li>
+<li><strong>4 · Verify</strong><span>Read fresh provider state before marking complete.</span></li>
+</ol>
+</article>
+<div id="approval-list" class="approval-list">
+<p class="empty-state">Open the demo to load approvals.</p>
+</div>
+</section>
+<section class="view" data-view-panel="it">
+<div class="page-heading">
+<div>
+<h1>Employee IT Operations</h1>
+<p>Identity, manager approval and repository-access workflow</p>
+</div>
+<button class="secondary-button refresh-button" type="button">Refresh</button>
+</div>
+<div class="workflow-guide" aria-label="Employee IT workflow steps">
+<span>
+<b>1</b>Request</span>
+<span>
+<b>2</b>Identity + MFA</span>
+<span>
+<b>3</b>Manager approval</span>
+<span>
+<b>4</b>Least-privilege grant</span>
+<span>
+<b>5</b>Fresh verification</span>
+</div>
+<div class="split-queue">
+<div class="table-panel">
+<table>
+<thead>
+<tr>
+<th>Request</th>
+<th>Employee</th>
+<th>Status</th>
+<th>Updated</th>
+</tr>
+</thead>
+<tbody id="it-case-table">
+<tr>
+<td colspan="4" class="table-empty">Loading synthetic employee requests…</td>
+</tr>
+</tbody>
+</table>
+</div>
+<article class="detail-panel">
+<div class="pane-heading">
+<div>
+<h2 id="it-case-id">Select a request</h2>
+<span id="it-employee-name">—</span>
+</div>
+<span class="status-badge neutral" id="it-status">Not loaded</span>
+</div>
+<div class="detail-grid" id="it-identity">
+</div>
+<div class="access-path">
+<div>
+<strong>Request</strong>
+<small id="it-step-request">Awaiting data</small>
+</div>
+<div>
+<strong>Identity + MFA</strong>
+<small id="it-step-identity">Awaiting data</small>
+</div>
+<div>
+<strong>Manager approval</strong>
+<small id="it-step-approval">Awaiting data</small>
+</div>
+<div>
+<strong>Directory group</strong>
+<small id="it-step-group">Awaiting data</small>
+</div>
+<div>
+<strong>Repository grant</strong>
+<small id="it-step-grant">Awaiting data</small>
+</div>
+<div>
+<strong>Ticket + notice</strong>
+<small id="it-step-notification">Awaiting data</small>
+</div>
+</div>
+<div id="it-records" class="record-list">
+</div>
+<div class="action-bar">
+<span class="status-badge neutral" id="it-employment">Not loaded</span>
+<button class="secondary-button" id="review-it-approval" type="button" hidden>Review approval</button>
+<button class="primary-button" id="run-it-workflow" type="button">Run safety checks and process</button>
+</div>
+<div class="result-box">
+<div class="pane-heading">
+<h3 id="it-result-title">No action taken</h3>
+<span class="status-badge neutral" id="it-result-status">Not started</span>
+</div>
+<div id="it-result" class="empty-state">Select a request to inspect persisted state.</div>
+</div>
+</article>
+</div>
+</section>
+<section class="view" data-view-panel="reliability">
+<div class="page-heading">
+<div>
+<h1>Reliability</h1>
+<p>Persisted workflow and action executions</p>
+</div>
+<button class="secondary-button refresh-button" type="button">Refresh</button>
+</div>
+<div class="summary-row">
+<div>
+<span>Total</span>
+<strong id="reliability-total">—</strong>
+</div>
+<div>
+<span>p50</span>
+<strong id="reliability-p50">—</strong>
+</div>
+<div>
+<span>p95</span>
+<strong id="reliability-p95">—</strong>
+</div>
+<div>
+<span>Failed</span>
+<strong id="reliability-failures">—</strong>
+</div>
+<div>
+<span>Retries</span>
+<strong id="reliability-retries">—</strong>
+</div>
+<div>
+<span>Recoveries</span>
+<strong id="reliability-recoveries">—</strong>
+</div>
+<div>
+<span>Manual review</span>
+<strong id="reliability-reviews">—</strong>
+</div>
+<span id="reliability-waits" hidden>
+</span>
+</div>
+<div class="reliability-grid">
+<div class="table-panel">
+<div class="panel-title">
+<h2>Recent operations</h2>
+<span class="status-badge neutral" id="reliability-status">Not loaded</span>
+</div>
+<div id="reliability-operations" class="record-list">
+<p class="empty-state">No operations recorded.</p>
+</div>
+</div>
+<article class="detail-panel">
+<div class="pane-heading">
+<h2 id="reliability-operation-id">Choose an operation</h2>
+<span class="mono" id="reliability-trace">—</span>
+</div>
+<div id="reliability-events" class="timeline">
+<p class="empty-state">Select an operation to inspect attempts and recovery.</p>
+</div>
+</article>
+</div>
+<div class="technical-strip">
+<span>HTTP requests <strong id="metric-requests">—</strong>
+</span>
+<span>Rejected <strong id="metric-rejections">—</strong>
+</span>
+<span id="metrics-status">Not loaded</span>
+</div>
+</section>
+<section class="view" data-view-panel="audit">
+<div class="page-heading">
+<div>
+<h1>Audit</h1>
+<p>Recent global operational history</p>
+</div>
+<button class="secondary-button refresh-button" type="button">Refresh</button>
+</div>
+<div class="toolbar">
+<input id="audit-case-filter" placeholder="Filter by case ID">
+<button id="audit-filter-button" class="secondary-button" type="button">Apply filter</button>
+<span id="audit-case-id">All cases</span>
+</div>
+<div class="table-panel">
+<table>
+<thead>
+<tr>
+<th>Time</th>
+<th>Actor</th>
+<th>Case</th>
+<th>Workflow / operation</th>
+<th>Event</th>
+<th>Result</th>
+</tr>
+</thead>
+<tbody id="audit-events">
+<tr>
+<td colspan="6" class="table-empty">Open the demo to load audit events.</td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+</main>
+</div>
+</div>
+<div class="drawer-backdrop" id="case-drawer" hidden>
+<aside class="drawer" role="dialog" aria-modal="true" aria-labelledby="new-case-title">
+<div class="pane-heading">
+<h2 id="new-case-title">New complaint</h2>
+<button class="icon-button" id="close-case-drawer" type="button" aria-label="Close">×</button>
+</div>
+<p class="drawer-intro">This simulates a complaint arriving from a support portal or help-desk adapter. It calls the same intake API an external channel would use. Customer and order IDs must already exist in this isolated demo workspace.</p>
+<form id="complaint-form">
+<label>Customer ID<input id="complaint-customer" value="CUST-1001" required maxlength="100">
+</label>
+<label>Order ID<input id="complaint-order" value="ORD-48391" required maxlength="100">
+</label>
+<label>Customer complaint<textarea id="complaint-text" required maxlength="4000" rows="7">
+</textarea>
+</label>
+<div class="action-bar">
+<button class="secondary-button" id="cancel-case" type="button">Cancel</button>
+<button class="primary-button" type="submit">Create case</button>
+</div>
+</form>
+</aside>
+</div>
+<div class="connect-dialog" id="connect-dialog" role="dialog" aria-modal="true" aria-labelledby="connect-title" hidden>
+<form id="connect-form">
+<button class="icon-button dialog-close" id="close-connect" type="button" aria-label="Close">×</button>
+<h2 id="connect-title">Secure operator sign in</h2>
+<p>The key remains only in this page's memory.</p>
+<label for="api-key">Bearer API key</label>
+<div class="secret-input">
+<input id="api-key" name="api-key" type="password" autocomplete="off">
+<button id="toggle-key" type="button">Show</button>
+</div>
+<div class="dialog-error" id="connect-error" role="alert" hidden>
+</div>
+<button class="primary-button wide" type="submit">Connect</button>
+</form>
+</div>
+<div class="toast" id="toast" role="status" aria-live="polite">
+</div>
+</body>
+</html>

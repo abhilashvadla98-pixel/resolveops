@@ -105,17 +105,27 @@ def test_operator_completes_demo_approval_workflow(running_demo: str, tmp_path: 
         )
         page.locator("#open-customer-workflow").click()
         expect(page.locator('[data-view-panel="cases"]')).to_have_class("view active")
+        expect(page.locator("#case-journey-title")).to_have_text(
+            "From complaint to verified outcome"
+        )
 
         page.locator("#new-case-button").click()
+        expect(page.locator(".drawer-intro")).to_contain_text("support portal")
         page.locator("#complaint-text").fill(
             "I returned my headphones last week and still have not received my refund."
         )
         page.get_by_role("button", name="Create case").click()
         expect(page.locator("#detail-complaint")).to_contain_text("returned my headphones")
+        expect(page.locator("#detail-intake-source")).to_have_text(
+            "Operator/API submission"
+        )
         expect(page.locator("#detail-issues")).to_contain_text("Missing Return Refund")
 
         page.locator("#scenario-select").select_option("CASE-DEMO-D")
         expect(page.locator("#detail-case-id")).to_have_text("CASE-DEMO-D")
+        expect(page.locator("#detail-intake-source")).to_have_text(
+            "Seeded support example"
+        )
         page.locator("#detail-issues .start-workflow").click()
         expect(page.locator("#toast")).to_contain_text("paused for approval")
         expect(page.locator("#workflow-summary")).to_be_visible()
@@ -127,6 +137,12 @@ def test_operator_completes_demo_approval_workflow(running_demo: str, tmp_path: 
         )
 
         page.locator('[data-view="approvals"]').click()
+        expect(page.locator(".approval-explainer")).to_contain_text(
+            "not a real bank transfer"
+        )
+        expect(page.locator(".approval-explainer")).to_contain_text(
+            "payment-provider simulator"
+        )
         expect(page.locator("#approval-list")).to_contain_text("650.00 USD")
         page.get_by_label("Decision note", exact=True).fill(
             "Evidence and policy support this controlled refund."
@@ -139,6 +155,12 @@ def test_operator_completes_demo_approval_workflow(running_demo: str, tmp_path: 
         expect(page.locator("#detail-issues")).to_contain_text("Resolved")
         expect(page.locator("#workflow-summary")).to_contain_text("Action Verified")
         expect(page.locator("#workflow-summary")).to_contain_text("Passed")
+        expect(page.locator("#case-journey")).to_contain_text(
+            "Refund created in payment-provider simulator"
+        )
+        expect(page.locator("#case-journey")).to_contain_text(
+            "Fresh provider read matched the approved action"
+        )
         expect(page.locator("#detail-evidence")).to_contain_text("Verified case fact")
         expect(page.locator("#detail-evidence")).to_contain_text("POLICY-DUPLICATE-CHARGE")
         expect(page.locator("#case-timeline")).to_contain_text("Completed")
