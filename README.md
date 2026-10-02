@@ -2,10 +2,10 @@
 
 [![CI](https://github.com/abhilashvadla98-pixel/resolveops/actions/workflows/ci.yml/badge.svg)](https://github.com/abhilashvadla98-pixel/resolveops/actions/workflows/ci.yml)
 
-ResolveOps is an operations system that investigates customer and employee cases, grounds advice in
-versioned evidence, pauses sensitive changes for approval, executes idempotently, and verifies the
-new state. Complex customer cases automatically use a five-role LangGraph investigation; model
-output remains advisory and deterministic code keeps action authority.
+ResolveOps is a case-resolution service for customer-support and employee-IT teams. It connects an
+incoming request to evidence, a controlled decision, an idempotent action and an independent read
+of the resulting state. Complex customer cases use a five-role LangGraph investigation, but model
+output stays advisory: deterministic code owns approvals, writes and verification.
 
 The public demo opens with populated synthetic data and two distinct paths:
 
@@ -14,10 +14,26 @@ The public demo opens with populated synthetic data and two distinct paths:
 - **Employee IT Operations:** access request → identity and MFA checks → manager approval →
   least-privilege grant → fresh verification.
 
-[Live synthetic demo](https://resolveops-demo.onrender.com/console) *(free host: allow about one minute for the first wake-up)*
-· [42-second product teaser](https://github.com/abhilashvadla98-pixel/resolveops/releases/download/v1.0.0/resolveops-product-demo.webm)
-· [evaluation evidence](docs/EVALUATION.md) · [engineering case study](docs/CASE_STUDY.md)
-· [public-demo deployment](docs/PUBLIC_DEMO.md)
+[Open the synthetic demo](https://resolveops-demo.onrender.com/console) *(the free host may need about
+one minute to wake)* · [watch the 42-second overview](https://github.com/abhilashvadla98-pixel/resolveops/releases/download/v1.0.0/resolveops-product-demo.webm)
+· [watch the 72-second technical walkthrough](https://github.com/abhilashvadla98-pixel/resolveops/releases/download/v1.1.0/resolveops-technical-walkthrough.webm)
+
+## Three-minute recruiter path
+
+1. Open the demo. It creates an isolated workspace with fictional records; no login or key is
+   required.
+2. Select **Open customer workflow**, choose **D · High-value refund approval**, then select
+   **Investigate**.
+3. Read the evidence and proposed action. Select **Review approval**, record a reason and approve.
+4. Confirm that the case is **Resolved**, the action is **Verified**, and the five-stage data
+   journey is complete.
+5. Open **Reliability** to inspect the persisted attempt and verification. Then open **Employee IT**
+   and select `ITCASE-2004` to see missing MFA stop an access request.
+
+Every payment, directory, repository and ticket interaction in the public demo uses a local
+simulator. The interface never claims that a real bank transfer or repository grant occurred.
+
+![ResolveOps overview with separate customer and employee workflows](docs/assets/resolveops-overview.png)
 
 ## Flagship workflow
 
@@ -41,44 +57,43 @@ The same control pattern supports employee repository-access requests: identity,
 team, manager approval, directory membership, Git account, repository ownership, action, and fresh
 verification are all checked independently.
 
-## Product walkthrough
+## Customer workflow: complaint to verified outcome
 
-Watch the [72-second technical walkthrough](https://github.com/abhilashvadla98-pixel/resolveops/releases/download/v1.1.0/resolveops-technical-walkthrough.webm) for the complete path: live specialist investigation, policy evidence, human approval, controlled action, fresh verification and a fail-closed employee-access check.
+Complaints can arrive through the console, the authenticated intake API or the signed event-ingest
+endpoint. The demo queue is preloaded so the complete flow is reviewable without connecting a CRM.
+The selected-case panel shows where the complaint came from and how its customer, order, payment
+and policy records stay connected.
 
-### 1. Choose the workflow
-
-The landing view loads a repeatable fictional workspace automatically. Each visitor receives a
-separate session workspace and can enter either workflow without setup or credentials.
-
-![ResolveOps overview with Customer Operations and Employee IT Operations](docs/assets/resolveops-overview.png)
-
-### 2. Investigate a customer case
-
-The case workspace keeps the original complaint, structured issues, evidence, policy citations,
-agent trace and timeline together. The model may recommend; it cannot authorize the action.
-
-![Resolved customer workflow with evidence and verification](docs/assets/resolveops-customer-workflow.png)
-
-### 3. Stop for human approval
+### 1. Investigate, then stop for approval
 
 A sensitive refund pauses durably and shows the proposed amount, payment, reason and authority
-boundary before an operator can approve or reject it.
+boundary before an operator can approve or reject it. The investigation cannot move money.
 
 ![Customer refund waiting for human approval](docs/assets/resolveops-customer-approval.png)
 
-### 4. Process employee access safely
+### 2. Execute once and verify from fresh state
+
+After approval, the control plane records one simulated refund using an idempotency key. It then
+reads the payment-provider simulator independently; only a matching read marks the case resolved.
+The UI retains the policy citations, ordered timeline and draft customer response.
+
+![Resolved customer workflow with policy evidence and fresh verification](docs/assets/resolveops-customer-workflow.png)
+
+### 3. Inspect operational evidence
+
+The reliability view exposes the persisted attempt, latency and verification events instead of
+reducing the run to a chat response.
+
+![Reliability record for the verified refund operation](docs/assets/resolveops-reliability.png)
+
+## Employee workflow: request to least-privilege access
 
 The separate internal flow checks employment, identity, MFA, manager approval, group membership,
-repository ownership and the final permission. Unsafe requests fail closed.
+repository ownership and the final permission. `ITCASE-2002` demonstrates the approval pause;
+`ITCASE-2004` demonstrates the missing-MFA safety stop. Unsafe requests fail closed and create no
+grant.
 
 ![Employee IT access workflow and safety checks](docs/assets/resolveops-employee-it.png)
-
-### 5. Verify the operation
-
-The reliability view exposes attempts, latency, recovery and the fresh-state verification used to
-decide whether an operation actually completed.
-
-![Reliability and verification evidence](docs/assets/resolveops-reliability.png)
 
 See the [click-by-click demo guide](docs/DEMO_WALKTHROUGH.md) for both complete paths.
 
@@ -90,15 +105,16 @@ See the [click-by-click demo guide](docs/DEMO_WALKTHROUGH.md) for both complete 
 | Employee IT regression | 14/14 | Access controls, idempotency and partial-state handling |
 | Offline multi-agent trajectories | 22/22 | Five-role routing, tools, critic, replanning and budgets |
 | Adversarial security set | 17/17 | Known injection and unsafe-request patterns are rejected |
-| Live single-reasoner Gemini check | 3/3 | Provider integration worked for that recorded run |
+| Live single-reasoner Gemini check | 3/3 | Provider integration worked for that dated run |
 | Reviewed-memory ablation | 8 paired cases | Tenant/policy-scoped memory path and token/routing comparison |
 | Human response review | 0/24 | Owner labels are intentionally still pending |
 | Demo data contract | 325 connected records | Repeatable customer, payment, return, IT, approval and audit state |
 | Public demo isolation | 2 independent sessions | A write in one visitor workspace was absent from the other |
 
 See [docs/EVALUATION.md](docs/EVALUATION.md) for datasets, checksums, commands and limitations.
-The 10-task × 3-trial live multi-agent runner is included but must not run until the exposed demo
-credential is rotated. Unknown pricing remains `null`; the project never invents cost.
+The 10-task × 3-trial live multi-agent runner and its dated failure report are retained as evidence;
+provider failures are not recast as model-quality passes. Unknown pricing remains `null` rather
+than being invented.
 
 ## Quick start
 
@@ -167,6 +183,7 @@ Run the required checks:
 
 - [Architecture and agent control](docs/MULTI_AGENT_ARCHITECTURE.md)
 - [Evaluation methodology](docs/EVALUATION.md)
+- [Engineering case study](docs/CASE_STUDY.md)
 - [Operator console](docs/OPERATOR_CONSOLE.md)
 - [Security and threat model](docs/SECURITY.md)
 - [Deployment and reference infrastructure](docs/DEPLOYMENT.md)
