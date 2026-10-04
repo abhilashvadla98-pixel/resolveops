@@ -3,7 +3,6 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
-from fastapi import HTTPException
 from fastapi.testclient import TestClient
 from pydantic import SecretStr
 from sqlalchemy import Engine, create_engine, func, select
@@ -56,11 +55,8 @@ def test_public_demo_live_agent_admission_is_limited_per_session(
     operations_module._demo_agent_session_runs.clear()
     operations_module._last_demo_agent_started_at = None
     with Session(engine) as session:
-        _admit_demo_agent_run(session, body, principal, settings)
-        with pytest.raises(HTTPException) as exc_info:
-            _admit_demo_agent_run(session, body, principal, settings)
-    assert exc_info.value.status_code == 429
-    assert "already used" in str(exc_info.value.detail)
+        assert _admit_demo_agent_run(session, body, principal, settings) is True
+        assert _admit_demo_agent_run(session, body, principal, settings) is False
 
 
 @pytest.fixture

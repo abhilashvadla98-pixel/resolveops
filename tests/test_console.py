@@ -34,7 +34,7 @@ def test_operator_console_serves_secure_shell_and_local_assets() -> None:
     assert "--bg:#f6f7f9" in styles.text
     assert "glow" not in styles.text
     assert script.status_code == 200
-    assert "Investigate with live agents" in script.text
+    assert "Investigate · live agents when available" in script.text
     assert "agent_call_count" in script.text
     assert "agent_run_ids" in script.text
     assert script.headers["cache-control"] == "no-store"
