@@ -28,6 +28,7 @@ from resolveops.employee_it.models import (
     ITNotificationStatus,
     ITTicketStatus,
     MembershipStatus,
+    RepositoryAccessLevel,
 )
 from resolveops.operations.errors import BusinessRuleError, ResourceNotFoundError
 
@@ -86,6 +87,10 @@ def execute_repository_access(
         {"employee_id": request.employee_id, "team_id": team.team_id},
     )
     group = session.get(DirectoryGroupRecord, repository.required_group_id)
+    if request.access_level not in {RepositoryAccessLevel.READ, RepositoryAccessLevel.WRITE}:
+        raise BusinessRuleError(
+            "access_level_not_supported", "Only read or write access is supported"
+        )
     if employee.status != EmploymentStatus.ACTIVE:
         raise BusinessRuleError("employee_inactive", "employee must be active")
     if identity.employee_id != employee.employee_id or identity.status != IdentityStatus.ACTIVE:
@@ -108,10 +113,14 @@ def execute_repository_access(
         access_request.status != AccessRequestStatus.APPROVED
         or access_request.approved_by != team.manager_employee_id
         or access_request.approved_at is None
+        or access_request.approved_by == employee.employee_id
     ):
         raise BusinessRuleError(
             "manager_approval_required", "target-team manager approval is required"
         )
+    manager = session.get(EmployeeRecord, access_request.approved_by)
+    if manager is None or manager.status != EmploymentStatus.ACTIVE:
+        raise BusinessRuleError("manager_inactive", "The approving manager must still be active")
 
     existing_access = session.scalar(
         select(GitRepositoryAccessRecord).where(
@@ -127,20 +136,20 @@ def execute_repository_access(
             DirectoryGroupMembershipRecord.identity_id == identity.identity_id,
         )
     )
-    if group_membership is not None and group_membership.status != MembershipStatus.ACTIVE:
+    if group_membership is not None:
         raise BusinessRuleError(
-            "group_membership_conflict", "existing directory group membership is not active"
+            "group_membership_conflict",
+            "Existing partial directory access must be reconciled by an operator.",
         )
-    if group_membership is None:
-        session.add(
-            DirectoryGroupMembershipRecord(
-                membership_id=f"GM-{access_id}",
-                group_id=repository.required_group_id,
-                identity_id=identity.identity_id,
-                status=MembershipStatus.ACTIVE,
-                granted_at=created_at,
-            )
+    session.add(
+        DirectoryGroupMembershipRecord(
+            membership_id=f"GM-{access_id}",
+            group_id=repository.required_group_id,
+            identity_id=identity.identity_id,
+            status=MembershipStatus.ACTIVE,
+            granted_at=created_at,
         )
+    )
     session.add(
         GitRepositoryAccessRecord(
             access_id=access_id,

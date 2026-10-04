@@ -1,13 +1,13 @@
 # Workflow evaluation datasets
 
-`customer_operations.jsonl` contains 24 hand-authored product cases that run through the real
+`customer_operations.jsonl` version 2 contains 24 engineering-authored product cases that run through the real
 ResolveOps workflow, policy retrieval, database stores, authorization rules, action tools, and
 final-state verification. Each case starts from an isolated database so one result cannot leak into
 another.
 
 The dataset covers:
 
-- successful duplicate-charge and return-refund resolutions
+- verified duplicate-charge and return-refund submissions that remain open while settlement is pending
 - ambiguous, pending, incomplete, and already-refunded cases
 - permission and approval-limit failures
 - missing required policy
@@ -15,7 +15,12 @@ The dataset covers:
 - provider timeouts, false success, and delayed verification
 
 Dataset SHA-256:
-`707249aa5afc5fd88b321c78ddea8891a54919ad7e8ad577c8c0d969fcc354e5`.
+`292a14c3cef172b16b3cfdfe31fe7baec31c2d6917d514260ec7125ba770763b`.
+
+Version 2 replaces obsolete tests requiring a preconfirmed fixture or caller-supplied proposal with
+explicit missing/conflicting obligation evidence and an unlinked return. It checks workflow status,
+persisted issue status, and linked refund status. `verified` means the submission was independently
+read, not that money settled. These are deterministic regression labels, not owner response-review labels.
 
 ## Reproduce
 
@@ -26,18 +31,21 @@ Dataset SHA-256:
 To save the detailed machine-readable report:
 
 ```powershell
-.\.venv\Scripts\python.exe -m resolveops.evaluation.run --output evals/workflows/latest-report.json
+.\.venv\Scripts\python.exe -m resolveops.evaluation.run --output artifacts/customer-regression.json
 ```
 
 The command exits with status 1 if any case fails, making it suitable as a regression gate.
 
-## Measured result
+## Measured result — version 2
 
-Measured locally on 2026-09-27 with Python 3.12 and deterministic feature-hash embeddings:
+Measured locally on 2026-10-04 with deterministic feature-hash embeddings and scripted reasoning
+where configured. No live model or external payment-provider calls were made. The report is
+[`settlement-v2-report.json`](settlement-v2-report.json); the older `latest-report.json` is historical
+version-1 evidence and does not validate the current contracts.
 
 | Category | Cases | Passed |
 | --- | ---: | ---: |
-| Successful resolution | 3 | 3 |
+| Successful submission (settlement pending) | 3 | 3 |
 | Ambiguous / incomplete | 6 | 6 |
 | Already refunded | 2 | 2 |
 | Permission / approval | 4 | 4 |

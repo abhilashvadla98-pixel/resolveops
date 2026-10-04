@@ -3,7 +3,7 @@ import json
 from collections.abc import Callable
 from datetime import UTC, datetime
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -11,14 +11,25 @@ from resolveops.database.event_records import (
     InboundEventRecord,
     ResourceEventCursorRecord,
 )
-from resolveops.database.records import RefundRecord
+from resolveops.database.records import CaseIssueRecord, RefundRecord
+from resolveops.database.workflow_records import WorkflowEventRecord, WorkflowRunRecord
 from resolveops.events.errors import EventConflictError
 from resolveops.events.models import (
     EventReceipt,
     InboundEventStatus,
     RefundStatusChangedEvent,
 )
-from resolveops.models.refund import RefundStatus
+from resolveops.models.refund import RefundKind, RefundStatus
+from resolveops.workflows.case_state import (
+    REFUND_OUTCOMES,
+    refund_state_projection,
+    synchronize_refund_state,
+)
+from resolveops.workflows.models import (
+    WorkflowEventType,
+    WorkflowLifecycleStatus,
+    WorkflowOutcome,
+)
 
 ALLOWED_REFUND_TRANSITIONS: dict[RefundStatus, frozenset[RefundStatus]] = {
     RefundStatus.PENDING: frozenset(
@@ -112,7 +123,25 @@ class RefundEventProcessor:
             )
             .with_for_update()
         )
-        if cursor is not None and event.occurred_at <= cursor.last_occurred_at:
+        if cursor is not None and event.data.provider_reference != cursor.provider_reference:
+            return self._reject(
+                record,
+                "provider_reference_conflict",
+                "provider reference does not match the previously authenticated refund record",
+            )
+        if event.occurred_at < refund.created_at:
+            return self._reject(
+                record,
+                "invalid_refund_event_time",
+                "refund status event cannot be earlier than refund creation",
+            )
+        if event.data.completed_at is not None and event.data.completed_at > event.occurred_at:
+            return self._reject(
+                record,
+                "invalid_refund_completion_time",
+                "refund completion cannot be later than its status event",
+            )
+        if cursor is not None and event.occurred_at < cursor.last_occurred_at:
             record.status = InboundEventStatus.IGNORED_STALE
             return "The authenticated event was stored but ignored because it was stale."
 
@@ -159,7 +188,105 @@ class RefundEventProcessor:
             cursor.last_occurred_at = event.occurred_at
             cursor.provider_reference = event.data.provider_reference
             cursor.updated_at = self.clock()
+        session.flush()
+        self._synchronize_settlement(session, refund, event)
         return f"Refund {refund.refund_id} status is {refund.status.value}."
+
+    def _synchronize_settlement(
+        self, session: Session, refund: RefundRecord, event: RefundStatusChangedEvent
+    ) -> None:
+        """Store the case projection and workflow observation with the provider event."""
+        now = self.clock()
+        synchronize_refund_state(session, refund, now)
+        # A monitored return can be settled by more than one refund portion. Update
+        # linked runs when any portion changes, not only the initially observed ID.
+        related = select(RefundRecord).where(
+            RefundRecord.order_id == refund.order_id,
+            RefundRecord.kind == refund.kind,
+            RefundRecord.currency == refund.currency,
+        )
+        if refund.kind == RefundKind.RETURN:
+            related = related.where(RefundRecord.return_id == refund.return_id)
+        else:
+            related = related.where(RefundRecord.payment_id == refund.payment_id)
+        related_refunds = {item.refund_id: item for item in session.scalars(related)}
+        runs = list(
+            session.scalars(
+                select(WorkflowRunRecord)
+                .join(CaseIssueRecord, WorkflowRunRecord.issue_id == CaseIssueRecord.issue_id)
+                .where(
+                    WorkflowRunRecord.outcome.in_(REFUND_OUTCOMES),
+                    CaseIssueRecord.order_id == refund.order_id,
+                )
+                .with_for_update(of=WorkflowRunRecord)
+            )
+        )
+        for run in runs:
+            events = list(
+                session.scalars(
+                    select(WorkflowEventRecord).where(
+                        WorkflowEventRecord.workflow_id == run.workflow_id
+                    )
+                )
+            )
+            linked_id = next(
+                (
+                    str(item.details[key])
+                    for item in events
+                    for key in ("verified_resource_id", "resource_id", "refund_id")
+                    if item.details.get(key) in related_refunds
+                ),
+                None,
+            )
+            if linked_id is None:
+                continue
+            monitored_refund = related_refunds[linked_id]
+            projection = refund_state_projection(session, monitored_refund)
+            synchronize_refund_state(session, monitored_refund, now, issue_id=run.issue_id)
+            run.outcome = projection.outcome
+            if projection.outcome == WorkflowOutcome.WAITING_EXTERNAL:
+                run.status = WorkflowLifecycleStatus.WAITING_EXTERNAL
+                run.completed_at = None
+                # Preserve whether this run submitted or only monitored the refund.
+                if any(item.event_type == WorkflowEventType.ACTION_EXECUTED for item in events):
+                    run.outcome = WorkflowOutcome.REFUND_SUBMITTED
+            elif projection.outcome == WorkflowOutcome.REFUND_SETTLED:
+                run.status = WorkflowLifecycleStatus.COMPLETED
+                run.completed_at = now
+            else:
+                run.status = WorkflowLifecycleStatus.ESCALATED
+                run.completed_at = now
+            run.error_code = projection.error_code
+            run.error_message = projection.summary if projection.error_code else None
+            run.updated_at = now
+            last_sequence = session.scalar(
+                select(func.max(WorkflowEventRecord.sequence_number)).where(
+                    WorkflowEventRecord.workflow_id == run.workflow_id
+                )
+            )
+            event_key = f"{run.workflow_id}:{event.event_id}".encode()
+            session.add(
+                WorkflowEventRecord(
+                    event_id=f"WFE-SETTLEMENT-{hashlib.sha256(event_key).hexdigest()[:32]}",
+                    workflow_id=run.workflow_id,
+                    sequence_number=(last_sequence or 0) + 1,
+                    event_type=WorkflowEventType.REFUND_STATUS_CHANGED,
+                    actor_id=None,
+                    actor_role=None,
+                    details={
+                        "refund_id": refund.refund_id,
+                        "verified_resource_id": monitored_refund.refund_id,
+                        "provider_status": refund.status.value,
+                        "inbound_event_id": event.event_id,
+                        "source": event.source,
+                        "outcome": projection.outcome.value,
+                        "completed_at": refund.completed_at.isoformat()
+                        if refund.completed_at
+                        else None,
+                    },
+                    occurred_at=now,
+                )
+            )
 
     @staticmethod
     def _reject(record: InboundEventRecord, code: str, message: str) -> str:

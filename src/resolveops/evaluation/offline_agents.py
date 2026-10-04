@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Callable
 from datetime import UTC, datetime
 from time import perf_counter
 from typing import TypeVar, cast
@@ -9,6 +10,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 from resolveops.agents.budgets import BudgetLedger
+from resolveops.agents.context import AgentContext
 from resolveops.agents.invocation import AgentInvoker
 from resolveops.agents.models import (
     AgentBudget,
@@ -52,6 +54,7 @@ class OfflineTrajectoryProvider:
         self.investigation_calls = 0
         self.policy_calls = 0
         self.critic_calls = 0
+        self.observation_id = ""
 
     def invoke(
         self,
@@ -108,18 +111,28 @@ class OfflineTrajectoryProvider:
                     complete=False,
                 )
             else:
+                observed = cast(AgentContext, context).tool_results[-1]
+                self.observation_id = str(observed["observation_id"])
                 value = InvestigationTurn(
                     facts=[
                         EvidenceFact(
-                            evidence_id=f"E-{self.case.evaluation_id}",
-                            fact="The current synthetic record supports bounded review.",
-                            source=f"offline://{self.case.evaluation_id}",
-                            observed_at=NOW,
+                            evidence_id=self.observation_id,
+                            fact="The fixture's exact captured value was read.",
+                            source=str(observed["source"]),
+                            observed_at=datetime.fromisoformat(str(observed["observed_at"])),
+                            source_field=(
+                                "/payment_evidence/capture_count"
+                                if self.case.domain.value == "customer_operations"
+                                else "/identity_match"
+                            ),
+                            source_value_json=(
+                                "2" if self.case.domain.value == "customer_operations" else "true"
+                            ),
                         )
                     ],
-                    evidence_ids=[f"E-{self.case.evaluation_id}"],
+                    evidence_ids=[self.observation_id],
                     confidence=0.9,
-                    source_provenance=[f"offline://{self.case.evaluation_id}"],
+                    source_provenance=[str(observed["source"])],
                     complete=True,
                 )
         elif response_model is PolicyTurn:
@@ -144,12 +157,13 @@ class OfflineTrajectoryProvider:
                 issue_resolutions=[
                     IssueResolution(
                         issue_id=f"ISSUE-{self.case.evaluation_id}",
+                        disposition="escalate" if self.case.scenario == "escalate" else "no_action",
                         recommendation="Prepare a bounded proposal for deterministic controls.",
-                        evidence_ids=[f"E-{self.case.evaluation_id}"],
+                        evidence_ids=[self.observation_id],
                         policy_citations=["CHUNK-OFFLINE-1"],
                     )
                 ],
-                evidence_support=[f"E-{self.case.evaluation_id}"],
+                evidence_support=[self.observation_id],
                 policy_support=["CHUNK-OFFLINE-1"],
                 escalation_needed=self.case.scenario == "escalate",
             )
@@ -178,8 +192,16 @@ class OfflineTrajectoryProvider:
 
 
 class OfflineTrajectoryTools:
-    def __init__(self, case: AgentTrajectoryCase | None = None) -> None:
+    """Contract fixtures; never a substitute for application-tool evaluation."""
+
+    def __init__(
+        self,
+        case: AgentTrajectoryCase | None = None,
+        *,
+        clock: Callable[[], datetime] | None = None,
+    ) -> None:
         self.case = case
+        self.clock = clock or (lambda: NOW)
 
     def execute(self, role: AgentRole, request: ToolRequest) -> AgentToolResult:
         if request.tool_name not in {"get_case", "get_it_snapshot", "search_policies"}:
@@ -201,7 +223,6 @@ class OfflineTrajectoryTools:
                     if self.case is not None and self.case.scenario in {"revise_once", "escalate"}
                     else "current_and_complete"
                 ),
-                "evaluation_scenario": self.case.scenario if self.case is not None else "accept",
                 "synthetic": True,
             }
         elif request.tool_name == "get_it_snapshot":
@@ -211,7 +232,6 @@ class OfflineTrajectoryTools:
                 "mfa_enrolled": True,
                 "manager_approval": "verified",
                 "repository_owner_match": True,
-                "evaluation_scenario": self.case.scenario if self.case is not None else "accept",
                 "synthetic": True,
             }
         else:
@@ -235,7 +255,7 @@ class OfflineTrajectoryTools:
             tool_name=request.tool_name,
             result_category=request.tool_name.removeprefix("get_"),
             source=f"offline://{request.tool_name}",
-            observed_at=NOW,
+            observed_at=self.clock(),
             data=data,
         )
 
@@ -275,6 +295,7 @@ def run_offline_trajectory(
         run_store=store,
         ledger=ledger,
         memory_retriever=memory_store if memory_enabled else None,
+        clock=lambda: NOW,
     )
     started = perf_counter()
     result = HierarchicalAgentOrchestrator(runtime).run(

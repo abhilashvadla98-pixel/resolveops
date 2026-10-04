@@ -199,9 +199,7 @@ class ITWorkflowExecutionRecord(Base):
     )
 
     workflow_id: Mapped[str] = mapped_column(String(100), primary_key=True)
-    case_id: Mapped[str] = mapped_column(
-        ForeignKey("it_access_cases.case_id"), unique=True, index=True
-    )
+    case_id: Mapped[str] = mapped_column(ForeignKey("it_access_cases.case_id"), index=True)
     status: Mapped[WorkflowStatus] = mapped_column(enum_type(WorkflowStatus, "it_workflow_status"))
     outcome: Mapped[EmployeeWorkflowOutcome] = mapped_column(
         enum_type(EmployeeWorkflowOutcome, "it_workflow_outcome")

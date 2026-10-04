@@ -20,6 +20,11 @@ class WorkflowState(TypedDict):
     issue_id: str
     actor: Actor
     refund_request: IssueRefundRequest | None
+    investigation_only: NotRequired[bool]
+    observed_refund_status: NotRequired[str]
+    investigation_error: NotRequired[str | None]
+    proposal_fingerprint: NotRequired[str]
+    agent_attempted: NotRequired[bool]
     status: WorkflowStatus
     evidence: list[str]
     policy_citations: list[PolicyCitation]

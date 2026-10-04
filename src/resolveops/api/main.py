@@ -1,3 +1,5 @@
+import os
+import re
 from collections.abc import Awaitable, Callable
 from importlib.metadata import version as package_version
 from typing import Annotated
@@ -23,7 +25,11 @@ from resolveops.config import (
     get_traffic_protection_settings,
     validate_startup_environment,
 )
-from resolveops.database.health import DatabaseReadinessError, verify_database_readiness
+from resolveops.database.health import (
+    CURRENT_SCHEMA_REVISION,
+    DatabaseReadinessError,
+    verify_database_readiness,
+)
 from resolveops.observability.metrics import finish_http_request, start_http_request
 from resolveops.observability.models import TraceComponent
 from resolveops.observability.otel import build_configured_trace_sink
@@ -138,6 +144,22 @@ def health_check() -> dict[str, str]:
 @app.get("/health/live")
 def liveness_check() -> dict[str, str]:
     return {"status": "alive"}
+
+
+@app.get("/health/build")
+def build_metadata() -> dict[str, str | None]:
+    """Publish only validated build identity, not runtime configuration or readiness."""
+    candidate = os.environ.get("RENDER_GIT_COMMIT") or os.environ.get("RESOLVEOPS_BUILD_SHA")
+    build_sha = (
+        candidate.lower()
+        if candidate is not None and re.fullmatch(r"[0-9a-fA-F]{40,64}", candidate)
+        else None
+    )
+    return {
+        "version": app.version,
+        "required_schema_revision": CURRENT_SCHEMA_REVISION,
+        "build_sha": build_sha,
+    }
 
 
 @app.get("/health/ready", response_model=None)

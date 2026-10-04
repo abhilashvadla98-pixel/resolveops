@@ -11,7 +11,9 @@ from resolveops.evaluation.dataset import (
 from resolveops.evaluation.models import WorkflowObservation
 from resolveops.evaluation.scoring import score_workflow_case
 from resolveops.evaluation.workflow import evaluate_workflow_cases
-from resolveops.workflows.models import WorkflowDecision, WorkflowOutcome
+from resolveops.models.case import CaseIssueStatus
+from resolveops.models.refund import RefundStatus
+from resolveops.workflows.models import WorkflowDecision, WorkflowOutcome, WorkflowStatus
 
 DATASET = Path("evals/workflows/customer_operations.jsonl")
 
@@ -99,6 +101,26 @@ def test_customer_operations_workflow_regression_gate() -> None:
     assert first.pass_rate == 1.0
     assert all(metric.pass_rate == 1.0 for metric in first.category_metrics)
     assert all(result.execution_error is None for result in first.cases)
+
+
+def test_scorer_rejects_resolved_issue_with_pending_refund_even_if_outcome_matches() -> None:
+    evaluation_case = load_workflow_evaluation_cases(DATASET)[1]
+    observation = WorkflowObservation(
+        outcome=WorkflowOutcome.REFUND_SUBMITTED,
+        status=WorkflowStatus.WAITING_EXTERNAL,
+        issue_status=CaseIssueStatus.RESOLVED,
+        refund_status=RefundStatus.PENDING,
+        decision=WorkflowDecision.EXECUTE_REFUND,
+        new_refund_created=True,
+        verified=True,
+        node_history=["execute_refund", "verify_action", "complete"],
+        policy_document_ids=["POLICY-DUPLICATE-CHARGE"],
+    )
+
+    result = score_workflow_case(evaluation_case, observation)
+
+    assert result.passed is False
+    assert {item.name for item in result.assertions if not item.passed} == {"issue_status"}
 
 
 def test_cli_report_is_machine_readable_shape() -> None:

@@ -1,6 +1,8 @@
 import logging
 from collections.abc import Callable
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
+from decimal import Decimal, InvalidOperation
+from hashlib import sha256
 from typing import Any, Protocol, cast
 
 from langchain_core.runnables import RunnableConfig, RunnableLambda
@@ -14,9 +16,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from resolveops.agents.budgets import AgentBudgetExceeded
 from resolveops.agents.models import AgentDomain, MultiAgentReasoningResult
-from resolveops.database.records import RefundRecord
-from resolveops.database.store import CustomerOperationsStore
-from resolveops.domain.billing import find_possible_duplicate_charges
+from resolveops.database.records import CaseIssueEvidenceRecord, CaseIssueRecord, RefundRecord
 from resolveops.knowledge.embeddings import EmbeddingProvider
 from resolveops.knowledge.retrieval import HybridPolicyRetriever
 from resolveops.models.case import CaseIssueStatus, CaseIssueType, IssueFinding
@@ -44,13 +44,14 @@ from resolveops.operations.models import (
     OperationStatus,
     Permission,
 )
+from resolveops.operations.proposals import investigate_issue, same_refund_target
 from resolveops.operations.reads import OperationsReadTools
 from resolveops.reasoning.agent import CaseReasoner
 from resolveops.reasoning.errors import ReasoningError, ReasoningProviderError
 from resolveops.reasoning.models import ReasoningDisposition, ReasoningPolicyExcerpt
 from resolveops.reasoning.providers import ReasoningProvider
 from resolveops.responses.customer import CustomerResponseComposer
-from resolveops.workflows.case_state import synchronize_case_state
+from resolveops.workflows.case_state import refresh_refund_result, synchronize_case_state
 from resolveops.workflows.lifecycle import WorkflowLifecycleStore
 from resolveops.workflows.models import (
     ApprovalStatus,
@@ -117,6 +118,7 @@ class CustomerIssueWorkflow:
         reasoning_provider: ReasoningProvider | None = None,
         agent_runtime: IntegratedAgentRuntime | None = None,
         tenant_id: str = "TENANT-LOCAL",
+        model_execution_mode: str = "unverified_model",
         checkpointer: BaseCheckpointSaver[Any] | None = None,
         lifecycle_store: WorkflowLifecycleStore | None = None,
         observability_sink: TraceSink | None = None,
@@ -131,6 +133,7 @@ class CustomerIssueWorkflow:
         self.clock = clock or (lambda: datetime.now(UTC))
         self.agent_runtime = agent_runtime
         self.tenant_id = tenant_id
+        self.model_execution_mode = model_execution_mode
         self.reasoner = (
             CaseReasoner(
                 reasoning_provider,
@@ -227,6 +230,7 @@ class CustomerIssueWorkflow:
             "issue_id": request.issue_id,
             "actor": request.actor,
             "refund_request": request.refund_request,
+            "investigation_only": request.investigation_only,
             "status": WorkflowStatus.RECEIVED,
             "evidence": [],
             "policy_citations": [],
@@ -267,7 +271,11 @@ class CustomerIssueWorkflow:
             error_code=final.get("error_code"),
             error_message=final.get("error_message"),
             node_history=final["node_history"],
+            execution_mode=self.model_execution_mode
+            if final.get("agent_attempted")
+            else "rules_only",
         )
+        result = refresh_refund_result(self.session_factory, result, self.clock)
         self._record_event_once(
             final["workflow_id"],
             WorkflowEventType.FINAL_RESPONSE_CREATED,
@@ -294,6 +302,9 @@ class CustomerIssueWorkflow:
                 issue_id=approval.issue_id,
                 approval=approval,
                 agent_assessment=values.get("agent_assessment"),
+                execution_mode=self.model_execution_mode
+                if values.get("agent_attempted")
+                else "rules_only",
             )
             synchronize_case_state(self.session_factory, pause, self.clock)
             return pause
@@ -339,6 +350,7 @@ class CustomerIssueWorkflow:
         )
         builder.add_node("verify_action", self._observed_node("verify_action", self._verify_action))
         builder.add_node("complete", self._observed_node("complete", self._complete))
+        builder.add_node("no_action", self._observed_node("no_action", self._no_action))
         builder.add_node("wait_external", self._observed_node("wait_external", self._wait_external))
         builder.add_node("escalate", self._observed_node("escalate", self._escalate))
 
@@ -366,6 +378,7 @@ class CustomerIssueWorkflow:
                 WorkflowDecision.EXECUTE_REFUND.value: "approval_gate",
                 WorkflowDecision.MONITOR_EXISTING_REFUND.value: "wait_external",
                 WorkflowDecision.ESCALATE.value: "escalate",
+                WorkflowDecision.NO_ACTION.value: "no_action",
             },
         )
         builder.add_conditional_edges(
@@ -388,6 +401,7 @@ class CustomerIssueWorkflow:
             {"complete": "complete", "escalate": "escalate"},
         )
         builder.add_edge("complete", END)
+        builder.add_edge("no_action", END)
         builder.add_edge("wait_external", END)
         builder.add_edge("escalate", END)
         return builder.compile(
@@ -489,68 +503,66 @@ class CustomerIssueWorkflow:
         return state["issue_type"].value
 
     def _investigate_duplicate(self, state: WorkflowState) -> dict[str, object]:
-        with self.session_factory() as session:
-            store = CustomerOperationsStore(session)
-            payments = store.list_payments(state["order_id"])
-            matches = find_possible_duplicate_charges(payments)
-            relevant_ids = set(state["payment_ids"])
-            matching = [
-                item
-                for item in matches
-                if {item.first_payment_id, item.second_payment_id}.issubset(relevant_ids)
-            ]
-            existing = self._active_issue_refund(session, state["issue_id"])
-
-        facts = list(state["evidence"])
-        if matching:
-            match = matching[0]
-            facts.append(
-                "Independent payment read found distinct captured payments "
-                f"{match.first_payment_id} and {match.second_payment_id} for order "
-                f"{match.order_id}, both {match.amount} {match.currency}, "
-                f"{match.time_apart.total_seconds():.0f} seconds apart."
-            )
-        else:
-            facts.append("Independent payment read did not confirm a matching captured pair.")
-        if existing is not None:
-            facts.append(f"Existing active refund {existing.refund_id} already covers this issue.")
-        return {
-            "evidence": facts,
-            "existing_refund_id": existing.refund_id if existing else None,
-            "node_history": ["investigate_duplicate"],
-        }
+        return self._investigate(state, "investigate_duplicate")
 
     def _investigate_return(self, state: WorkflowState) -> dict[str, object]:
-        return_id = state.get("return_id")
-        if return_id is None:
+        return self._investigate(state, "investigate_return")
+
+    def _investigate(self, state: WorkflowState, node: str) -> dict[str, object]:
+        with self.session_factory.begin() as session:
+            result = investigate_issue(session, state["case_id"], state["issue_id"])
+            issue = session.get(CaseIssueRecord, state["issue_id"])
+            if issue is None:
+                raise ValueError("investigated issue disappeared")
+            issue.finding = result.finding
+            if result.proposal:
+                issue.status = CaseIssueStatus.ACTION_PENDING
+            for index, (source, reference_id, summary) in enumerate(result.evidence):
+                evidence_id = (
+                    "EVD-" + sha256(f"{state['workflow_id']}|{index}".encode()).hexdigest()[:40]
+                )
+                if session.get(CaseIssueEvidenceRecord, evidence_id) is None:
+                    session.add(
+                        CaseIssueEvidenceRecord(
+                            evidence_id=evidence_id,
+                            issue_id=issue.issue_id,
+                            source=source,
+                            reference_id=reference_id,
+                            summary=summary,
+                            collected_at=self.clock(),
+                        )
+                    )
+            proposal = result.proposal
+            supplied = state.get("refund_request")
+            error = result.error
+            if (
+                supplied is not None
+                and proposal is not None
+                and not same_refund_target(supplied, proposal)
+            ):
+                error = "The supplied action conflicts with the independently verified refund candidate."
+                proposal = None
+            # Internal callers may supply a retry key, but public investigation never supplies a candidate.
+            if supplied is not None and proposal is not None:
+                proposal = proposal.model_copy(update={"idempotency_key": supplied.idempotency_key})
             return {
-                "evidence": [*state["evidence"], "Issue has no linked return."],
-                "existing_refund_id": None,
-                "node_history": ["investigate_return"],
+                "finding": result.finding,
+                "issue_status": issue.status.value,
+                "refund_request": proposal,
+                "existing_refund_id": result.existing_refund_id,
+                "evidence": [text for _, _, text in result.evidence],
+                "investigation_error": error,
+                "node_history": [node],
             }
-        with self.session_factory() as session:
-            customer_return = OperationsReadTools(session, state["actor"]).get_return(return_id)
-            existing = self._active_issue_refund(session, state["issue_id"])
-        facts = [
-            *state["evidence"],
-            f"Independent return read found {return_id} in {customer_return.status.value} status.",
-        ]
-        if existing is not None:
-            facts.append(
-                f"Existing refund {existing.refund_id} is {existing.status.value}; no second refund is allowed."
-            )
-        return {
-            "evidence": facts,
-            "existing_refund_id": existing.refund_id if existing else None,
-            "node_history": ["investigate_return"],
-        }
 
     def _retrieve_policy(self, state: WorkflowState) -> dict[str, object]:
+        # Durable JSON checkpoints restore enum values as strings.
+        issue_type = CaseIssueType(state["issue_type"])
         with self.session_factory() as session:
             results = HybridPolicyRetriever(session, self.embedding_provider).search(
-                POLICY_QUERY[state["issue_type"]],
+                POLICY_QUERY[issue_type],
                 as_of=self.clock(),
-                issue_type=state["issue_type"],
+                issue_type=issue_type,
                 top_k=3,
             )
         citations = [
@@ -592,7 +604,7 @@ class CustomerIssueWorkflow:
                     domain=AgentDomain.CUSTOMER_OPERATIONS,
                     objective=(
                         state.get("complaint_text")
-                        or f"Investigate {state['issue_type'].value} using trusted evidence."
+                        or f"Investigate {CaseIssueType(state['issue_type']).value} using trusted evidence."
                     ),
                     trace_id=current_trace_id() or state["workflow_id"],
                 )
@@ -611,6 +623,7 @@ class CustomerIssueWorkflow:
                 return {
                     "status": WorkflowStatus.ESCALATED,
                     "agent_assessment": None,
+                    "agent_attempted": True,
                     "error_code": "multi_agent_analysis_failed",
                     "error_message": (
                         "The specialist assessment stopped safely before deterministic action "
@@ -622,6 +635,7 @@ class CustomerIssueWorkflow:
                 return {
                     "status": WorkflowStatus.ESCALATED,
                     "agent_assessment": assessment,
+                    "agent_attempted": True,
                     "error_code": "multi_agent_review_required",
                     "error_message": (
                         "The independent critic did not clear the recommendation for the "
@@ -631,6 +645,7 @@ class CustomerIssueWorkflow:
                 }
             return {
                 "agent_assessment": assessment,
+                "agent_attempted": True,
                 "reasoning": None,
                 "node_history": ["reason_case"],
             }
@@ -659,9 +674,7 @@ class CustomerIssueWorkflow:
     @staticmethod
     def _requires_multi_agent(state: WorkflowState) -> bool:
         """Route complex cases through specialists without granting them action authority."""
-        refund_request = state.get("refund_request")
-        high_value_refund = refund_request is not None and refund_request.amount > 500
-        return state.get("case_issue_count", 1) > 1 or high_value_refund
+        return state.get("case_issue_count", 1) > 1 or bool(state.get("investigation_error"))
 
     @staticmethod
     def _route_reasoning(state: WorkflowState) -> str:
@@ -676,12 +689,83 @@ class CustomerIssueWorkflow:
                 "required_policy_not_found",
                 f"Active policy {expected_policy} was not retrieved for the issue.",
             )
+        assessment = state.get("agent_assessment")
+        if assessment is not None:
+            if assessment.resolution is None:
+                return self._review_decision(
+                    "agent_proposal_requires_review",
+                    "The investigation stopped before a supported resolution was available.",
+                )
+            recommendation = next(
+                (
+                    item
+                    for item in assessment.resolution.issue_resolutions
+                    if item.issue_id == state["issue_id"]
+                ),
+                None,
+            )
+            if (
+                assessment.case_id != state["case_id"]
+                or assessment.tenant_id != self.tenant_id
+                or assessment.resolution.escalation_needed
+                or assessment.resolution.uncertainty
+                or recommendation is None
+            ):
+                return self._review_decision(
+                    "agent_proposal_requires_review",
+                    "The specialist recommendation is incomplete, uncertain or requires review.",
+                )
+            if recommendation.disposition in {"escalate", "request_information"}:
+                return self._review_decision(
+                    "agent_requires_information",
+                    recommendation.clarification_question or recommendation.recommendation,
+                )
+            candidate = state.get("refund_request")
+            if recommendation.disposition == "refund":
+                proposed = [
+                    a
+                    for a in assessment.resolution.proposed_actions
+                    if a.issue_id == state["issue_id"]
+                ]
+                try:
+                    supported = (
+                        candidate is not None
+                        and len(proposed) == 1
+                        and proposed[0].action_type in {"issue_refund", "refund"}
+                        and proposed[0].resource_id == candidate.payment_id
+                        and Decimal(proposed[0].amount or "NaN") == candidate.amount
+                    )
+                except InvalidOperation:
+                    supported = False
+                if not supported:
+                    return self._review_decision(
+                        "agent_action_mismatch",
+                        "The agent action does not match the authoritative payment and amount.",
+                    )
+            elif recommendation.disposition == "wait" and not state.get("existing_refund_id"):
+                return self._review_decision(
+                    "agent_wait_requires_review", recommendation.recommendation
+                )
+            elif (
+                recommendation.disposition == "no_action"
+                and state["finding"] != IssueFinding.REJECTED
+            ):
+                return self._review_decision(
+                    "agent_no_action_requires_review", recommendation.recommendation
+                )
         if state.get("existing_refund_id") is not None:
             return {
                 "decision": WorkflowDecision.MONITOR_EXISTING_REFUND,
                 "status": WorkflowStatus.WAITING_EXTERNAL,
                 "node_history": ["decide"],
             }
+        if state.get("investigation_error"):
+            return self._review_decision(
+                "evidence_review_required",
+                state["investigation_error"] or "Evidence review required.",
+            )
+        if state["finding"] == IssueFinding.REJECTED:
+            return {"decision": WorkflowDecision.NO_ACTION, "node_history": ["decide"]}
         if (
             state["finding"] != IssueFinding.CONFIRMED
             or state["issue_status"] != CaseIssueStatus.ACTION_PENDING.value
@@ -707,6 +791,7 @@ class CustomerIssueWorkflow:
         return {
             "decision": WorkflowDecision.EXECUTE_REFUND,
             "status": WorkflowStatus.ACTION_PENDING,
+            "proposal_fingerprint": self._proposal_fingerprint(state),
             "node_history": ["decide"],
         }
 
@@ -736,19 +821,29 @@ class CustomerIssueWorkflow:
             return self._approval_error(exc.code, exc.message)
         try:
             require_refund_limit(state["actor"], request.amount, request.currency)
-            return {"node_history": ["approval_gate"]}
+            if not state.get("investigation_only"):
+                return {"node_history": ["approval_gate"]}
+            approval_reason = (
+                "Investigation finished. Review this proposal before any refund is submitted."
+            )
         except ApprovalRequiredError as exc:
             if not has_approval_path(request.amount, request.currency):
                 return self._approval_error(
                     "approval_path_unavailable",
                     "No configured approval role can authorize this refund amount and currency.",
                 )
-            approval = self.lifecycle_store.request_refund_approval(
-                workflow_id=state["workflow_id"],
-                request=request,
-                requested_by=state["actor"].actor_id,
-                requested_role=state["actor"].role,
-                reason=exc.message,
+            approval_reason = exc.message
+
+        approval = self.lifecycle_store.request_refund_approval(
+            workflow_id=state["workflow_id"],
+            request=request,
+            requested_by=state["actor"].actor_id,
+            requested_role=state["actor"].role,
+            reason=approval_reason,
+        )
+        if self.clock() - approval.requested_at > timedelta(minutes=30):
+            return self._approval_error(
+                "approval_expired", "This proposal expired. Investigate current evidence again."
             )
 
         approval = self._resolve_pending_approval(approval)
@@ -767,6 +862,11 @@ class CustomerIssueWorkflow:
             raise RuntimeError("approval gate resumed without a final decision")
         if approval.decided_by is None or approval.decided_role is None:
             raise RuntimeError("approved decision is missing its actor")
+        if state.get("proposal_fingerprint") != self._proposal_fingerprint(state):
+            return self._approval_error(
+                "approval_evidence_changed",
+                "Evidence or policy changed after investigation; create a fresh proposal.",
+            )
         return {
             "actor": Actor(
                 actor_id=approval.decided_by,
@@ -885,6 +985,7 @@ class CustomerIssueWorkflow:
             }
         return {
             "verified_resource_id": refund.refund_id,
+            "observed_refund_status": refund.status.value,
             "node_history": ["verify_action"],
         }
 
@@ -896,8 +997,8 @@ class CustomerIssueWorkflow:
     def _complete(state: WorkflowState) -> dict[str, object]:
         resource_id = state["verified_resource_id"]
         return {
-            "status": WorkflowStatus.COMPLETED,
-            "outcome": WorkflowOutcome.ACTION_VERIFIED,
+            "status": WorkflowStatus.WAITING_EXTERNAL,
+            "outcome": WorkflowOutcome.REFUND_SUBMITTED,
             "resolution_summary": (
                 f"Refund {resource_id} was created and independently verified. The case remains "
                 "open until the external refund reaches its final state."
@@ -906,9 +1007,34 @@ class CustomerIssueWorkflow:
         }
 
     @staticmethod
+    def _no_action(state: WorkflowState) -> dict[str, object]:
+        return {
+            "status": WorkflowStatus.COMPLETED,
+            "outcome": WorkflowOutcome.NO_ACTION_REQUIRED,
+            "resolution_summary": "Current captured payments do not establish duplicate collection. No refund was submitted.",
+            "node_history": ["no_action"],
+        }
+
+    def _proposal_fingerprint(self, state: WorkflowState) -> str:
+        with self.session_factory() as session:
+            result = investigate_issue(session, state["case_id"], state["issue_id"])
+        current_policy = self._retrieve_policy(state)["policy_citations"]
+        value = repr(
+            (
+                result.finding,
+                result.evidence,
+                result.proposal.model_dump(mode="json") if result.proposal else None,
+                result.existing_refund_id,
+                current_policy,
+            )
+        )
+        return sha256(value.encode()).hexdigest()
+
+    @staticmethod
     def _wait_external(state: WorkflowState) -> dict[str, object]:
         refund_id = state["existing_refund_id"]
         return {
+            "verified_resource_id": refund_id,
             "status": WorkflowStatus.WAITING_EXTERNAL,
             "outcome": WorkflowOutcome.WAITING_EXTERNAL,
             "resolution_summary": (

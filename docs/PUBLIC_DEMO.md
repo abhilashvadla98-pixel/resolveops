@@ -35,7 +35,7 @@ infrastructure.
 - a bounded `RESOLVEOPS_DEMO_MAX_ISOLATED_SESSIONS` value
 - a new random webhook secret of at least 32 characters
 - no real customer, employee, payment, identity or repository data
-- `RESOLVEOPS_INTEGRATED_AGENTS_ENABLED=false` until the exposed provider key is rotated
+- `RESOLVEOPS_INTEGRATED_AGENTS_ENABLED=false`; rotation alone is not sufficient to enable public inference
 
 The Blueprint runs migrations and the synthetic seed automatically. After Render reports the deploy
 as live, verify `/health/live`, `/health/ready`, `/console`, demo-session isolation, reset behavior,
@@ -44,7 +44,11 @@ Run `scripts/verify_deployment.py --base-url https://your-demo-host` and store i
 deployment date, host, image revision and region. Keep deployed latency separately from local
 measurements.
 
-## Deployment record
+## Historical deployment record — September 30
+
+This record predates the October 4 lifecycle and authorization repairs. It is not proof that the
+current release is deployed. New verification must identify the exact `/health/build` commit,
+migration readiness and fresh isolated workflow results separately from these measurements.
 
 - Public URL: https://resolveops-demo.onrender.com/console
 - Host and region: Render, Ohio
@@ -72,5 +76,5 @@ page load. If live integrated agents are later enabled, require the rotated cred
 budgets, synthetic cases only and visible quota-failure handling. Never put the key in browser code,
 the image, repository variables visible to forks, screenshots or videos.
 
-The current public link was published only after the deployment verifier and the console workflow
-checks above passed against the Render URL.
+The original public link was published after those checks. They are historical evidence, not a
+substitute for testing each new release.

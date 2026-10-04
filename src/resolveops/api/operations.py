@@ -8,15 +8,17 @@ from langgraph.checkpoint.base import BaseCheckpointSaver
 from langgraph.checkpoint.memory import InMemorySaver
 from pydantic import Field, SecretStr
 from sqlalchemy import Engine, func, or_, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, selectinload, sessionmaker
 
 from resolveops.agents.factory import build_agent_runtime
 from resolveops.api.dependencies import get_principal, get_tenant_session
 from resolveops.config import Settings
-from resolveops.database.records import CaseRecord, CustomerRecord
+from resolveops.database.records import CaseMessageRecord, CaseRecord, CustomerRecord
 from resolveops.database.session import create_session_factory
 from resolveops.database.store import CustomerOperationsStore
 from resolveops.intake import CaseIntakeService, IntakeRequest
+from resolveops.intake.service import ClarificationRequest
 from resolveops.knowledge.embeddings import FeatureHashEmbeddingProvider
 from resolveops.models.case import Case
 from resolveops.models.common import AwareDatetime, DomainModel, Identifier, NonEmptyText
@@ -55,6 +57,7 @@ class ComplaintSubmission(DomainModel):
     customer_id: Identifier
     order_id: Identifier
     complaint: str = Field(min_length=1, max_length=4000)
+    source_message_id: Identifier | None = None
 
 
 class StartWorkflow(DomainModel):
@@ -157,6 +160,7 @@ def _build_workflow(
         FeatureHashEmbeddingProvider(dimensions=128),
         agent_runtime=agent_runtime,
         tenant_id=principal.tenant_id,
+        model_execution_mode="live_model",
         checkpointer=saver,
         lifecycle_store=lifecycle,
     )
@@ -172,18 +176,65 @@ def submit_complaint(
     body: ComplaintSubmission, session: DatabaseSession, principal: Principal
 ) -> Case:
     _require_operations_access(principal)
-    try:
-        customer_case, _classification = CaseIntakeService(session).submit(
-            IntakeRequest(**body.model_dump())
+    for _attempt in range(2):
+        try:
+            customer_case, _classification = CaseIntakeService(session).submit(
+                IntakeRequest(**body.model_dump())
+            )
+            session.commit()
+            return customer_case
+        except IntegrityError:
+            # A concurrent receipt may have won; re-read it in a fresh transaction.
+            session.rollback()
+        except ValueError as exc:
+            session.rollback()
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
+    raise HTTPException(
+        status_code=409, detail="Receipt conflict; refresh the case before retrying."
+    )
+
+
+@router.post("/cases/{case_id}/messages", response_model=Case)
+def clarify_complaint(
+    case_id: str, body: ClarificationRequest, session: DatabaseSession, principal: Principal
+) -> Case:
+    _require_operations_access(principal)
+    for _attempt in range(2):
+        try:
+            result = CaseIntakeService(session).clarify(case_id, body)
+            session.commit()
+            return result
+        except IntegrityError:
+            session.rollback()
+        except ValueError as exc:
+            session.rollback()
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
+    raise HTTPException(
+        status_code=409, detail="Receipt conflict; refresh the case before retrying."
+    )
+
+
+@router.get("/cases/{case_id}/messages")
+def list_case_messages(
+    case_id: str, session: DatabaseSession, principal: Principal
+) -> list[dict[str, object]]:
+    _require_operations_access(principal)
+    if session.get(CaseRecord, case_id) is None:
+        raise HTTPException(status_code=404, detail="case not found")
+    return [
+        {
+            "message_id": r.message_id,
+            "source_message_id": r.source_message_id,
+            "author": r.author,
+            "message": r.body,
+            "created_at": r.created_at,
+        }
+        for r in session.scalars(
+            select(CaseMessageRecord)
+            .where(CaseMessageRecord.case_id == case_id)
+            .order_by(CaseMessageRecord.created_at, CaseMessageRecord.message_id)
         )
-        session.commit()
-        return customer_case
-    except ValueError as exc:
-        session.rollback()
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
-            detail=str(exc),
-        ) from exc
+    ]
 
 
 @router.get("/cases", response_model=list[Case])
@@ -272,7 +323,14 @@ def start_workflow(
     body: StartWorkflow, session: DatabaseSession, principal: Principal
 ) -> WorkflowResult | WorkflowPause:
     _require_operations_access(principal)
-    request = WorkflowRequest(actor=_workflow_actor(principal), **body.model_dump())
+    if body.refund_request is not None:
+        raise HTTPException(
+            status_code=422,
+            detail="Investigation derives the proposal from records; do not submit a client-selected refund.",
+        )
+    request = WorkflowRequest(
+        actor=_workflow_actor(principal), investigation_only=True, **body.model_dump()
+    )
     try:
         with _workflow_service(session, principal) as workflow:
             return workflow.start(request)
@@ -363,7 +421,30 @@ def case_timeline(
     if customer_case is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="case not found")
     events: list[CaseTimelineEvent] = []
-    if customer_case.complaint_text is not None:
+    receipts = list(
+        session.scalars(
+            select(CaseMessageRecord)
+            .where(CaseMessageRecord.case_id == case_id)
+            .order_by(CaseMessageRecord.created_at, CaseMessageRecord.message_id)
+        )
+    )
+    for receipt in receipts:
+        events.append(
+            CaseTimelineEvent(
+                event_id=receipt.message_id,
+                event_type="complaint_received"
+                if receipt.body == customer_case.complaint_text
+                else "customer_message_received",
+                occurred_at=receipt.created_at,
+                entity_id=case_id,
+                details={
+                    "summary": receipt.body,
+                    "source_message_id": receipt.source_message_id,
+                    "author": receipt.author,
+                },
+            )
+        )
+    if not receipts and customer_case.complaint_text is not None:
         events.append(
             CaseTimelineEvent(
                 event_id=f"{case_id}-complaint",
@@ -428,4 +509,7 @@ def case_timeline(
             )
             for event in lifecycle.list_events(run.workflow_id)
         )
-    return sorted(events, key=lambda event: (event.occurred_at, event.event_id))
+    # Equal timestamps are common in one transaction. Keep receipts before classification and
+    # preserve each workflow's stored sequence rather than sorting random event IDs.
+    priority = {"complaint_received": 0, "customer_message_received": 0, "issue_classified": 1}
+    return sorted(events, key=lambda event: (event.occurred_at, priority.get(event.event_type, 2)))

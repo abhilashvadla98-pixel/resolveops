@@ -3,6 +3,7 @@ from datetime import UTC, datetime
 from typing import Any
 
 from pydantic import Field
+from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
 from resolveops.agents.models import AgentRole, ToolRequest
@@ -86,6 +87,7 @@ class AgentReadToolRegistry:
         self.tenant_id = tenant_id
         self.external_read_client = external_read_client
         self.clock = clock or (lambda: datetime.now(UTC))
+        self.case_scope_id: str | None = None
         self._handlers: dict[str, ToolHandler] = {
             "get_case": lambda args: self._customer_resource("case", args),
             "get_customer": lambda args: self._customer_resource("customer", args),
@@ -104,10 +106,63 @@ class AgentReadToolRegistry:
             raise ValueError(f"unknown agent tool {request.tool_name}")
         return handler(request.arguments.model_dump(mode="json", exclude_none=True))
 
+    def bind_case_scope(self, case_id: str) -> None:
+        if self.case_scope_id is not None and self.case_scope_id != case_id:
+            raise PermissionError("runtime cannot switch its bound investigation case")
+        self.case_scope_id = case_id
+
+    def require_investigation_coverage(self, results: list[AgentToolResult]) -> None:
+        cases = [result.data for result in results if result.tool_name == "get_case"]
+        if not cases:
+            # IT snapshots have a separate contract; normal customer work starts with get_case.
+            if any(result.tool_name == "get_it_snapshot" for result in results):
+                return
+            raise ValueError("missing required source read: get_case")
+        case = cases[-1]
+        orders = [result.data for result in results if result.tool_name == "get_order"]
+        if not orders:
+            raise ValueError(
+                "missing required source read: get_order for capture and refund discovery"
+            )
+        order = orders[-1]
+        payments = order.get("payment_ids")
+        refunds = order.get("refund_ids")
+        if not isinstance(payments, list) or not isinstance(refunds, list):
+            raise ValueError("order read is missing payment/refund discovery IDs")  # noqa: TRY004 - evidence contract
+        required: list[tuple[str, str]] = []
+        issues = case.get("issues", [])
+        for issue in issues if isinstance(issues, list) else []:
+            if not isinstance(issue, dict):
+                continue
+            if issue.get("issue_type") == "duplicate_charge":
+                required.extend(("get_payment", str(identifier)) for identifier in payments)
+            if issue.get("issue_type") == "missing_return_refund" and issue.get("return_id"):
+                required.append(("get_return", str(issue["return_id"])))
+        required.extend(("get_refund", str(identifier)) for identifier in refunds)
+        observed = {
+            (result.tool_name, str(result.data.get(f"{result.result_category}_id")))
+            for result in results
+        }
+        missing = sorted(
+            {
+                f"{tool}({identifier})"
+                for tool, identifier in required
+                if (tool, identifier) not in observed
+            }
+        )
+        if missing:
+            raise ValueError("missing required source reads: " + ", ".join(missing))
+
     def _customer_resource(
         self, resource_type: str, arguments: dict[str, object]
     ) -> AgentToolResult:
         parsed = _parse_resource_id(resource_type, arguments)
+        if resource_type == "case":
+            if self.case_scope_id is not None and self.case_scope_id != parsed.resource_id:
+                raise PermissionError("case read is outside this investigation scope")
+            self.case_scope_id = parsed.resource_id
+        elif self.case_scope_id is None:
+            raise PermissionError("read the scoped case before related customer resources")
         if (
             resource_type == "case"
             and self.external_read_client is not None
@@ -120,6 +175,8 @@ class AgentReadToolRegistry:
                     {"case_id": parsed.resource_id},
                 )
                 case = Case.model_validate(data)
+                if case.case_id != parsed.resource_id:
+                    raise PermissionError("external case does not match this investigation scope")
                 return AgentToolResult(
                     tool_name="get_case",
                     result_category="case",
@@ -142,6 +199,8 @@ class AgentReadToolRegistry:
         *,
         source_suffix: str = "",
     ) -> AgentToolResult:
+        from resolveops.database.records import PaymentRecord, RefundRecord, ReturnRecord
+
         with self.session_factory() as session:
             reads = OperationsReadTools(session, AGENT_READER)
             readers: dict[str, Callable[[str], Any]] = {
@@ -153,16 +212,49 @@ class AgentReadToolRegistry:
                 "refund": reads.get_refund,
             }
             value = readers[resource_type](resource_id)
+            if resource_type != "case":
+                scoped_case = reads.get_case(str(self.case_scope_id))
+                permitted = (
+                    resource_id == scoped_case.customer_id
+                    if resource_type == "customer"
+                    else resource_id == scoped_case.order_id
+                    if resource_type == "order"
+                    else getattr(value, "order_id", None) == scoped_case.order_id
+                )
+                if not permitted:
+                    raise PermissionError("resource is outside the scoped case order")
+            data = value.model_dump(mode="json")
+            if resource_type == "order":
+                # Discover related IDs from authoritative storage, including refunds
+                # opened on another case. The investigator still chooses which to read.
+                data["payment_ids"] = list(
+                    session.scalars(
+                        select(PaymentRecord.payment_id).where(
+                            PaymentRecord.order_id == resource_id
+                        )
+                    )
+                )
+                data["return_ids"] = list(
+                    session.scalars(
+                        select(ReturnRecord.return_id).where(ReturnRecord.order_id == resource_id)
+                    )
+                )
+                data["refund_ids"] = list(
+                    session.scalars(
+                        select(RefundRecord.refund_id).where(RefundRecord.order_id == resource_id)
+                    )
+                )
         return AgentToolResult(
             tool_name=f"get_{resource_type}",
             result_category=resource_type,
             source=f"resolveops://{resource_type}/{resource_id}{source_suffix}",
             observed_at=self.clock(),
-            data=value.model_dump(mode="json"),
+            data=data,
         )
 
     def _it_snapshot(self, arguments: dict[str, object]) -> AgentToolResult:
         parsed = _parse_resource_id("it_case", arguments)
+        self.bind_case_scope(parsed.resource_id)
         with self.session_factory() as session:
             snapshot = redact_employee_access_snapshot(
                 EmployeeITStore(session).get_snapshot(parsed.resource_id)

@@ -340,6 +340,8 @@ def _seed_customer_scenario(
     store.add_payment(
         Payment(
             payment_id=f"PAY-DEMO-{scenario_id}-1",
+            obligation_id=f"OBL-{order_id}",
+            obligation_amount=amount,
             order_id=order_id,
             amount=amount,
             currency="USD",
@@ -354,6 +356,8 @@ def _seed_customer_scenario(
         store.add_payment(
             Payment(
                 payment_id=f"PAY-DEMO-{scenario_id}-2",
+                obligation_id=f"OBL-{order_id}",
+                obligation_amount=amount,
                 order_id=order_id,
                 amount=amount,
                 currency="USD",

@@ -1,0 +1,13 @@
+{
+  "dataset_id": "resolveops.workflow.customer_operations",
+  "version": "2.0.0",
+  "description": "Deterministic customer workflow regressions with authoritative proposal evidence and distinct submission/settlement state.",
+  "source": "hand-authored synthetic workflow fixtures",
+  "creation_method": "Engineering-authored expected contracts; not human response-quality labels. Version 2 replaces obsolete preconfirmation/proposal assumptions with missing or conflicting obligation and return evidence, and checks persisted issue/refund state.",
+  "path": "evals/workflows/customer_operations.jsonl",
+  "labels": ["status", "outcome", "decision", "error_code", "issue_status", "refund_status", "new_refund_created", "verified"],
+  "case_categories": ["approval", "duplicate_charge", "external_refund", "missing_return_refund", "safety_boundary", "verification"],
+  "record_count": 24,
+  "sha256": "292a14c3cef172b16b3cfdfe31fe7baec31c2d6917d514260ec7125ba770763b",
+  "created_date": "2026-10-04"
+}

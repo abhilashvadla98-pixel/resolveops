@@ -3,6 +3,7 @@ import hashlib
 import hmac
 from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
+from typing import Literal
 from uuid import uuid4
 
 from pydantic import TypeAdapter, ValidationError
@@ -20,6 +21,9 @@ class DemoSession(DomainModel):
     access_token: str
     expires_at: AwareDatetime
     workspace_label: str = "Demo workspace · synthetic data"
+    isolated_workspace: bool = False
+    data_mode: Literal["synthetic", "unknown"] = "unknown"
+    execution_mode: Literal["rules_only", "live_model_enabled", "unknown"] = "unknown"
 
 
 class DemoTokenClaims(DomainModel):

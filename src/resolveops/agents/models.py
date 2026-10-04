@@ -46,6 +46,8 @@ class EvidenceFact(DomainModel):
     source: NonEmptyText
     observed_at: AwareDatetime
     fresh: bool = True
+    source_field: str | None = Field(default=None, max_length=500)
+    source_value_json: str | None = Field(default=None, max_length=2_000)
 
 
 class PlanStep(DomainModel):
@@ -111,10 +113,18 @@ class InvestigationTurn(DomainModel):
         return self
 
 
+class PolicyVersionReference(DomainModel):
+    policy_id: Identifier
+    version: int = Field(gt=0)
+
+
 class PolicyTurn(DomainModel):
     applicable_policy: NonEmptyText | None = None
     citations: list[Identifier] = Field(default_factory=list, max_length=30)
     policy_versions: dict[Identifier, int] = Field(default_factory=dict)
+    selected_policy_versions: list[PolicyVersionReference] = Field(
+        default_factory=list, max_length=30
+    )
     supporting_sections: list[NonEmptyText] = Field(default_factory=list, max_length=30)
     conflicts: list[NonEmptyText] = Field(default_factory=list, max_length=20)
     missing_policy: bool = False
@@ -125,6 +135,14 @@ class PolicyTurn(DomainModel):
 
     @model_validator(mode="after")
     def validate_stop_contract(self) -> "PolicyTurn":
+        if self.selected_policy_versions:
+            selected = {item.policy_id: item.version for item in self.selected_policy_versions}
+            if len(selected) != len(self.selected_policy_versions):
+                raise ValueError("policy version references must be unique")
+            if self.policy_versions and self.policy_versions != selected:
+                raise ValueError("policy version representations disagree")
+            if not self.policy_versions:
+                self.policy_versions = selected
         if self.complete and self.next_query is not None:
             raise ValueError("a completed policy assessment cannot request another query")
         if not self.complete and self.next_query is None:
@@ -142,16 +160,26 @@ class ProposedAction(DomainModel):
 
 class IssueResolution(DomainModel):
     issue_id: Identifier
+    disposition: Literal["refund", "wait", "no_action", "request_information", "escalate"] = (
+        "escalate"
+    )
     recommendation: NonEmptyText
+    clarification_question: NonEmptyText | None = None
     evidence_ids: list[Identifier] = Field(min_length=1, max_length=30)
-    policy_citations: list[Identifier] = Field(min_length=1, max_length=30)
+    policy_citations: list[Identifier] = Field(default_factory=list, max_length=30)
+
+    @model_validator(mode="after")
+    def clarification_requires_question(self) -> "IssueResolution":
+        if self.disposition == "request_information" and not self.clarification_question:
+            raise ValueError("request_information requires a specific clarification question")
+        return self
 
 
 class ResolutionProposal(DomainModel):
     issue_resolutions: list[IssueResolution] = Field(min_length=1, max_length=20)
     proposed_actions: list[ProposedAction] = Field(default_factory=list, max_length=20)
     evidence_support: list[Identifier] = Field(min_length=1, max_length=50)
-    policy_support: list[Identifier] = Field(min_length=1, max_length=30)
+    policy_support: list[Identifier] = Field(default_factory=list, max_length=30)
     risk_flags: list[NonEmptyText] = Field(default_factory=list, max_length=20)
     uncertainty: list[NonEmptyText] = Field(default_factory=list, max_length=20)
     escalation_needed: bool
@@ -287,12 +315,35 @@ class MultiAgentReasoningResult(DomainModel):
     domain: AgentDomain
     supervisor: SupervisorPlan
     investigation: InvestigationTurn
-    policy: PolicyTurn
-    resolution: ResolutionProposal
-    critic: CriticReport
+    policy: PolicyTurn | None
+    resolution: ResolutionProposal | None
+    critic: CriticReport | None
+    skipped_roles: list[AgentRole] = Field(default_factory=list, max_length=3)
+    stop_reason: NonEmptyText | None = None
     status: Literal["ready_for_control_plane", "escalated"]
     replan_count: int = Field(ge=0)
-    agent_call_count: int = Field(ge=5)
+    agent_call_count: int = Field(ge=1)
     tool_call_count: int = Field(ge=0)
     usage: AgentBudgetUsage
-    agent_run_ids: list[Identifier] = Field(min_length=5, max_length=30)
+    agent_run_ids: list[Identifier] = Field(min_length=1, max_length=30)
+
+    @model_validator(mode="after")
+    def validate_skipped_roles(self) -> "MultiAgentReasoningResult":
+        absent = {
+            role
+            for role, output in (
+                (AgentRole.POLICY, self.policy),
+                (AgentRole.RESOLUTION, self.resolution),
+                (AgentRole.CRITIC, self.critic),
+            )
+            if output is None
+        }
+        if absent != set(self.skipped_roles):
+            raise ValueError("null role outputs must exactly match explicit skipped roles")
+        if absent and (self.status != "escalated" or self.stop_reason is None):
+            raise ValueError("skipped roles require an escalated result and stop reason")
+        if self.status == "ready_for_control_plane" and (
+            absent or self.critic is None or self.critic.decision != CriticDecision.ACCEPT
+        ):
+            raise ValueError("control-plane readiness requires all roles and critic acceptance")
+        return self

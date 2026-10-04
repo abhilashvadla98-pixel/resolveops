@@ -2,6 +2,7 @@ from enum import Enum
 
 from pydantic import Field, model_validator
 
+from resolveops.models.case import CaseIssueStatus
 from resolveops.models.common import (
     CurrencyCode,
     DomainModel,
@@ -9,9 +10,9 @@ from resolveops.models.common import (
     NonEmptyText,
     PositiveAmount,
 )
-from resolveops.models.refund import RefundKind
+from resolveops.models.refund import RefundKind, RefundStatus
 from resolveops.operations.models import ActorRole
-from resolveops.workflows.models import WorkflowDecision, WorkflowOutcome
+from resolveops.workflows.models import WorkflowDecision, WorkflowOutcome, WorkflowStatus
 
 
 class EvaluationCategory(str, Enum):
@@ -27,11 +28,14 @@ class EvaluationCategory(str, Enum):
 class ScenarioFixture(str, Enum):
     BASELINE = "baseline"
     DUPLICATE_ACTIONABLE = "duplicate_actionable"
+    DUPLICATE_OBLIGATION_MISSING = "duplicate_obligation_missing"
+    DUPLICATE_OBLIGATION_CONFLICT = "duplicate_obligation_conflict"
     DUPLICATE_SECOND_PAYMENT_PENDING = "duplicate_second_payment_pending"
     DUPLICATE_EXISTING_REFUND = "duplicate_existing_refund"
     RETURN_EXISTING_REFUND = "return_existing_refund"
     RETURN_ACTIONABLE = "return_actionable"
     RETURN_NOT_RECEIVED = "return_not_received"
+    RETURN_UNLINKED = "return_unlinked"
     REQUIRED_POLICY_MISSING = "required_policy_missing"
 
 
@@ -70,6 +74,9 @@ class RefundProposal(DomainModel):
 
 class WorkflowExpectation(DomainModel):
     outcome: WorkflowOutcome
+    status: WorkflowStatus | None = None
+    issue_status: CaseIssueStatus | None = None
+    refund_status: RefundStatus | None = None
     decision: WorkflowDecision
     error_code: str | None = None
     new_refund_created: bool
@@ -108,6 +115,9 @@ class EvaluationAssertion(DomainModel):
 
 class WorkflowObservation(DomainModel):
     outcome: WorkflowOutcome
+    status: WorkflowStatus | None = None
+    issue_status: CaseIssueStatus | None = None
+    refund_status: RefundStatus | None = None
     decision: WorkflowDecision
     error_code: str | None = None
     new_refund_created: bool

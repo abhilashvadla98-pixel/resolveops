@@ -1,33 +1,49 @@
-# Public release gates
+# Release gates — workflow repair
 
-## Completed in code
+Updated 2026-10-04. This supersedes the assertion that only human response review remained.
+The October audit found real lifecycle, authorization and evidence defects. Historical tags,
+the demo URL and old videos do not establish that current changes are deployed or validated.
 
-- Complex customer investigations route through the five-role graph inside the normal workflow.
-- The separate operator-facing multi-agent button is removed.
-- Four reusable typed Agent Skills declare context, tools, budgets and eval coverage.
-- Context tests cover tenant denial, token/character bounds, stale evidence and injected text.
-- The 22-case offline trajectory regression and 8-case reviewed-memory ablation are reproducible.
-- The read-only MCP server and one real `get_case` consumer path are tested, including fail-closed
-  denial and availability-only fallback.
-- The 10-task × 3-trial live runner records routing, tools, citations, critic behavior, latency,
-  tokens, calls and cost when known.
-- Human response-review export/import requires explicit owner labels.
-- Reviewed operator feedback can become a versioned dataset candidate only after human review. One
-  real example is retained in `evals/feedback/owner-corrections-v1.jsonl` with a hashed manifest and
-  focused browser regression.
-- README, project rules, license and the technical walkthrough script are release-oriented.
+## Implemented; proof must match the release commit
 
-## Public v1 status
+- New customer intake produces a supported finding and server-derived proposal without preconfirmation.
+- Investigation cannot submit a refund. Approval binds current evidence, expires after 30 minutes
+  and requires a different authorized reviewer.
+- Submission, pending settlement, final success and failure are separate persisted states. Provider
+  events update linked issues, cases and histories; retries cannot invent payment completion.
+- Confirmed failed/cancelled attempts can receive a separately approved replacement with stable
+  attempt-specific idempotency. Old events and historical partial outcomes remain isolated.
+- Capture obligations, prior refunds, received quantities and currency are checked during investigation
+  and immediately before execution.
+- Source message receipts deduplicate retries; clarification continues the same case.
+- New employee requests bind authenticated identity. Only the actual active, MFA-enabled manager can
+  approve. Generic role and self-approval are insufficient; delegation is not implemented.
+- IT attempts preserve history. Partial existing access stops in both workflow and raw action.
+- Typed agent recommendations affect the normal workflow but cannot authorize it. Exact observations
+  and selected policy citations are validated; critic acceptance alone is insufficient.
+- Complex execution has conditional evidence/policy stops and explicit skipped roles. Simple cases
+  can remain rules-only. The console reports the execution mode.
+- The integrated ten-task evaluation uses application read tools and scores final business state.
+  Historical contract smoke reports remain separate; expectations are never model context.
 
-The public synthetic demo, `v1.1.0` GitHub release, teaser and technical walkthrough videos,
-default `main` branch, CI badge, repository metadata, license, and profile pin are complete. Render
-deployment evidence is recorded in `docs/PUBLIC_DEMO.md`; AWS Terraform remains reference
-infrastructure. The replacement Gemini credential stays only in ignored local storage. The
-30-trial report and a separate verified provider-backed trace are checked in with their limitations.
+## Required release checks
 
-## Open evidence gates
+| Gate | Required evidence / owner |
+|---|---|
+| Local regression | Full tests, browser journeys, formatting, typing, security and migrations on the final tree |
+| PostgreSQL/concurrency | Dedicated test-database run; no SQLite result represented as PostgreSQL proof |
+| Live AI behavior | Immutable integrated report with tools, outputs, failed attempts, usage and final state; quota limits recorded |
+| Human review | Owner labels all 24 response-review rows; automated human labels are forbidden |
+| Deployment | Exact build commit, healthy migrations/startup and fresh public success/failure journeys, separately measured |
+| Presentation | Current screenshots and new technical recording; existing v1 media is historical |
+| Secret safety | Owner revokes exposed key; replacement local only; no secrets in tracked source or artifacts |
+| GitHub release | Reviewed change, clean checks on release commit, accurate metadata/links/version and no large generated data |
 
-One evidence gate remains open: the owner must manually label all 24 response-review rows. Code
-must not create these labels. Until that review is complete, ResolveOps is a released,
-production-minded reference implementation with a public synthetic demo—not a production
-deployment or a validated business system.
+The public configuration deliberately disables provider inference. Enabling it is a separate
+deployment decision requiring safe quota, credentials, per-visitor budgets and abuse controls.
+Do not describe a rules-only public run as live multi-agent execution.
+
+## Claims not established
+
+Real payment settlement, customer adoption, commercial SLA, deployed AWS, arbitrary IT automation,
+live memory-quality improvement and measured multi-agent superiority are not established.

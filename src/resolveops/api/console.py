@@ -52,3 +52,12 @@ def operator_console_script() -> FileResponse:
         media_type="text/javascript",
         headers={**SECURITY_HEADERS, "Cache-Control": "no-store"},
     )
+
+
+@router.get("/console/it_intake.js", include_in_schema=False)
+def employee_intake_script() -> FileResponse:
+    return FileResponse(
+        CONSOLE_ROOT / "it_intake.js",
+        media_type="text/javascript",
+        headers={**SECURITY_HEADERS, "Cache-Control": "no-store"},
+    )

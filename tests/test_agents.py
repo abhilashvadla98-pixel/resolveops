@@ -269,9 +269,11 @@ def test_agent_outputs_enforce_stop_and_independent_critic_contracts() -> None:
         )
 
 
-def test_policy_citations_are_grounded_from_authoritative_tool_results() -> None:
+def test_policy_citations_preserve_selection_and_reject_unknown_references() -> None:
     ungrounded = PolicyTurn(
         applicable_policy="A reviewed action may proceed to deterministic controls.",
+        citations=["CHUNK-1"],
+        policy_versions={"POLICY-1": 3},
         policy_interpretation="The active policy supports a bounded proposal.",
         complete=True,
     )
@@ -286,7 +288,12 @@ def test_policy_citations_are_grounded_from_authoritative_tool_results() -> None
                     "chunk_id": "CHUNK-1",
                     "document_id": "POLICY-1",
                     "document_version": 3,
-                }
+                },
+                {
+                    "chunk_id": "CHUNK-UNSELECTED",
+                    "document_id": "POLICY-OTHER",
+                    "document_version": 2,
+                },
             ]
         },
     )
@@ -299,9 +306,16 @@ def test_policy_citations_are_grounded_from_authoritative_tool_results() -> None
         update={"citations": ["CHUNK-MADE-UP"], "policy_versions": {"POLICY-X": 99}}
     )
     empty_search = tool_result.model_copy(update={"data": {"results": []}})
-    rejected = MultiAgentReasoningRuntime._ground_policy_turn(hallucinated, [empty_search])
-    assert rejected.citations == []
-    assert rejected.policy_versions == {}
+    with pytest.raises(ValueError, match="unknown"):
+        MultiAgentReasoningRuntime._ground_policy_turn(hallucinated, [empty_search])
+    with pytest.raises(ValueError, match="versions do not match"):
+        MultiAgentReasoningRuntime._ground_policy_turn(
+            ungrounded.model_copy(update={"policy_versions": {"POLICY-1": 99}}), [tool_result]
+        )
+    with pytest.raises(ValueError, match="selected citations"):
+        MultiAgentReasoningRuntime._ground_policy_turn(
+            ungrounded.model_copy(update={"citations": [], "policy_versions": {}}), [tool_result]
+        )
     with pytest.raises(ValueError, match="accepting critic"):
         CriticReport(
             decision=CriticDecision.ACCEPT,
@@ -413,6 +427,7 @@ class ScriptedProvider:
         self.investigation_calls = 0
         self.policy_calls = 0
         self.resolution_memory_results: list[dict[str, object]] = []
+        self.observation_id = ""
 
     def invoke(self, *, instructions, context, response_model):  # type: ignore[no-untyped-def]
         self.roles.append(response_model.__name__)
@@ -459,18 +474,22 @@ class ScriptedProvider:
                     ),
                     complete=False,
                 )
+            observed = context.tool_results[-1]
+            self.observation_id = observed["observation_id"]
             return InvestigationTurn(
                 facts=[
                     EvidenceFact(
-                        evidence_id="E-CASE-1",
+                        evidence_id=self.observation_id,
                         fact="Two captured payments are linked to the issue.",
-                        source="resolveops://case/CASE-1",
+                        source=observed["source"],
                         observed_at=NOW,
+                        source_field="/verified",
+                        source_value_json="true",
                     )
                 ],
-                evidence_ids=["E-CASE-1"],
+                evidence_ids=[self.observation_id],
                 confidence=0.95,
-                source_provenance=["resolveops://case/CASE-1"],
+                source_provenance=[observed["source"]],
                 complete=True,
             )
         if response_model is PolicyTurn:
@@ -495,12 +514,13 @@ class ScriptedProvider:
                 issue_resolutions=[
                     IssueResolution(
                         issue_id="ISSUE-1",
+                        disposition="refund",
                         recommendation="Refund only the verified duplicate capture.",
-                        evidence_ids=["E-CASE-1"],
+                        evidence_ids=[self.observation_id],
                         policy_citations=["CHUNK-1"],
                     )
                 ],
-                evidence_support=["E-CASE-1"],
+                evidence_support=[self.observation_id],
                 policy_support=["CHUNK-1"],
                 escalation_needed=False,
             )
@@ -541,7 +561,7 @@ class MemoryAwareScriptedTools(ScriptedTools):
         result = super().execute(role, request)
         if request.tool_name == "get_case":
             return result.model_copy(
-                update={"data": {"issues": [{"issue_type": "duplicate_charge"}]}}
+                update={"data": {"verified": True, "issues": [{"issue_type": "duplicate_charge"}]}}
             )
         return result
 
@@ -558,6 +578,7 @@ def test_true_multi_agent_runtime_invokes_distinct_roles_tools_and_handoffs() ->
         tools=ScriptedTools(),
         run_store=store,
         ledger=ledger,
+        clock=lambda: NOW,
     )
 
     result = runtime.run(
@@ -619,6 +640,7 @@ def test_runtime_passes_only_matching_reviewed_memory_to_resolution_role() -> No
         run_store=store,
         ledger=ledger,
         memory_retriever=memory_store,
+        clock=lambda: NOW,
     )
 
     runtime.run(
@@ -660,6 +682,7 @@ def test_hierarchical_orchestrator_passes_reviewed_memory_to_resolution_role() -
         run_store=store,
         ledger=ledger,
         memory_retriever=memory_store,
+        clock=lambda: NOW,
     )
 
     HierarchicalAgentOrchestrator(runtime).run(
@@ -700,6 +723,7 @@ def test_hierarchical_langgraph_routes_customer_domain_through_specialists() -> 
         tools=ScriptedTools(),
         run_store=store,
         ledger=ledger,
+        clock=lambda: NOW,
     )
 
     result = HierarchicalAgentOrchestrator(runtime).run(
@@ -874,3 +898,67 @@ def test_agent_case_read_does_not_fallback_after_mcp_security_denial() -> None:
                 purpose="Inspect the case.",
             ),
         )
+
+
+@pytest.mark.parametrize("known_first", [False, True])
+def test_unknown_cost_remains_unknown_across_mixed_usage(known_first: bool) -> None:
+    ledger = BudgetLedger(AgentBudget(), datetime.now(UTC))
+    for cost in [0.001, None] if known_first else [None, 0.001]:
+        ledger.reserve_model_call(estimated_input_tokens=100)
+        ledger.record_model_usage(
+            actual_input_tokens=100,
+            output_tokens=50,
+            reserved_input_tokens=100,
+            estimated_cost_usd=cost,
+        )
+    assert ledger.usage.estimated_cost_usd is None
+
+
+@pytest.mark.parametrize("known_usage", [False, True])
+def test_invocation_records_unknown_usage_or_known_budget_overrun(known_usage: bool) -> None:
+    from resolveops.reasoning.providers import ModelTokenUsage
+
+    class Provider:
+        provider_name = "test"
+        model_name = "test"
+        last_usage = (
+            ModelTokenUsage(input_tokens=200, output_tokens=600, total_tokens=800)
+            if known_usage
+            else None
+        )
+
+        def invoke(self, **kwargs):  # type: ignore[no-untyped-def]
+            return CriticReport(decision=CriticDecision.ACCEPT, summary="Test response")
+
+    engine = create_engine("sqlite:///:memory:")
+    Base.metadata.create_all(engine)
+    factory = sessionmaker(engine, expire_on_commit=False)
+    ledger = BudgetLedger(AgentBudget(max_output_tokens=500), datetime.now(UTC))
+    invoker = AgentInvoker(
+        provider=Provider(),
+        store=AgentRunStore(factory),
+        ledger=ledger,
+        input_cost_per_million_usd=1,
+        output_cost_per_million_usd=1,
+    )
+    kwargs = {
+        "tenant_id": "TENANT-A",
+        "workflow_id": "WF-USAGE",
+        "trace_id": "TRACE-USAGE",
+        "role": AgentRole.CRITIC,
+        "context": {"case_id": "CASE-1"},
+        "response_model": CriticReport,
+    }
+    if known_usage:
+        with pytest.raises(AgentBudgetExceeded, match="output_token"):
+            invoker.invoke(**kwargs)
+    else:
+        invoker.invoke(**kwargs)
+    with factory() as session:
+        row = session.scalars(select(AgentRunRecord)).one()
+        assert row.input_tokens == (200 if known_usage else None)
+        assert row.output_tokens == (600 if known_usage else None)
+    if not known_usage:
+        assert ledger.usage.estimated_cost_usd is None
+        assert ledger.usage.input_tokens > 0  # conservative reservation, not reported usage
+    engine.dispose()

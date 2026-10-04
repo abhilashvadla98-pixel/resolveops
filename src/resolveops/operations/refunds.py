@@ -20,6 +20,7 @@ from resolveops.models.refund import RefundKind, RefundStatus
 from resolveops.models.returns import ReturnStatus
 from resolveops.operations.errors import BusinessRuleError, ResourceNotFoundError
 from resolveops.operations.models import IssueRefundRequest
+from resolveops.operations.proposals import investigate_issue, same_refund_target
 
 
 def execute_refund(
@@ -62,6 +63,20 @@ def execute_refund(
     if payment.currency != request.currency:
         raise BusinessRuleError(
             "currency_mismatch", "refund currency must match the payment currency"
+        )
+
+    investigation = investigate_issue(session, request.case_id, request.issue_id)
+    if (
+        investigation.proposal is None
+        or not same_refund_target(investigation.proposal, request)
+        or (
+            request.idempotency_key.startswith("REFUND-")
+            and investigation.proposal.idempotency_key != request.idempotency_key
+        )
+    ):
+        raise BusinessRuleError(
+            "proposal_evidence_changed",
+            "Fresh authoritative evidence does not support this exact refund; investigate again.",
         )
 
     if request.kind == RefundKind.DUPLICATE_CHARGE:
@@ -119,7 +134,12 @@ def verify_refund(session: Session, refund_id: str, request: IssueRefundRequest)
         and record.amount == request.amount
         and record.currency == request.currency
         and record.kind == request.kind
-        and record.status == RefundStatus.PENDING
+        and record.status
+        in {
+            RefundStatus.PENDING,
+            RefundStatus.PROCESSING,
+            RefundStatus.COMPLETED,
+        }
     )
 
 

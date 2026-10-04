@@ -3,6 +3,7 @@ from typing import Annotated, NotRequired, TypedDict
 
 from resolveops.agents.models import (
     AgentDomain,
+    AgentRole,
     CriticReport,
     InvestigationTurn,
     PolicyTurn,
@@ -31,3 +32,4 @@ class HierarchicalAgentState(TypedDict):
     replan_count: int
     status: str
     escalation_reason: NotRequired[str | None]
+    skipped_roles: NotRequired[list[AgentRole]]

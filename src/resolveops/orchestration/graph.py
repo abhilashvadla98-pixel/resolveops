@@ -49,6 +49,7 @@ class HierarchicalAgentOrchestrator:
                 }
             ),
         )
+        skipped = final.get("skipped_roles", [])
         return MultiAgentReasoningResult(
             workflow_id=workflow_id,
             case_id=case_id,
@@ -56,9 +57,11 @@ class HierarchicalAgentOrchestrator:
             domain=domain,
             supervisor=final["supervisor"],
             investigation=final["investigation"],
-            policy=final["policy"],
-            resolution=final["resolution"],
-            critic=final["critic"],
+            policy=final.get("policy") if AgentRole.POLICY not in skipped else None,
+            resolution=final.get("resolution") if AgentRole.RESOLUTION not in skipped else None,
+            critic=final.get("critic") if AgentRole.CRITIC not in skipped else None,
+            skipped_roles=skipped,
+            stop_reason=final.get("escalation_reason"),
             status=(
                 "ready_for_control_plane"
                 if final["status"] == "ready_for_control_plane"
@@ -89,8 +92,12 @@ class HierarchicalAgentOrchestrator:
                 AgentDomain.EMPLOYEE_IT.value: "employee_it",
             },
         )
-        builder.add_edge("customer_operations", "independent_critic")
-        builder.add_edge("employee_it", "independent_critic")
+        for domain_node in ("customer_operations", "employee_it"):
+            builder.add_conditional_edges(
+                domain_node,
+                lambda state: "stop" if state.get("skipped_roles") else "continue",
+                {"stop": "escalate", "continue": "independent_critic"},
+            )
         builder.add_conditional_edges(
             "independent_critic",
             self._route_critic,
@@ -133,6 +140,7 @@ class HierarchicalAgentOrchestrator:
             "agent_run_ids": [run_id],
             "replan_count": state["replan_count"] + (1 if "critic" in state else 0),
             "status": "planned",
+            "skipped_roles": [],
         }
 
     def _criticize(self, state: HierarchicalAgentState) -> dict[str, object]:
@@ -167,7 +175,9 @@ class HierarchicalAgentOrchestrator:
 
     @staticmethod
     def _escalate(state: HierarchicalAgentState) -> dict[str, object]:
+        critic = state.get("critic")
         return {
             "status": "escalated",
-            "escalation_reason": state.get("escalation_reason") or state["critic"].summary,
+            "escalation_reason": state.get("escalation_reason")
+            or (critic.summary if critic else "Evidence requires operator review."),
         }

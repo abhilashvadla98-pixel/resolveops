@@ -151,6 +151,8 @@ class PaymentRecord(Base):
     status: Mapped[PaymentStatus] = mapped_column(enum_type(PaymentStatus, "payment_status"))
     created_at: Mapped[datetime] = mapped_column(UTCDateTime())
     captured_at: Mapped[datetime | None] = mapped_column(UTCDateTime())
+    obligation_id: Mapped[str | None] = mapped_column(String(100))
+    obligation_amount: Mapped[Decimal | None] = mapped_column(Numeric(18, 2))
 
 
 class ReturnRecord(Base):
@@ -246,6 +248,23 @@ class CaseRecord(Base):
         cascade="all, delete-orphan",
         order_by="CaseIssueRecord.issue_id",
     )
+
+
+class CaseMessageRecord(Base):
+    __tablename__ = "case_messages"
+    __table_args__ = (
+        UniqueConstraint("case_id", "source_message_id", name="uq_case_message_source"),
+    )
+
+    message_id: Mapped[str] = mapped_column(String(100), primary_key=True)
+    case_id: Mapped[str] = mapped_column(
+        ForeignKey("cases.case_id", ondelete="CASCADE"), index=True
+    )
+    source_message_id: Mapped[str] = mapped_column(String(100))
+    input_return_id: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    author: Mapped[str] = mapped_column(String(100))
+    body: Mapped[str] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime())
 
 
 class CaseIssueRecord(Base):

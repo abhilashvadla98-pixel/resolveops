@@ -70,10 +70,14 @@ def run_agent_workflow(
 ) -> MultiAgentReasoningResult:
     _require_access(principal)
     settings = get_settings()
-    if settings.gemini_api_key is None:
+    if (
+        not settings.integrated_agents_enabled
+        or settings.gemini_api_key is None
+        or not settings.gemini_key_rotated
+    ):
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="multi-agent reasoning is not configured",
+            detail="multi-agent reasoning is not enabled and configured",
         )
     factory = _factory(session)
     runtime = build_agent_runtime(factory, settings, tenant_id=principal.tenant_id)

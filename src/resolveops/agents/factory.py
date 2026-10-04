@@ -26,19 +26,23 @@ def build_agent_runtime(
 ) -> MultiAgentReasoningRuntime:
     if settings.gemini_api_key is None:
         raise ValueError("multi-agent reasoning is not configured")
+    if not settings.gemini_key_rotated:
+        raise ValueError("live agent runtime requires owner acknowledgement of key rotation")
     provider = GeminiStructuredAgentProvider.from_api_key(
         settings.gemini_api_key.get_secret_value(),
         model=settings.gemini_model,
         timeout_seconds=settings.gemini_timeout_seconds,
         max_attempts=settings.gemini_max_attempts,
         max_input_characters=min(settings.gemini_max_input_characters, 16_000),
-        max_output_tokens=min(settings.gemini_max_output_tokens, 1_200),
+        max_output_tokens=settings.agent_max_output_tokens,
     )
     store = AgentRunStore(session_factory)
     ledger = BudgetLedger(
         AgentBudget(
-            max_agent_steps=10,
-            max_model_calls=10,
+            max_agent_steps=16,
+            max_model_calls=16,
+            max_input_tokens=48_000,
+            max_output_tokens=8_000,
             optional_cost_limit_usd=settings.agent_cost_limit_usd,
         ),
         datetime.now(UTC),
@@ -69,6 +73,7 @@ def build_agent_runtime(
         run_store=store,
         ledger=ledger,
         context_builder=AgentContextBuilder(max_characters=16_000),
+        max_investigation_turns=8,
         memory_retriever=(
             ReviewedResolutionMemoryStore(session_factory)
             if settings.agent_reviewed_memory_enabled

@@ -15,6 +15,7 @@ class BudgetLedger:
     budget: AgentBudget
     started_at: datetime
     usage: AgentBudgetUsage = field(default_factory=AgentBudgetUsage)
+    cost_coverage_complete: bool = True
 
     def reserve_model_call(self, *, estimated_input_tokens: int = 0) -> None:
         next_usage = self.usage.model_copy(
@@ -35,6 +36,8 @@ class BudgetLedger:
         reserved_input_tokens: int = 0,
         estimated_cost_usd: float | None = None,
     ) -> None:
+        if estimated_cost_usd is None:
+            self.cost_coverage_complete = False
         next_usage = self.usage.model_copy(
             update={
                 "input_tokens": (
@@ -43,13 +46,13 @@ class BudgetLedger:
                 "output_tokens": self.usage.output_tokens + output_tokens,
                 "estimated_cost_usd": (
                     None
-                    if estimated_cost_usd is None and self.usage.estimated_cost_usd is None
+                    if not self.cost_coverage_complete
                     else (self.usage.estimated_cost_usd or 0) + (estimated_cost_usd or 0)
                 ),
             }
         )
-        self._validate(next_usage)
         self.usage = next_usage
+        self._validate(next_usage)
 
     def consume_tool_call(self) -> None:
         next_usage = self.usage.model_copy(update={"tool_calls": self.usage.tool_calls + 1})

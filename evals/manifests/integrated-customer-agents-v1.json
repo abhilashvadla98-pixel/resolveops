@@ -1,0 +1,13 @@
+{
+  "dataset_id": "resolveops.agents.integrated_customer",
+  "version": "1.0.0",
+  "description": "New-intake customer workflow business outcomes with actual source stores and read tools.",
+  "source": "synthetic source records and author-defined regression expectations; not human labels",
+  "creation_method": "Ten source-record perturbations scored against refund writes, explicit synthetic approval, pending submission and synthetic settlement. Expectations never enter model context.",
+  "path": "evals/integrated/cases.jsonl",
+  "labels": ["expected_outcome", "expected_new_refunds", "expected_amount", "expected_payment_id", "expected_final_issue"],
+  "case_categories": ["duplicate_capture", "prior_refund", "split_capture", "authorization_only", "missing_obligation", "missing_policy", "human_rejection_simulation", "return_refund", "return_in_transit"],
+  "record_count": 10,
+  "sha256": "46fd13341d8024dbed4675251fd23e8209f7fbfe1b342a5f33c2390fc2757143",
+  "created_date": "2026-10-04"
+}

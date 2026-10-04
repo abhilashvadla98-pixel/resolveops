@@ -51,7 +51,7 @@ from resolveops.reasoning.models import (
 from resolveops.workflows.customer_issue import CustomerIssueWorkflow
 from resolveops.workflows.models import WorkflowRequest, WorkflowResult
 
-DEFAULT_WORKFLOW_DATASET_NAME = "customer-operations-workflow-v1"
+DEFAULT_WORKFLOW_DATASET_NAME = "customer-operations-workflow-v2"
 DEFAULT_POLICY_DIRECTORY = Path("domain_packs/customer_operations/policies")
 EVALUATION_TIME = datetime(2026, 9, 24, 12, 0, tzinfo=UTC)
 
@@ -199,10 +199,19 @@ def _run_case(
         observability_sink=observability_sink,
         clock=lambda: EVALUATION_TIME,
     ).run(request)
-    return _observe_result(
-        result,
-        new_refund_created=_refund_count(factory, evaluation_case.issue_id) > before_count,
-    )
+    with factory() as session:
+        issue = session.get(CaseIssueRecord, evaluation_case.issue_id)
+        refund = (
+            session.get(RefundRecord, result.verified_resource_id)
+            if result.verified_resource_id is not None
+            else None
+        )
+        return _observe_result(
+            result,
+            new_refund_created=_refund_count(factory, evaluation_case.issue_id) > before_count,
+            issue_status=issue.status if issue else None,
+            refund_status=refund.status if refund else None,
+        )
 
 
 def _evaluation_engine() -> Engine:
@@ -246,7 +255,19 @@ def _apply_fixture(factory: sessionmaker[Session], evaluation_case: WorkflowEval
             for document in documents:
                 document.status = KnowledgeStatus.SUPERSEDED
 
-        if fixture == ScenarioFixture.DUPLICATE_SECOND_PAYMENT_PENDING:
+        if fixture in {
+            ScenarioFixture.DUPLICATE_OBLIGATION_MISSING,
+            ScenarioFixture.DUPLICATE_OBLIGATION_CONFLICT,
+        }:
+            payment = session.get(PaymentRecord, "PAY-1002")
+            if payment is None:
+                raise RuntimeError("evaluation seed payment is missing")
+            if fixture == ScenarioFixture.DUPLICATE_OBLIGATION_MISSING:
+                payment.obligation_id = None
+                payment.obligation_amount = None
+            else:
+                payment.obligation_id = "OBLIGATION-CONFLICTING"
+        elif fixture == ScenarioFixture.DUPLICATE_SECOND_PAYMENT_PENDING:
             payment = session.get(PaymentRecord, "PAY-1002")
             if payment is None:
                 raise RuntimeError("evaluation seed payment is missing")
@@ -275,6 +296,11 @@ def _apply_fixture(factory: sessionmaker[Session], evaluation_case: WorkflowEval
                 raise RuntimeError("evaluation seed return is missing")
             customer_return.status = ReturnStatus.IN_TRANSIT
             customer_return.received_at = None
+        elif fixture == ScenarioFixture.RETURN_UNLINKED:
+            issue = session.get(CaseIssueRecord, "ISSUE-1002")
+            if issue is None:
+                raise RuntimeError("evaluation seed issue is missing")
+            issue.return_id = None
 
 
 def _make_issue_actionable(session: Session, issue_id: str) -> None:
@@ -352,7 +378,13 @@ def _refund_count(factory: sessionmaker[Session], issue_id: str) -> int:
         )
 
 
-def _observe_result(result: WorkflowResult, *, new_refund_created: bool) -> WorkflowObservation:
+def _observe_result(
+    result: WorkflowResult,
+    *,
+    new_refund_created: bool,
+    issue_status: CaseIssueStatus | None = None,
+    refund_status: RefundStatus | None = None,
+) -> WorkflowObservation:
     policy_document_ids = list(dict.fromkeys(item.document_id for item in result.policy_citations))
     reasoning_grounded: bool | None = None
     if result.reasoning is not None:
@@ -364,6 +396,9 @@ def _observe_result(result: WorkflowResult, *, new_refund_created: bool) -> Work
         )
     return WorkflowObservation(
         outcome=result.outcome,
+        status=result.status,
+        issue_status=issue_status,
+        refund_status=refund_status,
         decision=result.decision,
         error_code=result.error_code,
         new_refund_created=new_refund_created,

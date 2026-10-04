@@ -63,7 +63,7 @@ def test_intake_persists_original_complaint_and_independent_issues() -> None:
     factory = create_session_factory(engine)
     with factory.begin() as session:
         seed_customer_operations(session)
-    ids = iter(["CASE-NEW", "ISSUE-DUP", "ISSUE-RETURN"])
+    ids = iter(["CASE-NEW", "ISSUE-DUP", "ISSUE-RETURN", "MSG-NEW", "SOURCE-NEW"])
     fixed_time = datetime(2026, 9, 29, 14, 0, tzinfo=UTC)
 
     with factory.begin() as session:

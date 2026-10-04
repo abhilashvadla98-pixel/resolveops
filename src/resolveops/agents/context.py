@@ -29,6 +29,8 @@ class AgentContext(DomainModel):
     policy_results: list[dict[str, object]] = Field(default_factory=list, max_length=30)
     memory_results: list[dict[str, object]] = Field(default_factory=list, max_length=10)
     required_evidence: list[NonEmptyText] = Field(default_factory=list, max_length=30)
+    valid_evidence_ids: list[Identifier] = Field(default_factory=list, max_length=100)
+    valid_policy_citation_ids: list[Identifier] = Field(default_factory=list, max_length=100)
     allowed_tools: list[Identifier] = Field(default_factory=list, max_length=20)
     tool_contracts: dict[Identifier, dict[str, object]] = Field(default_factory=dict, max_length=20)
     freshness_cutoff: AwareDatetime
@@ -41,14 +43,13 @@ class AgentContext(DomainModel):
     def prohibit_cross_tenant_context(self) -> "AgentContext":
         for group in (
             self.facts,
+            self.prior_outputs,
             self.tool_results,
             self.policy_results,
             self.memory_results,
         ):
             for item in group:
-                item_tenant = item.get("tenant_id")
-                if item_tenant is not None and item_tenant != self.tenant_id:
-                    raise ValueError("context contains evidence from a different tenant")
+                _require_matching_tenant(item, self.tenant_id)
         return self
 
 
@@ -72,6 +73,8 @@ class AgentContextBuilder:
         policy_results: list[dict[str, object]] | None = None,
         memory_results: list[dict[str, object]] | None = None,
         required_evidence: list[str] | None = None,
+        valid_evidence_ids: list[str] | None = None,
+        valid_policy_citation_ids: list[str] | None = None,
         allowed_tools: list[str] | None = None,
         tool_contracts: dict[str, dict[str, object]] | None = None,
         token_budget: int = 4_000,
@@ -90,8 +93,10 @@ class AgentContextBuilder:
         }
         truncations = 0
         while _serialized_size(supplied) > self.max_characters:
-            target = max(supplied, key=lambda key: len(supplied[key]))
-            if not supplied[target]:
+            # Only optional memory may be dropped. Prior proposals and specialist
+            # outputs are required handoff context, not disposable chat history.
+            target = next((key for key in ("memory_results",) if supplied[key]), None)
+            if target is None:
                 raise ValueError("required agent context exceeds configured size limit")
             supplied[target].pop()
             truncations += 1
@@ -119,6 +124,8 @@ class AgentContextBuilder:
             policy_results=supplied["policy_results"],
             memory_results=supplied["memory_results"],
             required_evidence=required_evidence or [],
+            valid_evidence_ids=valid_evidence_ids or [],
+            valid_policy_citation_ids=valid_policy_citation_ids or [],
             allowed_tools=allowed_tools or [],
             tool_contracts=tool_contracts or {},
             freshness_cutoff=freshness_cutoff,
@@ -140,6 +147,17 @@ def context_fingerprint(context: AgentContext) -> str:
 
 def _serialized_size(value: object) -> int:
     return len(json.dumps(value, sort_keys=True, default=str, separators=(",", ":")))
+
+
+def _require_matching_tenant(value: object, tenant_id: str) -> None:
+    if isinstance(value, dict):
+        if value.get("tenant_id") is not None and value["tenant_id"] != tenant_id:
+            raise ValueError("context contains evidence from a different tenant")
+        for nested in value.values():
+            _require_matching_tenant(nested, tenant_id)
+    elif isinstance(value, list):
+        for nested in value:
+            _require_matching_tenant(nested, tenant_id)
 
 
 def _is_stale(item: dict[str, object], cutoff: datetime) -> bool:

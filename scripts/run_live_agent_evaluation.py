@@ -1,8 +1,11 @@
 import argparse
+import hashlib
 import json
+import subprocess
 from datetime import UTC, datetime
 from pathlib import Path
 from time import perf_counter
+from uuid import uuid4
 
 from pydantic import Field, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -13,6 +16,7 @@ from resolveops.agents.budgets import BudgetLedger
 from resolveops.agents.invocation import AgentInvoker
 from resolveops.agents.models import AgentBudget, AgentRole
 from resolveops.agents.persistence import AgentRunStore
+from resolveops.agents.prompts import PROMPT_VERSIONS, SCHEMA_VERSIONS
 from resolveops.agents.providers import GeminiStructuredAgentProvider
 from resolveops.agents.runtime import MultiAgentReasoningRuntime
 from resolveops.database.base import Base
@@ -33,10 +37,20 @@ class LiveAgentSettings(BaseSettings):
         env_file=".env", env_prefix="RESOLVEOPS_GEMINI_", extra="ignore"
     )
 
+    def require_rotated_credential(self) -> str:
+        if self.api_key is None:
+            raise ValueError("A local Gemini API key is required; it is never written to reports.")
+        if not self.key_rotated:
+            raise ValueError(
+                "Live calls require owner key rotation and RESOLVEOPS_GEMINI_KEY_ROTATED=true."
+            )
+        return self.api_key.get_secret_value()
+
 
 def _run_trial(
     case: AgentTrajectoryCase, trial: int, settings: LiveAgentSettings
 ) -> dict[str, object]:
+    api_key = settings.require_rotated_credential()
     engine = create_engine("sqlite:///:memory:")
     Base.metadata.create_all(engine)
     factory = sessionmaker(engine, expire_on_commit=False)
@@ -52,7 +66,7 @@ def _run_trial(
         datetime.now(UTC),
     )
     provider = GeminiStructuredAgentProvider.from_api_key(
-        settings.api_key.get_secret_value(),  # type: ignore[union-attr]
+        api_key,
         model=settings.model,
         timeout_seconds=45,
         max_attempts=2,
@@ -67,7 +81,7 @@ def _run_trial(
             input_cost_per_million_usd=settings.input_cost_per_million_usd,
             output_cost_per_million_usd=settings.output_cost_per_million_usd,
         ),
-        tools=OfflineTrajectoryTools(case),
+        tools=OfflineTrajectoryTools(case, clock=lambda: datetime.now(UTC)),
         run_store=store,
         ledger=ledger,
         context_tool_allowlists={
@@ -128,16 +142,23 @@ def _run_trial(
         and set(expected.required_tools).issubset(tool_names)
         and not set(expected.forbidden_tools).intersection(tool_names)
         and [decision.value for decision in expected.critic_decisions] == critics
+        and result.replan_count == expected.replan_count
+        and len(runs) <= expected.max_model_calls
+        and len(tools) <= expected.max_tool_calls
     )
     record = {
         "evaluation_id": case.evaluation_id,
         "trial": trial,
         "passed": passed,
+        "evaluation_scope": "provider_backed_contract_smoke",
+        "business_outcome_evaluated": False,
+        "tool_source": "synthetic_contract_fixtures",
         "status": result.status if result else "error",
         "roles": roles,
         "tools": tool_names,
         "citations": citations,
         "critic_decisions": critics,
+        "replan_count": result.replan_count if result else None,
         "latency_ms": latency_ms,
         "model_calls": len(runs),
         "tool_calls": len(tools),
@@ -161,7 +182,9 @@ def _run_trial(
                         + (run.output_tokens or 0) * settings.output_cost_per_million_usd
                     )
                     / 1_000_000
-                    if settings.input_cost_per_million_usd is not None
+                    if run.input_tokens is not None
+                    and run.output_tokens is not None
+                    and settings.input_cost_per_million_usd is not None
                     and settings.output_cost_per_million_usd is not None
                     else None
                 ),
@@ -171,6 +194,41 @@ def _run_trial(
     }
     engine.dispose()
     return record
+
+
+def report_provenance(dataset: Path, settings: LiveAgentSettings) -> dict[str, object]:
+    revision = subprocess.run(
+        ["git", "rev-parse", "HEAD"], capture_output=True, text=True, check=True
+    ).stdout.strip()
+    dirty = bool(
+        subprocess.run(
+            ["git", "status", "--porcelain"], capture_output=True, text=True, check=True
+        ).stdout.strip()
+    )
+    return {
+        "git_revision": revision,
+        "working_tree_dirty": dirty,
+        "dataset": str(dataset),
+        "dataset_sha256": hashlib.sha256(dataset.read_bytes()).hexdigest(),
+        "provider": "google",
+        "model": settings.model,
+        "prompt_versions": {role.value: version for role, version in PROMPT_VERSIONS.items()},
+        "schema_versions": {role.value: version for role, version in SCHEMA_VERSIONS.items()},
+        "environment": "local contract harness; SQLite in-memory telemetry",
+        "evaluation_scope": "provider_backed_contract_smoke",
+        "business_outcome_evaluated": False,
+        "tool_source": "synthetic_contract_fixtures",
+    }
+
+
+def save_new_report(report: dict[str, object], output: Path | None, prefix: str) -> Path:
+    path = output or Path("evals/agents/runs") / (
+        f"{prefix}-{datetime.now(UTC).strftime('%Y%m%dT%H%M%S')}-{uuid4().hex[:8]}.json"
+    )
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("x", encoding="utf-8") as handle:
+        handle.write(json.dumps(report, indent=2) + "\n")
+    return path
 
 
 def _output_contract(output: dict[str, object] | None) -> dict[str, object] | None:
@@ -202,20 +260,20 @@ def _output_contract(output: dict[str, object] | None) -> dict[str, object] | No
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Run the live stochastic multi-agent evaluation.")
+    parser = argparse.ArgumentParser(
+        description="Run provider-backed orchestration contract smoke trials with fixture tools."
+    )
     parser.add_argument("--dataset", type=Path, default=Path("evals/agents/trajectories.jsonl"))
-    parser.add_argument("--output", type=Path, default=Path("evals/agents/live-report.json"))
+    parser.add_argument(
+        "--output", type=Path, help="New report path; existing files are never replaced"
+    )
     parser.add_argument("--tasks", type=int, default=10, choices=range(8, 13))
     parser.add_argument("--trials", type=int, default=3, choices=range(1, 4))
     args = parser.parse_args()
     settings = LiveAgentSettings()
-    if settings.api_key is None:
-        raise SystemExit("A local Gemini API key is required; it is never written to reports.")
-    if not settings.key_rotated:
-        raise SystemExit(
-            "Live evaluation blocked: rotate the exposed key, then set "
-            "RESOLVEOPS_GEMINI_KEY_ROTATED=true locally."
-        )
+    settings.require_rotated_credential()
+    if args.output is not None and args.output.exists():
+        raise SystemExit("Refusing to overwrite an existing evaluation report.")
     cases = load_agent_trajectory_cases(args.dataset)[: args.tasks]
     results = [
         _run_trial(case, trial, settings) for case in cases for trial in range(1, args.trials + 1)
@@ -225,6 +283,7 @@ def main() -> int:
         "measured_at": datetime.now(UTC).isoformat(),
         "provider": "google",
         "model": settings.model,
+        "provenance": report_provenance(args.dataset, settings),
         "task_count": len(cases),
         "trials_per_task": args.trials,
         "trial_count": len(results),
@@ -244,14 +303,20 @@ def main() -> int:
         ),
         "results": results,
         "limitations": [
+            "Contract smoke only: tools return fixture data, not application-store reads.",
+            "No approval, refund, settlement, deployed path or business outcome is evaluated.",
+            "Expected outcomes are held only in the scorer; this is not a model-quality benchmark.",
             "Synthetic evidence only; no external business system is modified.",
             "Unknown provider pricing remains null rather than being invented.",
             "Quota failures remain visible as failed trials.",
         ],
     }
-    args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
-    print(json.dumps({"trials": len(results), "passed": report["passed_trials"]}))
+    output = save_new_report(report, args.output, "provider-contract")
+    print(
+        json.dumps(
+            {"output": str(output), "trials": len(results), "passed": report["passed_trials"]}
+        )
+    )
     return 0 if report["passed_trials"] == len(results) else 1
 
 

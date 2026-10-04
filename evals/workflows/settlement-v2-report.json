@@ -1,0 +1,2518 @@
+{
+  "dataset_name": "evals/workflows/customer_operations.jsonl",
+  "case_count": 24,
+  "passed_count": 24,
+  "failed_count": 0,
+  "pass_rate": 1.0,
+  "category_metrics": [
+    {
+      "category": "already_refunded",
+      "case_count": 2,
+      "passed_count": 2,
+      "pass_rate": 1.0
+    },
+    {
+      "category": "ambiguous",
+      "case_count": 6,
+      "passed_count": 6,
+      "pass_rate": 1.0
+    },
+    {
+      "category": "permission",
+      "case_count": 4,
+      "passed_count": 4,
+      "pass_rate": 1.0
+    },
+    {
+      "category": "policy",
+      "case_count": 2,
+      "passed_count": 2,
+      "pass_rate": 1.0
+    },
+    {
+      "category": "reasoning",
+      "case_count": 4,
+      "passed_count": 4,
+      "pass_rate": 1.0
+    },
+    {
+      "category": "success",
+      "case_count": 3,
+      "passed_count": 3,
+      "pass_rate": 1.0
+    },
+    {
+      "category": "tool_failure",
+      "case_count": 3,
+      "passed_count": 3,
+      "pass_rate": 1.0
+    }
+  ],
+  "cases": [
+    {
+      "evaluation_id": "WF-EVAL-001",
+      "title": "Missing payment-obligation evidence blocks a reported duplicate",
+      "category": "ambiguous",
+      "passed": true,
+      "assertions": [
+        {
+          "name": "outcome",
+          "expected": "needs_review",
+          "actual": "needs_review",
+          "passed": true
+        },
+        {
+          "name": "decision",
+          "expected": "escalate",
+          "actual": "escalate",
+          "passed": true
+        },
+        {
+          "name": "error_code",
+          "expected": "evidence_review_required",
+          "actual": "evidence_review_required",
+          "passed": true
+        },
+        {
+          "name": "new_refund_created",
+          "expected": "false",
+          "actual": "false",
+          "passed": true
+        },
+        {
+          "name": "verified",
+          "expected": "false",
+          "actual": "false",
+          "passed": true
+        },
+        {
+          "name": "status",
+          "expected": "escalated",
+          "actual": "escalated",
+          "passed": true
+        },
+        {
+          "name": "issue_status",
+          "expected": "escalated",
+          "actual": "escalated",
+          "passed": true
+        },
+        {
+          "name": "required_policy",
+          "expected": "true",
+          "actual": "true",
+          "passed": true
+        },
+        {
+          "name": "required_node:investigate_duplicate",
+          "expected": "true",
+          "actual": "true",
+          "passed": true
+        },
+        {
+          "name": "required_node:escalate",
+          "expected": "true",
+          "actual": "true",
+          "passed": true
+        },
+        {
+          "name": "forbidden_node:execute_refund",
+          "expected": "false",
+          "actual": "false",
+          "passed": true
+        }
+      ],
+      "observation": {
+        "outcome": "needs_review",
+        "status": "escalated",
+        "issue_status": "escalated",
+        "refund_status": null,
+        "decision": "escalate",
+        "error_code": "evidence_review_required",
+        "new_refund_created": false,
+        "verified": false,
+        "node_history": [
+          "load_case",
+          "investigate_duplicate",
+          "retrieve_policy",
+          "reason_case",
+          "decide",
+          "escalate"
+        ],
+        "policy_document_ids": [
+          "POLICY-DUPLICATE-CHARGE"
+        ],
+        "reasoning_grounded": null
+      },
+      "execution_error": null
+    },
+    {
+      "evaluation_id": "WF-EVAL-002",
+      "title": "Approver submits the confirmed duplicate refund; settlement remains pending",
+      "category": "success",
+      "passed": true,
+      "assertions": [
+        {
+          "name": "outcome",
+          "expected": "refund_submitted",
+          "actual": "refund_submitted",
+          "passed": true
+        },
+        {
+          "name": "decision",
+          "expected": "execute_refund",
+          "actual": "execute_refund",
+          "passed": true
+        },
+        {
+          "name": "error_code",
+          "expected": "null",
+          "actual": "null",
+          "passed": true
+        },
+        {
+          "name": "new_refund_created",
+          "expected": "true",
+          "actual": "true",
+          "passed": true
+        },
+        {
+          "name": "verified",
+          "expected": "true",
+          "actual": "true",
+          "passed": true
+        },
+        {
+          "name": "status",
+          "expected": "waiting_external",
+          "actual": "waiting_external",
+          "passed": true
+        },
+        {
+          "name": "issue_status",
+          "expected": "verifying",
+          "actual": "verifying",
+          "passed": true
+        },
+        {
+          "name": "refund_status",
+          "expected": "pending",
+          "actual": "pending",
+          "passed": true
+        },
+        {
+          "name": "required_policy",
+          "expected": "true",
+          "actual": "true",
+          "passed": true
+        },
+        {
+          "name": "required_node:execute_refund",
+          "expected": "true",
+          "actual": "true",
+          "passed": true
+        },
+        {
+          "name": "required_node:verify_action",
+          "expected": "true",
+          "actual": "true",
+          "passed": true
+        },
+        {
+          "name": "required_node:complete",
+          "expected": "true",
+          "actual": "true",
+          "passed": true
+        },
+        {
+          "name": "forbidden_node:escalate",
+          "expected": "false",
+          "actual": "false",
+          "passed": true
+        }
+      ],
+      "observation": {
+        "outcome": "refund_submitted",
+        "status": "waiting_external",
+        "issue_status": "verifying",
+        "refund_status": "pending",
+        "decision": "execute_refund",
+        "error_code": null,
+        "new_refund_created": true,
+        "verified": true,
+        "node_history": [
+          "load_case",
+          "investigate_duplicate",
+          "retrieve_policy",
+          "reason_case",
+          "decide",
+          "approval_gate",
+          "execute_refund",
+          "verify_action",
+          "complete"
+        ],
+        "policy_document_ids": [
+          "POLICY-DUPLICATE-CHARGE"
+        ],
+        "reasoning_grounded": null
+      },
+      "execution_error": null
+    },
+    {
+      "evaluation_id": "WF-EVAL-003",
+      "title": "Authorized system submits refund without claiming settlement",
+      "category": "success",
+      "passed": true,
+      "assertions": [
+        {
+          "name": "outcome",
+          "expected": "refund_submitted",
+          "actual": "refund_submitted",
+          "passed": true
+        },
+        {
+          "name": "decision",
+          "expected": "execute_refund",
+          "actual": "execute_refund",
+          "passed": true
+        },
+        {
+          "name": "error_code",
+          "expected": "null",
+          "actual": "null",
+          "passed": true
+        },
+        {
+          "name": "new_refund_created",
+          "expected": "true",
+          "actual": "true",
+          "passed": true
+        },
+        {
+          "name": "verified",
+          "expected": "true",
+          "actual": "true",
+          "passed": true
+        },
+        {
+          "name": "status",
+          "expected": "waiting_external",
+          "actual": "waiting_external",
+          "passed": true
+        },
+        {
+          "name": "issue_status",
+          "expected": "verifying",
+          "actual": "verifying",
+          "passed": true
+        },
+        {
+          "name": "refund_status",
+          "expected": "pending",
+          "actual": "pending",
+          "passed": true
+        },
+        {
+          "name": "required_policy",
+          "expected": "true",
+          "actual": "true",
+          "passed": true
+        },
+        {
+          "name": "required_node:reason_case",
+          "expected": "true",
+          "actual": "true",
+          "passed": true
+        },
+        {
+          "name": "required_node:execute_refund",
+          "expected": "true",
+          "actual": "true",
+          "passed": true
+        },
+        {
+          "name": "required_node:verify_action",
+          "expected": "true",
+          "actual": "true",
+          "passed": true
+        },
+        {
+          "name": "forbidden_node:escalate",
+          "expected": "false",
+          "actual": "false",
+          "passed": true
+        },
+        {
+          "name": "reasoning_grounded",
+          "expected": "true",
+          "actual": "true",
+          "passed": true
+        }
+      ],
+      "observation": {
+        "outcome": "refund_submitted",
+        "status": "waiting_external",
+        "issue_status": "verifying",
+        "refund_status": "pending",
+        "decision": "execute_refund",
+        "error_code": null,
+        "new_refund_created": true,
+        "verified": true,
+        "node_history": [
+          "load_case",
+          "investigate_duplicate",
+          "retrieve_policy",
+          "reason_case",
+          "decide",
+          "approval_gate",
+          "execute_refund",
+          "verify_action",
+          "complete"
+        ],
+        "policy_document_ids": [
+          "POLICY-DUPLICATE-CHARGE"
+        ],
+        "reasoning_grounded": true
+      },
+      "execution_error": null
+    },
+    {
+      "evaluation_id": "WF-EVAL-004",
+      "title": "Operator cannot approve high-value duplicate refund",
+      "category": "permission",
+      "passed": true,
+      "assertions": [
+        {
+          "name": "outcome",
+          "expected": "needs_review",
+          "actual": "needs_review",
+          "passed": true
+        },
+        {
+          "name": "decision",
+          "expected": "escalate",
+          "actual": "escalate",
+          "passed": true
+        },
+        {
+          "name": "error_code",
+          "expected": "refund_approval_required",
+          "actual": "refund_approval_required",
+          "passed": true
+        },
+        {
+          "name": "new_refund_created",
+          "expected": "false",
+          "actual": "false",
+          "passed": true
+        },
+        {
+          "name": "verified",
+          "expected": "false",
+          "actual": "false",
+          "passed": true
+        },
+        {
+          "name": "status",
+          "expected": "escalated",
+          "actual": "escalated",
+          "passed": true
+        },
+        {
+          "name": "issue_status",
+          "expected": "escalated",
+          "actual": "escalated",
+          "passed": true
+        },
+        {
+          "name": "required_policy",
+          "expected": "true",
+          "actual": "true",
+          "passed": true
+        },
+        {
+          "name": "required_node:approval_gate",
+          "expected": "true",
+          "actual": "true",
+          "passed": true
+        },
+        {
+          "name": "required_node:escalate",
+          "expected": "true",
+          "actual": "true",
+          "passed": true
+        },
+        {
+          "name": "forbidden_node:verify_action",
+          "expected": "false",
+          "actual": "false",
+          "passed": true
+        }
+      ],
+      "observation": {
+        "outcome": "needs_review",
+        "status": "escalated",
+        "issue_status": "escalated",
+        "refund_status": null,
+        "decision": "escalate",
+        "error_code": "refund_approval_required",
+        "new_refund_created": false,
+        "verified": false,
+        "node_history": [
+          "load_case",
+          "investigate_duplicate",
+          "retrieve_policy",
+          "reason_case",
+          "decide",
+          "approval_gate",
+          "execute_refund",
+          "escalate"
+        ],
+        "policy_document_ids": [
+          "POLICY-DUPLICATE-CHARGE"
+        ],
+        "reasoning_grounded": null
+      },
+      "execution_error": null
+    },
+    {
+      "evaluation_id": "WF-EVAL-005",
+      "title": "Agent is denied refund permission",
+      "category": "permission",
+      "passed": true,
+      "assertions": [
+        {
+          "name": "outcome",
+          "expected": "needs_review",
+          "actual": "needs_review",
+          "passed": true
+        },
+        {
+          "name": "decision",
+          "expected": "escalate",
+          "actual": "escalate",
+          "passed": true
+        },
+        {
+          "name": "error_code",
+          "expected": "permission_denied",
+          "actual": "permission_denied",
+          "passed": true
+        },
+        {
+          "name": "new_refund_created",
+          "expected": "false",
+          "actual": "false",
+          "passed": true
+        },
+        {
+          "name": "verified",
+          "expected": "false",
+          "actual": "false",
+          "passed": true
+        },
+        {
+          "name": "status",
+          "expected": "escalated",
+          "actual": "escalated",
+          "passed": true
+        },
+        {
+          "name": "issue_status",
+          "expected": "escalated",
+          "actual": "escalated",
+          "passed": true
+        },
+        {
+          "name": "required_policy",
+          "expected": "true",
+          "actual": "true",
+          "passed": true
+        },
+        {
+          "name": "required_node:approval_gate",
+          "expected": "true",
+          "actual": "true",
+          "passed": true
+        },
+        {
+          "name": "required_node:escalate",
+          "expected": "true",
+          "actual": "true",
+          "passed": true
+        },
+        {
+          "name": "forbidden_node:verify_action",
+          "expected": "false",
+          "actual": "false",
+          "passed": true
+        }
+      ],
+      "observation": {
+        "outcome": "needs_review",
+        "status": "escalated",
+        "issue_status": "escalated",
+        "refund_status": null,
+        "decision": "escalate",
+        "error_code": "permission_denied",
+        "new_refund_created": false,
+        "verified": false,
+        "node_history": [
+          "load_case",
+          "investigate_duplicate",
+          "retrieve_policy",
+          "reason_case",
+          "decide",
+          "approval_gate",
+          "execute_refund",
+          "escalate"
+        ],
+        "policy_document_ids": [
+          "POLICY-DUPLICATE-CHARGE"
+        ],
+        "reasoning_grounded": null
+      },
+      "execution_error": null
+    },
+    {
+      "evaluation_id": "WF-EVAL-006",
+      "title": "Conflicting payment obligations stop server-derived proposal",
+      "category": "ambiguous",
+      "passed": true,
+      "assertions": [
+        {
+          "name": "outcome",
+          "expected": "needs_review",
+          "actual": "needs_review",
+          "passed": true
+        },
+        {
+          "name": "decision",
+          "expected": "escalate",
+          "actual": "escalate",
+          "passed": true
+        },
+        {
+          "name": "error_code",
+          "expected": "evidence_review_required",
+          "actual": "evidence_review_required",
+          "passed": true
+        },
+        {
+          "name": "new_refund_created",
+          "expected": "false",
+          "actual": "false",
+          "passed": true
+        },
+        {
+          "name": "verified",
+          "expected": "false",
+          "actual": "false",
+          "passed": true
+        },
+        {
+          "name": "status",
+          "expected": "escalated",
+          "actual": "escalated",
+          "passed": true
+        },
+        {
+          "name": "issue_status",
+          "expected": "escalated",
+          "actual": "escalated",
+          "passed": true
+        },
+        {
+          "name": "required_policy",
+          "expected": "true",
+          "actual": "true",
+          "passed": true
+        },
+        {
+          "name": "required_node:decide",
+          "expected": "true",
+          "actual": "true",
+          "passed": true
+        },
+        {
+          "name": "required_node:escalate",
+          "expected": "true",
+          "actual": "true",
+          "passed": true
+        },
+        {
+          "name": "forbidden_node:execute_refund",
+          "expected": "false",
+          "actual": "false",
+          "passed": true
+        }
+      ],
+      "observation": {
+        "outcome": "needs_review",
+        "status": "escalated",
+        "issue_status": "escalated",
+        "refund_status": null,
+        "decision": "escalate",
+        "error_code": "evidence_review_required",
+        "new_refund_created": false,
+        "verified": false,
+        "node_history": [
+          "load_case",
+          "investigate_duplicate",
+          "retrieve_policy",
+          "reason_case",
+          "decide",
+          "escalate"
+        ],
+        "policy_document_ids": [
+          "POLICY-DUPLICATE-CHARGE"
+        ],
+        "reasoning_grounded": null
+      },
+      "execution_error": null
+    },
+    {
+      "evaluation_id": "WF-EVAL-007",
+      "title": "Pending second payment is not treated as a duplicate capture",
+      "category": "ambiguous",
+      "passed": true,
+      "assertions": [
+        {
+          "name": "outcome",
+          "expected": "no_action_required",
+          "actual": "no_action_required",
+          "passed": true
+        },
+        {
+          "name": "decision",
+          "expected": "no_action",
+          "actual": "no_action",
+          "passed": true
+        },
+        {
+          "name": "error_code",
+          "expected": "null",
+          "actual": "null",
+          "passed": true
+        },
+        {
+          "name": "new_refund_created",
+          "expected": "false",
+          "actual": "false",
+          "passed": true
+        },
+        {
+          "name": "verified",
+          "expected": "false",
+          "actual": "false",
+          "passed": true
+        },
+        {
+          "name": "status",
+          "expected": "completed",
+          "actual": "completed",
+          "passed": true
+        },
+        {
+          "name": "issue_status",
+          "expected": "resolved",
+          "actual": "resolved",
+          "passed": true
+        },
+        {
+          "name": "required_policy",
+          "expected": "true",
+          "actual": "true",
+          "passed": true
+        },
+        {
+          "name": "required_node:investigate_duplicate",
+          "expected": "true",
+          "actual": "true",
+          "passed": true
+        },
+        {
+          "name": "required_node:no_action",
+          "expected": "true",
+          "actual": "true",
+          "passed": true
+        },
+        {
+          "name": "forbidden_node:execute_refund",
+          "expected": "false",
+          "actual": "false",
+          "passed": true
+        }
+      ],
+      "observation": {
+        "outcome": "no_action_required",
+        "status": "completed",
+        "issue_status": "resolved",
+        "refund_status": null,
+        "decision": "no_action",
+        "error_code": null,
+        "new_refund_created": false,
+        "verified": false,
+        "node_history": [
+          "load_case",
+          "investigate_duplicate",
+          "retrieve_policy",
+          "reason_case",
+          "decide",
+          "no_action"
+        ],
+        "policy_document_ids": [
+          "POLICY-DUPLICATE-CHARGE"
+        ],
+        "reasoning_grounded": null
+      },
+      "execution_error": null
+    },
+    {
+      "evaluation_id": "WF-EVAL-008",
+      "title": "Partial duplicate refund amount is rejected",
+      "category": "ambiguous",
+      "passed": true,
+      "assertions": [
+        {
+          "name": "outcome",
+          "expected": "needs_review",
+          "actual": "needs_review",
+          "passed": true
+        },
+        {
+          "name": "decision",
+          "expected": "escalate",
+          "actual": "escalate",
+          "passed": true
+        },
+        {
+          "name": "error_code",
+          "expected": "evidence_review_required",
+          "actual": "evidence_review_required",
+          "passed": true
+        },
+        {
+          "name": "new_refund_created",
+          "expected": "false",
+          "actual": "false",
+          "passed": true
+        },
+        {
+          "name": "verified",
+          "expected": "false",
+          "actual": "false",
+          "passed": true
+        },
+        {
+          "name": "status",
+          "expected": "escalated",
+          "actual": "escalated",
+          "passed": true
+        },
+        {
+          "name": "issue_status",
+          "expected": "escalated",
+          "actual": "escalated",
+          "passed": true
+        },
+        {
+          "name": "required_policy",
+          "expected": "true",
+          "actual": "true",
+          "passed": true
+        },
+        {
+          "name": "required_node:investigate_duplicate",
+          "expected": "true",
+          "actual": "true",
+          "passed": true
+        },
+        {
+          "name": "required_node:escalate",
+          "expected": "true",
+          "actual": "true",
+          "passed": true
+        },
+        {
+          "name": "forbidden_node:execute_refund",
+          "expected": "false",
+          "actual": "false",
+          "passed": true
+        },
+        {
+          "name": "forbidden_node:verify_action",
+          "expected": "false",
+          "actual": "false",
+          "passed": true
+        }
+      ],
+      "observation": {
+        "outcome": "needs_review",
+        "status": "escalated",
+        "issue_status": "escalated",
+        "refund_status": null,
+        "decision": "escalate",
+        "error_code": "evidence_review_required",
+        "new_refund_created": false,
+        "verified": false,
+        "node_history": [
+          "load_case",
+          "investigate_duplicate",
+          "retrieve_policy",
+          "reason_case",
+          "decide",
+          "escalate"
+        ],
+        "policy_document_ids": [
+          "POLICY-DUPLICATE-CHARGE"
+        ],
+        "reasoning_grounded": null
+      },
+      "execution_error": null
+    },
+    {
+      "evaluation_id": "WF-EVAL-009",
+      "title": "Existing duplicate refund is monitored without another action",
+      "category": "already_refunded",
+      "passed": true,
+      "assertions": [
+        {
+          "name": "outcome",
+          "expected": "waiting_external",
+          "actual": "waiting_external",
+          "passed": true
+        },
+        {
+          "name": "decision",
+          "expected": "monitor_existing_refund",
+          "actual": "monitor_existing_refund",
+          "passed": true
+        },
+        {
+          "name": "error_code",
+          "expected": "null",
+          "actual": "null",
+          "passed": true
+        },
+        {
+          "name": "new_refund_created",
+          "expected": "false",
+          "actual": "false",
+          "passed": true
+        },
+        {
+          "name": "verified",
+          "expected": "false",
+          "actual": "false",
+          "passed": true
+        },
+        {
+          "name": "status",
+          "expected": "waiting_external",
+          "actual": "waiting_external",
+          "passed": true
+        },
+        {
+          "name": "issue_status",
+          "expected": "verifying",
+          "actual": "verifying",
+          "passed": true
+        },
+        {
+          "name": "refund_status",
+          "expected": "processing",
+          "actual": "processing",
+          "passed": true
+        },
+        {
+          "name": "required_policy",
+          "expected": "true",
+          "actual": "true",
+          "passed": true
+        },
+        {
+          "name": "required_node:investigate_duplicate",
+          "expected": "true",
+          "actual": "true",
+          "passed": true
+        },
+        {
+          "name": "required_node:wait_external",
+          "expected": "true",
+          "actual": "true",
+          "passed": true
+        },
+        {
+          "name": "forbidden_node:execute_refund",
+          "expected": "false",
+          "actual": "false",
+          "passed": true
+        }
+      ],
+      "observation": {
+        "outcome": "waiting_external",
+        "status": "waiting_external",
+        "issue_status": "verifying",
+        "refund_status": "processing",
+        "decision": "monitor_existing_refund",
+        "error_code": null,
+        "new_refund_created": false,
+        "verified": false,
+        "node_history": [
+          "load_case",
+          "investigate_duplicate",
+          "retrieve_policy",
+          "reason_case",
+          "decide",
+          "wait_external"
+        ],
+        "policy_document_ids": [
+          "POLICY-DUPLICATE-CHARGE"
+        ],
+        "reasoning_grounded": null
+      },
+      "execution_error": null
+    },
+    {
+      "evaluation_id": "WF-EVAL-010",
+      "title": "Missing duplicate-charge policy fails closed",
+      "category": "policy",
+      "passed": true,
+      "assertions": [
+        {
+          "name": "outcome",
+          "expected": "needs_review",
+          "actual": "needs_review",
+          "passed": true
+        },
+        {
+          "name": "decision",
+          "expected": "escalate",
+          "actual": "escalate",
+          "passed": true
+        },
+        {
+          "name": "error_code",
+          "expected": "required_policy_not_found",
+          "actual": "required_policy_not_found",
+          "passed": true
+        },
+        {
+          "name": "new_refund_created",
+          "expected": "false",
+          "actual": "false",
+          "passed": true
+        },
+        {
+          "name": "verified",
+          "expected": "false",
+          "actual": "false",
+          "passed": true
+        },
+        {
+          "name": "status",
+          "expected": "escalated",
+          "actual": "escalated",
+          "passed": true
+        },
+        {
+          "name": "issue_status",
+          "expected": "escalated",
+          "actual": "escalated",
+          "passed": true
+        },
+        {
+          "name": "required_node:retrieve_policy",
+          "expected": "true",
+          "actual": "true",
+          "passed": true
+        },
+        {
+          "name": "required_node:escalate",
+          "expected": "true",
+          "actual": "true",
+          "passed": true
+        },
+        {
+          "name": "forbidden_node:execute_refund",
+          "expected": "false",
+          "actual": "false",
+          "passed": true
+        }
+      ],
+      "observation": {
+        "outcome": "needs_review",
+        "status": "escalated",
+        "issue_status": "escalated",
+        "refund_status": null,
+        "decision": "escalate",
+        "error_code": "required_policy_not_found",
+        "new_refund_created": false,
+        "verified": false,
+        "node_history": [
+          "load_case",
+          "investigate_duplicate",
+          "retrieve_policy",
+          "reason_case",
+          "decide",
+          "escalate"
+        ],
+        "policy_document_ids": [
+          "POLICY-CASE-ESCALATION",
+          "POLICY-PAYMENT-STATUS",
+          "POLICY-CUSTOMER-COMMUNICATION"
+        ],
+        "reasoning_grounded": null
+      },
+      "execution_error": null
+    },
+    {
+      "evaluation_id": "WF-EVAL-011",
+      "title": "Grounded reasoning may support an otherwise authorized refund",
+      "category": "reasoning",
+      "passed": true,
+      "assertions": [
+        {
+          "name": "outcome",
+          "expected": "refund_submitted",
+          "actual": "refund_submitted",
+          "passed": true
+        },
+        {
+          "name": "decision",
+          "expected": "execute_refund",
+          "actual": "execute_refund",
+          "passed": true
+        },
+        {
+          "name": "error_code",
+          "expected": "null",
+          "actual": "null",
+          "passed": true
+        },
+        {
+          "name": "new_refund_created",
+          "expected": "true",
+          "actual": "true",
+          "passed": true
+        },
+        {
+          "name": "verified",
+          "expected": "true",
+          "actual": "true",
+          "passed": true
+        },
+        {
+          "name": "status",
+          "expected": "waiting_external",
+          "actual": "waiting_external",
+          "passed": true
+        },
+        {
+          "name": "issue_status",
+          "expected": "verifying",
+          "actual": "verifying",
+          "passed": true
+        },
+        {
+          "name": "refund_status",
+          "expected": "pending",
+          "actual": "pending",
+          "passed": true
+        },
+        {
+          "name": "required_policy",
+          "expected": "true",
+          "actual": "true",
+          "passed": true
+        },
+        {
+          "name": "required_node:reason_case",
+          "expected": "true",
+          "actual": "true",
+          "passed": true
+        },
+        {
+          "name": "required_node:execute_refund",
+          "expected": "true",
+          "actual": "true",
+          "passed": true
+        },
+        {
+          "name": "required_node:verify_action",
+          "expected": "true",
+          "actual": "true",
+          "passed": true
+        },
+        {
+          "name": "forbidden_node:escalate",
+          "expected": "false",
+          "actual": "false",
+          "passed": true
+        },
+        {
+          "name": "reasoning_grounded",
+          "expected": "true",
+          "actual": "true",
+          "passed": true
+        }
+      ],
+      "observation": {
+        "outcome": "refund_submitted",
+        "status": "waiting_external",
+        "issue_status": "verifying",
+        "refund_status": "pending",
+        "decision": "execute_refund",
+        "error_code": null,
+        "new_refund_created": true,
+        "verified": true,
+        "node_history": [
+          "load_case",
+          "investigate_duplicate",
+          "retrieve_policy",
+          "reason_case",
+          "decide",
+          "approval_gate",
+          "execute_refund",
+          "verify_action",
+          "complete"
+        ],
+        "policy_document_ids": [
+          "POLICY-DUPLICATE-CHARGE"
+        ],
+        "reasoning_grounded": true
+      },
+      "execution_error": null
+    },
+    {
+      "evaluation_id": "WF-EVAL-012",
+      "title": "Reasoning recommendation for manual review stops execution",
+      "category": "reasoning",
+      "passed": true,
+      "assertions": [
+        {
+          "name": "outcome",
+          "expected": "needs_review",
+          "actual": "needs_review",
+          "passed": true
+        },
+        {
+          "name": "decision",
+          "expected": "escalate",
+          "actual": "escalate",
+          "passed": true
+        },
+        {
+          "name": "error_code",
+          "expected": "reasoning_recommends_review",
+          "actual": "reasoning_recommends_review",
+          "passed": true
+        },
+        {
+          "name": "new_refund_created",
+          "expected": "false",
+          "actual": "false",
+          "passed": true
+        },
+        {
+          "name": "verified",
+          "expected": "false",
+          "actual": "false",
+          "passed": true
+        },
+        {
+          "name": "status",
+          "expected": "escalated",
+          "actual": "escalated",
+          "passed": true
+        },
+        {
+          "name": "issue_status",
+          "expected": "escalated",
+          "actual": "escalated",
+          "passed": true
+        },
+        {
+          "name": "required_policy",
+          "expected": "true",
+          "actual": "true",
+          "passed": true
+        },
+        {
+          "name": "required_node:reason_case",
+          "expected": "true",
+          "actual": "true",
+          "passed": true
+        },
+        {
+          "name": "required_node:escalate",
+          "expected": "true",
+          "actual": "true",
+          "passed": true
+        },
+        {
+          "name": "forbidden_node:execute_refund",
+          "expected": "false",
+          "actual": "false",
+          "passed": true
+        },
+        {
+          "name": "reasoning_grounded",
+          "expected": "true",
+          "actual": "true",
+          "passed": true
+        }
+      ],
+      "observation": {
+        "outcome": "needs_review",
+        "status": "escalated",
+        "issue_status": "escalated",
+        "refund_status": null,
+        "decision": "escalate",
+        "error_code": "reasoning_recommends_review",
+        "new_refund_created": false,
+        "verified": false,
+        "node_history": [
+          "load_case",
+          "investigate_duplicate",
+          "retrieve_policy",
+          "reason_case",
+          "decide",
+          "escalate"
+        ],
+        "policy_document_ids": [
+          "POLICY-DUPLICATE-CHARGE"
+        ],
+        "reasoning_grounded": true
+      },
+      "execution_error": null
+    },
+    {
+      "evaluation_id": "WF-EVAL-013",
+      "title": "Reasoning provider failure fails closed",
+      "category": "reasoning",
+      "passed": true,
+      "assertions": [
+        {
+          "name": "outcome",
+          "expected": "needs_review",
+          "actual": "needs_review",
+          "passed": true
+        },
+        {
+          "name": "decision",
+          "expected": "escalate",
+          "actual": "escalate",
+          "passed": true
+        },
+        {
+          "name": "error_code",
+          "expected": "reasoning_provider_failed",
+          "actual": "reasoning_provider_failed",
+          "passed": true
+        },
+        {
+          "name": "new_refund_created",
+          "expected": "false",
+          "actual": "false",
+          "passed": true
+        },
+        {
+          "name": "verified",
+          "expected": "false",
+          "actual": "false",
+          "passed": true
+        },
+        {
+          "name": "status",
+          "expected": "escalated",
+          "actual": "escalated",
+          "passed": true
+        },
+        {
+          "name": "issue_status",
+          "expected": "escalated",
+          "actual": "escalated",
+          "passed": true
+        },
+        {
+          "name": "required_policy",
+          "expected": "true",
+          "actual": "true",
+          "passed": true
+        },
+        {
+          "name": "required_node:reason_case",
+          "expected": "true",
+          "actual": "true",
+          "passed": true
+        },
+        {
+          "name": "required_node:escalate",
+          "expected": "true",
+          "actual": "true",
+          "passed": true
+        },
+        {
+          "name": "forbidden_node:execute_refund",
+          "expected": "false",
+          "actual": "false",
+          "passed": true
+        }
+      ],
+      "observation": {
+        "outcome": "needs_review",
+        "status": "escalated",
+        "issue_status": "escalated",
+        "refund_status": null,
+        "decision": "escalate",
+        "error_code": "reasoning_provider_failed",
+        "new_refund_created": false,
+        "verified": false,
+        "node_history": [
+          "load_case",
+          "investigate_duplicate",
+          "retrieve_policy",
+          "reason_case",
+          "escalate"
+        ],
+        "policy_document_ids": [
+          "POLICY-DUPLICATE-CHARGE"
+        ],
+        "reasoning_grounded": null
+      },
+      "execution_error": null
+    },
+    {
+      "evaluation_id": "WF-EVAL-014",
+      "title": "Unknown reasoning references are rejected",
+      "category": "reasoning",
+      "passed": true,
+      "assertions": [
+        {
+          "name": "outcome",
+          "expected": "needs_review",
+          "actual": "needs_review",
+          "passed": true
+        },
+        {
+          "name": "decision",
+          "expected": "escalate",
+          "actual": "escalate",
+          "passed": true
+        },
+        {
+          "name": "error_code",
+          "expected": "unsupported_reasoning_reference",
+          "actual": "unsupported_reasoning_reference",
+          "passed": true
+        },
+        {
+          "name": "new_refund_created",
+          "expected": "false",
+          "actual": "false",
+          "passed": true
+        },
+        {
+          "name": "verified",
+          "expected": "false",
+          "actual": "false",
+          "passed": true
+        },
+        {
+          "name": "status",
+          "expected": "escalated",
+          "actual": "escalated",
+          "passed": true
+        },
+        {
+          "name": "issue_status",
+          "expected": "escalated",
+          "actual": "escalated",
+          "passed": true
+        },
+        {
+          "name": "required_policy",
+          "expected": "true",
+          "actual": "true",
+          "passed": true
+        },
+        {
+          "name": "required_node:reason_case",
+          "expected": "true",
+          "actual": "true",
+          "passed": true
+        },
+        {
+          "name": "required_node:escalate",
+          "expected": "true",
+          "actual": "true",
+          "passed": true
+        },
+        {
+          "name": "forbidden_node:execute_refund",
+          "expected": "false",
+          "actual": "false",
+          "passed": true
+        }
+      ],
+      "observation": {
+        "outcome": "needs_review",
+        "status": "escalated",
+        "issue_status": "escalated",
+        "refund_status": null,
+        "decision": "escalate",
+        "error_code": "unsupported_reasoning_reference",
+        "new_refund_created": false,
+        "verified": false,
+        "node_history": [
+          "load_case",
+          "investigate_duplicate",
+          "retrieve_policy",
+          "reason_case",
+          "escalate"
+        ],
+        "policy_document_ids": [
+          "POLICY-DUPLICATE-CHARGE"
+        ],
+        "reasoning_grounded": null
+      },
+      "execution_error": null
+    },
+    {
+      "evaluation_id": "WF-EVAL-015",
+      "title": "Existing return refund is monitored",
+      "category": "already_refunded",
+      "passed": true,
+      "assertions": [
+        {
+          "name": "outcome",
+          "expected": "waiting_external",
+          "actual": "waiting_external",
+          "passed": true
+        },
+        {
+          "name": "decision",
+          "expected": "monitor_existing_refund",
+          "actual": "monitor_existing_refund",
+          "passed": true
+        },
+        {
+          "name": "error_code",
+          "expected": "null",
+          "actual": "null",
+          "passed": true
+        },
+        {
+          "name": "new_refund_created",
+          "expected": "false",
+          "actual": "false",
+          "passed": true
+        },
+        {
+          "name": "verified",
+          "expected": "false",
+          "actual": "false",
+          "passed": true
+        },
+        {
+          "name": "status",
+          "expected": "waiting_external",
+          "actual": "waiting_external",
+          "passed": true
+        },
+        {
+          "name": "issue_status",
+          "expected": "verifying",
+          "actual": "verifying",
+          "passed": true
+        },
+        {
+          "name": "refund_status",
+          "expected": "pending",
+          "actual": "pending",
+          "passed": true
+        },
+        {
+          "name": "required_policy",
+          "expected": "true",
+          "actual": "true",
+          "passed": true
+        },
+        {
+          "name": "required_node:investigate_return",
+          "expected": "true",
+          "actual": "true",
+          "passed": true
+        },
+        {
+          "name": "required_node:wait_external",
+          "expected": "true",
+          "actual": "true",
+          "passed": true
+        },
+        {
+          "name": "forbidden_node:execute_refund",
+          "expected": "false",
+          "actual": "false",
+          "passed": true
+        }
+      ],
+      "observation": {
+        "outcome": "waiting_external",
+        "status": "waiting_external",
+        "issue_status": "verifying",
+        "refund_status": "pending",
+        "decision": "monitor_existing_refund",
+        "error_code": null,
+        "new_refund_created": false,
+        "verified": false,
+        "node_history": [
+          "load_case",
+          "investigate_return",
+          "retrieve_policy",
+          "reason_case",
+          "decide",
+          "wait_external"
+        ],
+        "policy_document_ids": [
+          "POLICY-RETURN-ELIGIBILITY",
+          "POLICY-RETURN-REFUND"
+        ],
+        "reasoning_grounded": null
+      },
+      "execution_error": null
+    },
+    {
+      "evaluation_id": "WF-EVAL-016",
+      "title": "Received return with failed old refund gets a verified submission",
+      "category": "success",
+      "passed": true,
+      "assertions": [
+        {
+          "name": "outcome",
+          "expected": "refund_submitted",
+          "actual": "refund_submitted",
+          "passed": true
+        },
+        {
+          "name": "decision",
+          "expected": "execute_refund",
+          "actual": "execute_refund",
+          "passed": true
+        },
+        {
+          "name": "error_code",
+          "expected": "null",
+          "actual": "null",
+          "passed": true
+        },
+        {
+          "name": "new_refund_created",
+          "expected": "true",
+          "actual": "true",
+          "passed": true
+        },
+        {
+          "name": "verified",
+          "expected": "true",
+          "actual": "true",
+          "passed": true
+        },
+        {
+          "name": "status",
+          "expected": "waiting_external",
+          "actual": "waiting_external",
+          "passed": true
+        },
+        {
+          "name": "issue_status",
+          "expected": "verifying",
+          "actual": "verifying",
+          "passed": true
+        },
+        {
+          "name": "refund_status",
+          "expected": "pending",
+          "actual": "pending",
+          "passed": true
+        },
+        {
+          "name": "required_policy",
+          "expected": "true",
+          "actual": "true",
+          "passed": true
+        },
+        {
+          "name": "required_node:investigate_return",
+          "expected": "true",
+          "actual": "true",
+          "passed": true
+        },
+        {
+          "name": "required_node:execute_refund",
+          "expected": "true",
+          "actual": "true",
+          "passed": true
+        },
+        {
+          "name": "required_node:verify_action",
+          "expected": "true",
+          "actual": "true",
+          "passed": true
+        },
+        {
+          "name": "forbidden_node:escalate",
+          "expected": "false",
+          "actual": "false",
+          "passed": true
+        }
+      ],
+      "observation": {
+        "outcome": "refund_submitted",
+        "status": "waiting_external",
+        "issue_status": "verifying",
+        "refund_status": "pending",
+        "decision": "execute_refund",
+        "error_code": null,
+        "new_refund_created": true,
+        "verified": true,
+        "node_history": [
+          "load_case",
+          "investigate_return",
+          "retrieve_policy",
+          "reason_case",
+          "decide",
+          "approval_gate",
+          "execute_refund",
+          "verify_action",
+          "complete"
+        ],
+        "policy_document_ids": [
+          "POLICY-RETURN-ELIGIBILITY",
+          "POLICY-RETURN-REFUND"
+        ],
+        "reasoning_grounded": null
+      },
+      "execution_error": null
+    },
+    {
+      "evaluation_id": "WF-EVAL-017",
+      "title": "Return not received cannot be refunded",
+      "category": "ambiguous",
+      "passed": true,
+      "assertions": [
+        {
+          "name": "outcome",
+          "expected": "needs_review",
+          "actual": "needs_review",
+          "passed": true
+        },
+        {
+          "name": "decision",
+          "expected": "escalate",
+          "actual": "escalate",
+          "passed": true
+        },
+        {
+          "name": "error_code",
+          "expected": "evidence_review_required",
+          "actual": "evidence_review_required",
+          "passed": true
+        },
+        {
+          "name": "new_refund_created",
+          "expected": "false",
+          "actual": "false",
+          "passed": true
+        },
+        {
+          "name": "verified",
+          "expected": "false",
+          "actual": "false",
+          "passed": true
+        },
+        {
+          "name": "status",
+          "expected": "escalated",
+          "actual": "escalated",
+          "passed": true
+        },
+        {
+          "name": "issue_status",
+          "expected": "escalated",
+          "actual": "escalated",
+          "passed": true
+        },
+        {
+          "name": "required_policy",
+          "expected": "true",
+          "actual": "true",
+          "passed": true
+        },
+        {
+          "name": "required_node:investigate_return",
+          "expected": "true",
+          "actual": "true",
+          "passed": true
+        },
+        {
+          "name": "required_node:escalate",
+          "expected": "true",
+          "actual": "true",
+          "passed": true
+        },
+        {
+          "name": "forbidden_node:execute_refund",
+          "expected": "false",
+          "actual": "false",
+          "passed": true
+        },
+        {
+          "name": "forbidden_node:verify_action",
+          "expected": "false",
+          "actual": "false",
+          "passed": true
+        }
+      ],
+      "observation": {
+        "outcome": "needs_review",
+        "status": "escalated",
+        "issue_status": "escalated",
+        "refund_status": null,
+        "decision": "escalate",
+        "error_code": "evidence_review_required",
+        "new_refund_created": false,
+        "verified": false,
+        "node_history": [
+          "load_case",
+          "investigate_return",
+          "retrieve_policy",
+          "reason_case",
+          "decide",
+          "escalate"
+        ],
+        "policy_document_ids": [
+          "POLICY-RETURN-ELIGIBILITY",
+          "POLICY-RETURN-REFUND"
+        ],
+        "reasoning_grounded": null
+      },
+      "execution_error": null
+    },
+    {
+      "evaluation_id": "WF-EVAL-018",
+      "title": "Unlinked returned item requires clarification before a proposal",
+      "category": "ambiguous",
+      "passed": true,
+      "assertions": [
+        {
+          "name": "outcome",
+          "expected": "needs_review",
+          "actual": "needs_review",
+          "passed": true
+        },
+        {
+          "name": "decision",
+          "expected": "escalate",
+          "actual": "escalate",
+          "passed": true
+        },
+        {
+          "name": "error_code",
+          "expected": "evidence_review_required",
+          "actual": "evidence_review_required",
+          "passed": true
+        },
+        {
+          "name": "new_refund_created",
+          "expected": "false",
+          "actual": "false",
+          "passed": true
+        },
+        {
+          "name": "verified",
+          "expected": "false",
+          "actual": "false",
+          "passed": true
+        },
+        {
+          "name": "status",
+          "expected": "escalated",
+          "actual": "escalated",
+          "passed": true
+        },
+        {
+          "name": "issue_status",
+          "expected": "escalated",
+          "actual": "escalated",
+          "passed": true
+        },
+        {
+          "name": "required_policy",
+          "expected": "true",
+          "actual": "true",
+          "passed": true
+        },
+        {
+          "name": "required_node:decide",
+          "expected": "true",
+          "actual": "true",
+          "passed": true
+        },
+        {
+          "name": "required_node:escalate",
+          "expected": "true",
+          "actual": "true",
+          "passed": true
+        },
+        {
+          "name": "forbidden_node:execute_refund",
+          "expected": "false",
+          "actual": "false",
+          "passed": true
+        }
+      ],
+      "observation": {
+        "outcome": "needs_review",
+        "status": "escalated",
+        "issue_status": "escalated",
+        "refund_status": null,
+        "decision": "escalate",
+        "error_code": "evidence_review_required",
+        "new_refund_created": false,
+        "verified": false,
+        "node_history": [
+          "load_case",
+          "investigate_return",
+          "retrieve_policy",
+          "reason_case",
+          "decide",
+          "escalate"
+        ],
+        "policy_document_ids": [
+          "POLICY-RETURN-ELIGIBILITY",
+          "POLICY-RETURN-REFUND"
+        ],
+        "reasoning_grounded": null
+      },
+      "execution_error": null
+    },
+    {
+      "evaluation_id": "WF-EVAL-019",
+      "title": "Missing return-refund policy fails closed",
+      "category": "policy",
+      "passed": true,
+      "assertions": [
+        {
+          "name": "outcome",
+          "expected": "needs_review",
+          "actual": "needs_review",
+          "passed": true
+        },
+        {
+          "name": "decision",
+          "expected": "escalate",
+          "actual": "escalate",
+          "passed": true
+        },
+        {
+          "name": "error_code",
+          "expected": "required_policy_not_found",
+          "actual": "required_policy_not_found",
+          "passed": true
+        },
+        {
+          "name": "new_refund_created",
+          "expected": "false",
+          "actual": "false",
+          "passed": true
+        },
+        {
+          "name": "verified",
+          "expected": "false",
+          "actual": "false",
+          "passed": true
+        },
+        {
+          "name": "status",
+          "expected": "escalated",
+          "actual": "escalated",
+          "passed": true
+        },
+        {
+          "name": "issue_status",
+          "expected": "escalated",
+          "actual": "escalated",
+          "passed": true
+        },
+        {
+          "name": "required_node:retrieve_policy",
+          "expected": "true",
+          "actual": "true",
+          "passed": true
+        },
+        {
+          "name": "required_node:escalate",
+          "expected": "true",
+          "actual": "true",
+          "passed": true
+        },
+        {
+          "name": "forbidden_node:execute_refund",
+          "expected": "false",
+          "actual": "false",
+          "passed": true
+        }
+      ],
+      "observation": {
+        "outcome": "needs_review",
+        "status": "escalated",
+        "issue_status": "escalated",
+        "refund_status": null,
+        "decision": "escalate",
+        "error_code": "required_policy_not_found",
+        "new_refund_created": false,
+        "verified": false,
+        "node_history": [
+          "load_case",
+          "investigate_return",
+          "retrieve_policy",
+          "reason_case",
+          "decide",
+          "escalate"
+        ],
+        "policy_document_ids": [
+          "POLICY-RETURN-ELIGIBILITY",
+          "POLICY-CUSTOMER-COMMUNICATION"
+        ],
+        "reasoning_grounded": null
+      },
+      "execution_error": null
+    },
+    {
+      "evaluation_id": "WF-EVAL-020",
+      "title": "Repeated provider timeout exhausts bounded retries",
+      "category": "tool_failure",
+      "passed": true,
+      "assertions": [
+        {
+          "name": "outcome",
+          "expected": "needs_review",
+          "actual": "needs_review",
+          "passed": true
+        },
+        {
+          "name": "decision",
+          "expected": "escalate",
+          "actual": "escalate",
+          "passed": true
+        },
+        {
+          "name": "error_code",
+          "expected": "retry_attempts_exhausted",
+          "actual": "retry_attempts_exhausted",
+          "passed": true
+        },
+        {
+          "name": "new_refund_created",
+          "expected": "false",
+          "actual": "false",
+          "passed": true
+        },
+        {
+          "name": "verified",
+          "expected": "false",
+          "actual": "false",
+          "passed": true
+        },
+        {
+          "name": "status",
+          "expected": "escalated",
+          "actual": "escalated",
+          "passed": true
+        },
+        {
+          "name": "issue_status",
+          "expected": "escalated",
+          "actual": "escalated",
+          "passed": true
+        },
+        {
+          "name": "required_policy",
+          "expected": "true",
+          "actual": "true",
+          "passed": true
+        },
+        {
+          "name": "required_node:execute_refund",
+          "expected": "true",
+          "actual": "true",
+          "passed": true
+        },
+        {
+          "name": "required_node:escalate",
+          "expected": "true",
+          "actual": "true",
+          "passed": true
+        },
+        {
+          "name": "forbidden_node:verify_action",
+          "expected": "false",
+          "actual": "false",
+          "passed": true
+        }
+      ],
+      "observation": {
+        "outcome": "needs_review",
+        "status": "escalated",
+        "issue_status": "escalated",
+        "refund_status": null,
+        "decision": "escalate",
+        "error_code": "retry_attempts_exhausted",
+        "new_refund_created": false,
+        "verified": false,
+        "node_history": [
+          "load_case",
+          "investigate_duplicate",
+          "retrieve_policy",
+          "reason_case",
+          "decide",
+          "approval_gate",
+          "execute_refund",
+          "escalate"
+        ],
+        "policy_document_ids": [
+          "POLICY-DUPLICATE-CHARGE"
+        ],
+        "reasoning_grounded": null
+      },
+      "execution_error": null
+    },
+    {
+      "evaluation_id": "WF-EVAL-021",
+      "title": "Tool false success is caught by independent verification",
+      "category": "tool_failure",
+      "passed": true,
+      "assertions": [
+        {
+          "name": "outcome",
+          "expected": "needs_review",
+          "actual": "needs_review",
+          "passed": true
+        },
+        {
+          "name": "decision",
+          "expected": "escalate",
+          "actual": "escalate",
+          "passed": true
+        },
+        {
+          "name": "error_code",
+          "expected": "workflow_verification_failed",
+          "actual": "workflow_verification_failed",
+          "passed": true
+        },
+        {
+          "name": "new_refund_created",
+          "expected": "false",
+          "actual": "false",
+          "passed": true
+        },
+        {
+          "name": "verified",
+          "expected": "false",
+          "actual": "false",
+          "passed": true
+        },
+        {
+          "name": "status",
+          "expected": "escalated",
+          "actual": "escalated",
+          "passed": true
+        },
+        {
+          "name": "issue_status",
+          "expected": "escalated",
+          "actual": "escalated",
+          "passed": true
+        },
+        {
+          "name": "required_policy",
+          "expected": "true",
+          "actual": "true",
+          "passed": true
+        },
+        {
+          "name": "required_node:execute_refund",
+          "expected": "true",
+          "actual": "true",
+          "passed": true
+        },
+        {
+          "name": "required_node:verify_action",
+          "expected": "true",
+          "actual": "true",
+          "passed": true
+        },
+        {
+          "name": "required_node:escalate",
+          "expected": "true",
+          "actual": "true",
+          "passed": true
+        },
+        {
+          "name": "forbidden_node:complete",
+          "expected": "false",
+          "actual": "false",
+          "passed": true
+        }
+      ],
+      "observation": {
+        "outcome": "needs_review",
+        "status": "escalated",
+        "issue_status": "escalated",
+        "refund_status": null,
+        "decision": "escalate",
+        "error_code": "workflow_verification_failed",
+        "new_refund_created": false,
+        "verified": false,
+        "node_history": [
+          "load_case",
+          "investigate_duplicate",
+          "retrieve_policy",
+          "reason_case",
+          "decide",
+          "approval_gate",
+          "execute_refund",
+          "verify_action",
+          "escalate"
+        ],
+        "policy_document_ids": [
+          "POLICY-DUPLICATE-CHARGE"
+        ],
+        "reasoning_grounded": null
+      },
+      "execution_error": null
+    },
+    {
+      "evaluation_id": "WF-EVAL-022",
+      "title": "Committed refund with failed immediate verification is monitored",
+      "category": "tool_failure",
+      "passed": true,
+      "assertions": [
+        {
+          "name": "outcome",
+          "expected": "waiting_external",
+          "actual": "waiting_external",
+          "passed": true
+        },
+        {
+          "name": "decision",
+          "expected": "monitor_existing_refund",
+          "actual": "monitor_existing_refund",
+          "passed": true
+        },
+        {
+          "name": "error_code",
+          "expected": "null",
+          "actual": "null",
+          "passed": true
+        },
+        {
+          "name": "new_refund_created",
+          "expected": "true",
+          "actual": "true",
+          "passed": true
+        },
+        {
+          "name": "verified",
+          "expected": "false",
+          "actual": "false",
+          "passed": true
+        },
+        {
+          "name": "status",
+          "expected": "waiting_external",
+          "actual": "waiting_external",
+          "passed": true
+        },
+        {
+          "name": "issue_status",
+          "expected": "verifying",
+          "actual": "verifying",
+          "passed": true
+        },
+        {
+          "name": "refund_status",
+          "expected": "pending",
+          "actual": "pending",
+          "passed": true
+        },
+        {
+          "name": "required_policy",
+          "expected": "true",
+          "actual": "true",
+          "passed": true
+        },
+        {
+          "name": "required_node:execute_refund",
+          "expected": "true",
+          "actual": "true",
+          "passed": true
+        },
+        {
+          "name": "required_node:replan_after_partial_failure",
+          "expected": "true",
+          "actual": "true",
+          "passed": true
+        },
+        {
+          "name": "required_node:wait_external",
+          "expected": "true",
+          "actual": "true",
+          "passed": true
+        },
+        {
+          "name": "forbidden_node:complete",
+          "expected": "false",
+          "actual": "false",
+          "passed": true
+        }
+      ],
+      "observation": {
+        "outcome": "waiting_external",
+        "status": "waiting_external",
+        "issue_status": "verifying",
+        "refund_status": "pending",
+        "decision": "monitor_existing_refund",
+        "error_code": null,
+        "new_refund_created": true,
+        "verified": false,
+        "node_history": [
+          "load_case",
+          "investigate_duplicate",
+          "retrieve_policy",
+          "reason_case",
+          "decide",
+          "approval_gate",
+          "execute_refund",
+          "replan_after_partial_failure",
+          "wait_external"
+        ],
+        "policy_document_ids": [
+          "POLICY-DUPLICATE-CHARGE"
+        ],
+        "reasoning_grounded": null
+      },
+      "execution_error": null
+    },
+    {
+      "evaluation_id": "WF-EVAL-023",
+      "title": "Caller-supplied currency cannot override verified payment currency",
+      "category": "permission",
+      "passed": true,
+      "assertions": [
+        {
+          "name": "outcome",
+          "expected": "needs_review",
+          "actual": "needs_review",
+          "passed": true
+        },
+        {
+          "name": "decision",
+          "expected": "escalate",
+          "actual": "escalate",
+          "passed": true
+        },
+        {
+          "name": "error_code",
+          "expected": "evidence_review_required",
+          "actual": "evidence_review_required",
+          "passed": true
+        },
+        {
+          "name": "new_refund_created",
+          "expected": "false",
+          "actual": "false",
+          "passed": true
+        },
+        {
+          "name": "verified",
+          "expected": "false",
+          "actual": "false",
+          "passed": true
+        },
+        {
+          "name": "status",
+          "expected": "escalated",
+          "actual": "escalated",
+          "passed": true
+        },
+        {
+          "name": "issue_status",
+          "expected": "escalated",
+          "actual": "escalated",
+          "passed": true
+        },
+        {
+          "name": "required_policy",
+          "expected": "true",
+          "actual": "true",
+          "passed": true
+        },
+        {
+          "name": "required_node:investigate_duplicate",
+          "expected": "true",
+          "actual": "true",
+          "passed": true
+        },
+        {
+          "name": "required_node:escalate",
+          "expected": "true",
+          "actual": "true",
+          "passed": true
+        },
+        {
+          "name": "forbidden_node:execute_refund",
+          "expected": "false",
+          "actual": "false",
+          "passed": true
+        },
+        {
+          "name": "forbidden_node:verify_action",
+          "expected": "false",
+          "actual": "false",
+          "passed": true
+        }
+      ],
+      "observation": {
+        "outcome": "needs_review",
+        "status": "escalated",
+        "issue_status": "escalated",
+        "refund_status": null,
+        "decision": "escalate",
+        "error_code": "evidence_review_required",
+        "new_refund_created": false,
+        "verified": false,
+        "node_history": [
+          "load_case",
+          "investigate_duplicate",
+          "retrieve_policy",
+          "reason_case",
+          "decide",
+          "escalate"
+        ],
+        "policy_document_ids": [
+          "POLICY-DUPLICATE-CHARGE"
+        ],
+        "reasoning_grounded": null
+      },
+      "execution_error": null
+    },
+    {
+      "evaluation_id": "WF-EVAL-024",
+      "title": "Excess caller-supplied amount cannot override authoritative value",
+      "category": "permission",
+      "passed": true,
+      "assertions": [
+        {
+          "name": "outcome",
+          "expected": "needs_review",
+          "actual": "needs_review",
+          "passed": true
+        },
+        {
+          "name": "decision",
+          "expected": "escalate",
+          "actual": "escalate",
+          "passed": true
+        },
+        {
+          "name": "error_code",
+          "expected": "evidence_review_required",
+          "actual": "evidence_review_required",
+          "passed": true
+        },
+        {
+          "name": "new_refund_created",
+          "expected": "false",
+          "actual": "false",
+          "passed": true
+        },
+        {
+          "name": "verified",
+          "expected": "false",
+          "actual": "false",
+          "passed": true
+        },
+        {
+          "name": "status",
+          "expected": "escalated",
+          "actual": "escalated",
+          "passed": true
+        },
+        {
+          "name": "issue_status",
+          "expected": "escalated",
+          "actual": "escalated",
+          "passed": true
+        },
+        {
+          "name": "required_policy",
+          "expected": "true",
+          "actual": "true",
+          "passed": true
+        },
+        {
+          "name": "required_node:investigate_duplicate",
+          "expected": "true",
+          "actual": "true",
+          "passed": true
+        },
+        {
+          "name": "required_node:escalate",
+          "expected": "true",
+          "actual": "true",
+          "passed": true
+        },
+        {
+          "name": "forbidden_node:execute_refund",
+          "expected": "false",
+          "actual": "false",
+          "passed": true
+        },
+        {
+          "name": "forbidden_node:verify_action",
+          "expected": "false",
+          "actual": "false",
+          "passed": true
+        }
+      ],
+      "observation": {
+        "outcome": "needs_review",
+        "status": "escalated",
+        "issue_status": "escalated",
+        "refund_status": null,
+        "decision": "escalate",
+        "error_code": "evidence_review_required",
+        "new_refund_created": false,
+        "verified": false,
+        "node_history": [
+          "load_case",
+          "investigate_duplicate",
+          "retrieve_policy",
+          "reason_case",
+          "decide",
+          "escalate"
+        ],
+        "policy_document_ids": [
+          "POLICY-DUPLICATE-CHARGE"
+        ],
+        "reasoning_grounded": null
+      },
+      "execution_error": null
+    }
+  ]
+}

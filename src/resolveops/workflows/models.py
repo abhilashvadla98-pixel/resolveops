@@ -24,18 +24,23 @@ class WorkflowStatus(str, Enum):
 
 
 class WorkflowDecision(str, Enum):
+    NO_ACTION = "no_action"
     EXECUTE_REFUND = "execute_refund"
     MONITOR_EXISTING_REFUND = "monitor_existing_refund"
     ESCALATE = "escalate"
 
 
 class WorkflowOutcome(str, Enum):
+    REFUND_SUBMITTED = "refund_submitted"
+    REFUND_SETTLED = "refund_settled"
+    NO_ACTION_REQUIRED = "no_action_required"
     ACTION_VERIFIED = "action_verified"
     WAITING_EXTERNAL = "waiting_external"
     NEEDS_REVIEW = "needs_review"
 
 
 class WorkflowLifecycleStatus(str, Enum):
+    WAITING_EXTERNAL = "waiting_external"
     RUNNING = "running"
     WAITING_APPROVAL = "waiting_approval"
     COMPLETED = "completed"
@@ -44,6 +49,7 @@ class WorkflowLifecycleStatus(str, Enum):
 
 
 class WorkflowEventType(str, Enum):
+    REFUND_STATUS_CHANGED = "refund_status_changed"
     STARTED = "started"
     CUSTOMER_VERIFIED = "customer_verified"
     ORDER_LOADED = "order_loaded"
@@ -91,6 +97,7 @@ class WorkflowRequest(DomainModel):
     issue_id: Identifier
     actor: Actor
     refund_request: IssueRefundRequest | None = None
+    investigation_only: bool = False
 
     @model_validator(mode="after")
     def validate_refund_scope(self) -> "WorkflowRequest":
@@ -148,6 +155,7 @@ class WorkflowPause(DomainModel):
     status: WorkflowStatus = WorkflowStatus.WAITING_APPROVAL
     approval: WorkflowApproval
     agent_assessment: MultiAgentReasoningResult | None = None
+    execution_mode: str = "rules_only"
 
 
 class WorkflowRun(DomainModel):
@@ -187,11 +195,15 @@ class CustomerResponse(DomainModel):
     @model_validator(mode="after")
     def reject_unsupported_completion_claims(self) -> "CustomerResponse":
         normalized = self.message.lower()
-        if "refund completed" in normalized or "refund is complete" in normalized:
-            raise ValueError("customer response cannot claim final refund completion")
-        if self.outcome != WorkflowOutcome.ACTION_VERIFIED and (
-            "refund was created" in normalized or "refund has been issued" in normalized
+        if self.outcome != WorkflowOutcome.REFUND_SETTLED and (
+            "refund completed" in normalized or "refund is complete" in normalized
         ):
+            raise ValueError("customer response cannot claim final refund completion")
+        if self.outcome not in {
+            WorkflowOutcome.ACTION_VERIFIED,
+            WorkflowOutcome.REFUND_SUBMITTED,
+            WorkflowOutcome.REFUND_SETTLED,
+        } and ("refund was created" in normalized or "refund has been issued" in normalized):
             raise ValueError("unverified workflow cannot claim that a refund was issued")
         return self
 
@@ -216,9 +228,21 @@ class WorkflowResult(DomainModel):
     error_code: Identifier | None = None
     error_message: NonEmptyText | None = None
     node_history: list[Identifier] = Field(min_length=1)
+    execution_mode: str = "rules_only"
 
     @model_validator(mode="after")
     def validate_terminal_result(self) -> "WorkflowResult":
+        if self.outcome == WorkflowOutcome.REFUND_SUBMITTED and (
+            self.status != WorkflowStatus.WAITING_EXTERNAL
+            or self.operation is None
+            or not self.operation.verified
+            or self.verified_resource_id != self.operation.resource_id
+        ):
+            raise ValueError("submitted refund requires a verified operation and pending status")
+        if self.outcome == WorkflowOutcome.REFUND_SETTLED and (
+            self.status != WorkflowStatus.COMPLETED or self.verified_resource_id is None
+        ):
+            raise ValueError("settled refund requires completed status and a verified resource")
         if self.outcome == WorkflowOutcome.ACTION_VERIFIED and (
             self.status != WorkflowStatus.COMPLETED
             or self.operation is None

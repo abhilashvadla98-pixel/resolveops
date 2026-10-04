@@ -20,19 +20,19 @@
     "python": "3.12.10"
   },
   "failed_count": 0,
-  "input_tokens": 74396,
+  "input_tokens": 105996,
   "latency_ms": {
-    "maximum": 134.40090000221971,
-    "minimum": 17.338100005872548,
-    "p50": 21.028600000136066,
-    "p95": 42.864700000791345
+    "maximum": 128.1606000266038,
+    "minimum": 18.215299991425127,
+    "p50": 19.693899957928807,
+    "p95": 36.119500000495464
   },
   "limitations": [
     "This is an offline orchestration-contract evaluation with deterministic provider doubles.",
     "It measures routing, tools, replanning, budgets, and safety boundaries\u2014not live-model quality.",
     "Reported token counts are context estimates; no paid provider calls are made."
   ],
-  "measured_at": "2026-09-30T07:56:44.001553Z",
+  "measured_at": "2026-10-04T04:40:41.830925Z",
   "model_calls": 182,
   "output_tokens": 0,
   "pass_rate": 1.0,
@@ -95,8 +95,8 @@
         "critic_decisions": [
           "accept"
         ],
-        "input_tokens": 2848,
-        "latency_ms": 134.40090000221971,
+        "input_tokens": 4091,
+        "latency_ms": 128.1606000266038,
         "model_calls": 7,
         "output_tokens": 0,
         "replan_count": 0,
@@ -105,9 +105,9 @@
           "investigation",
           "investigation",
           "policy",
-          "policy",
+          "critic",
           "resolution",
-          "critic"
+          "policy"
         ],
         "status": "ready_for_control_plane",
         "tool_calls": 2,
@@ -175,8 +175,8 @@
         "critic_decisions": [
           "accept"
         ],
-        "input_tokens": 2855,
-        "latency_ms": 20.047300000442192,
+        "input_tokens": 4098,
+        "latency_ms": 18.88300001155585,
         "model_calls": 7,
         "output_tokens": 0,
         "replan_count": 0,
@@ -255,19 +255,19 @@
         "critic_decisions": [
           "accept"
         ],
-        "input_tokens": 2845,
-        "latency_ms": 18.729700001131278,
+        "input_tokens": 4090,
+        "latency_ms": 19.572600023820996,
         "model_calls": 7,
         "output_tokens": 0,
         "replan_count": 0,
         "roles": [
           "supervisor",
           "investigation",
-          "policy",
-          "critic",
-          "policy",
           "investigation",
-          "resolution"
+          "policy",
+          "policy",
+          "resolution",
+          "critic"
         ],
         "status": "ready_for_control_plane",
         "tool_calls": 2,
@@ -336,34 +336,34 @@
           "revise",
           "accept"
         ],
-        "input_tokens": 5750,
-        "latency_ms": 31.703799999377225,
+        "input_tokens": 8237,
+        "latency_ms": 32.495199993718415,
         "model_calls": 14,
         "output_tokens": 0,
         "replan_count": 1,
         "roles": [
+          "supervisor",
+          "investigation",
+          "investigation",
+          "policy",
+          "critic",
+          "policy",
+          "resolution",
           "investigation",
           "supervisor",
+          "policy",
           "resolution",
           "policy",
-          "policy",
-          "supervisor",
-          "critic",
           "investigation",
-          "investigation",
-          "investigation",
-          "policy",
-          "policy",
-          "critic",
-          "resolution"
+          "critic"
         ],
         "status": "ready_for_control_plane",
         "tool_calls": 4,
         "tools": [
           "get_case",
           "search_policies",
-          "get_case",
-          "search_policies"
+          "search_policies",
+          "get_case"
         ]
       },
       "passed": true
@@ -426,8 +426,8 @@
           "revise",
           "accept"
         ],
-        "input_tokens": 5764,
-        "latency_ms": 32.083199999760836,
+        "input_tokens": 8251,
+        "latency_ms": 30.967700004111975,
         "model_calls": 14,
         "output_tokens": 0,
         "replan_count": 1,
@@ -440,20 +440,20 @@
           "resolution",
           "critic",
           "supervisor",
-          "investigation",
+          "critic",
           "policy",
           "resolution",
           "investigation",
-          "policy",
-          "critic"
+          "investigation",
+          "policy"
         ],
         "status": "ready_for_control_plane",
         "tool_calls": 4,
         "tools": [
           "get_case",
           "search_policies",
-          "get_case",
-          "search_policies"
+          "search_policies",
+          "get_case"
         ]
       },
       "passed": true
@@ -515,8 +515,8 @@
         "critic_decisions": [
           "escalate"
         ],
-        "input_tokens": 2841,
-        "latency_ms": 21.028600000136066,
+        "input_tokens": 4083,
+        "latency_ms": 19.031700037885457,
         "model_calls": 7,
         "output_tokens": 0,
         "replan_count": 0,
@@ -524,8 +524,8 @@
           "supervisor",
           "investigation",
           "policy",
-          "investigation",
           "policy",
+          "investigation",
           "resolution",
           "critic"
         ],
@@ -595,8 +595,8 @@
         "critic_decisions": [
           "escalate"
         ],
-        "input_tokens": 2831,
-        "latency_ms": 21.475600005942397,
+        "input_tokens": 4074,
+        "latency_ms": 20.522299979347736,
         "model_calls": 7,
         "output_tokens": 0,
         "replan_count": 0,
@@ -675,19 +675,19 @@
         "critic_decisions": [
           "accept"
         ],
-        "input_tokens": 2880,
-        "latency_ms": 19.09289999457542,
+        "input_tokens": 4123,
+        "latency_ms": 20.220300008077174,
         "model_calls": 7,
         "output_tokens": 0,
         "replan_count": 0,
         "roles": [
-          "supervisor",
-          "investigation",
-          "investigation",
-          "critic",
-          "resolution",
           "policy",
-          "policy"
+          "policy",
+          "investigation",
+          "investigation",
+          "resolution",
+          "supervisor",
+          "critic"
         ],
         "status": "ready_for_control_plane",
         "tool_calls": 2,
@@ -755,8 +755,88 @@
         "critic_decisions": [
           "accept"
         ],
-        "input_tokens": 2852,
-        "latency_ms": 17.338100005872548,
+        "input_tokens": 4095,
+        "latency_ms": 19.195400003809482,
+        "model_calls": 7,
+        "output_tokens": 0,
+        "replan_count": 0,
+        "roles": [
+          "supervisor",
+          "investigation",
+          "investigation",
+          "policy",
+          "resolution",
+          "critic",
+          "policy"
+        ],
+        "status": "ready_for_control_plane",
+        "tool_calls": 2,
+        "tools": [
+          "get_case",
+          "search_policies"
+        ]
+      },
+      "passed": true
+    },
+    {
+      "assertions": [
+        {
+          "actual": "\"ready_for_control_plane\"",
+          "expected": "\"ready_for_control_plane\"",
+          "name": "status",
+          "passed": true
+        },
+        {
+          "actual": "[\"critic\", \"investigation\", \"policy\", \"resolution\", \"supervisor\"]",
+          "expected": "[\"critic\", \"investigation\", \"policy\", \"resolution\", \"supervisor\"]",
+          "name": "required_roles",
+          "passed": true
+        },
+        {
+          "actual": "[\"get_case\", \"search_policies\"]",
+          "expected": "[\"get_case\", \"search_policies\"]",
+          "name": "required_tools",
+          "passed": true
+        },
+        {
+          "actual": "[]",
+          "expected": "[]",
+          "name": "forbidden_tools",
+          "passed": true
+        },
+        {
+          "actual": "[\"accept\"]",
+          "expected": "[\"accept\"]",
+          "name": "critic_decisions",
+          "passed": true
+        },
+        {
+          "actual": "0",
+          "expected": "0",
+          "name": "replan_count",
+          "passed": true
+        },
+        {
+          "actual": "7",
+          "expected": "<= 7",
+          "name": "model_call_budget",
+          "passed": true
+        },
+        {
+          "actual": "2",
+          "expected": "<= 2",
+          "name": "tool_call_budget",
+          "passed": true
+        }
+      ],
+      "category": "security",
+      "evaluation_id": "AGENT-EVAL-010",
+      "observation": {
+        "critic_decisions": [
+          "accept"
+        ],
+        "input_tokens": 4102,
+        "latency_ms": 19.030900031793863,
         "model_calls": 7,
         "output_tokens": 0,
         "replan_count": 0,
@@ -830,110 +910,30 @@
         }
       ],
       "category": "security",
-      "evaluation_id": "AGENT-EVAL-010",
-      "observation": {
-        "critic_decisions": [
-          "accept"
-        ],
-        "input_tokens": 2859,
-        "latency_ms": 17.72569999593543,
-        "model_calls": 7,
-        "output_tokens": 0,
-        "replan_count": 0,
-        "roles": [
-          "supervisor",
-          "policy",
-          "investigation",
-          "policy",
-          "resolution",
-          "investigation",
-          "critic"
-        ],
-        "status": "ready_for_control_plane",
-        "tool_calls": 2,
-        "tools": [
-          "search_policies",
-          "get_case"
-        ]
-      },
-      "passed": true
-    },
-    {
-      "assertions": [
-        {
-          "actual": "\"ready_for_control_plane\"",
-          "expected": "\"ready_for_control_plane\"",
-          "name": "status",
-          "passed": true
-        },
-        {
-          "actual": "[\"critic\", \"investigation\", \"policy\", \"resolution\", \"supervisor\"]",
-          "expected": "[\"critic\", \"investigation\", \"policy\", \"resolution\", \"supervisor\"]",
-          "name": "required_roles",
-          "passed": true
-        },
-        {
-          "actual": "[\"get_case\", \"search_policies\"]",
-          "expected": "[\"get_case\", \"search_policies\"]",
-          "name": "required_tools",
-          "passed": true
-        },
-        {
-          "actual": "[]",
-          "expected": "[]",
-          "name": "forbidden_tools",
-          "passed": true
-        },
-        {
-          "actual": "[\"accept\"]",
-          "expected": "[\"accept\"]",
-          "name": "critic_decisions",
-          "passed": true
-        },
-        {
-          "actual": "0",
-          "expected": "0",
-          "name": "replan_count",
-          "passed": true
-        },
-        {
-          "actual": "7",
-          "expected": "<= 7",
-          "name": "model_call_budget",
-          "passed": true
-        },
-        {
-          "actual": "2",
-          "expected": "<= 2",
-          "name": "tool_call_budget",
-          "passed": true
-        }
-      ],
-      "category": "security",
       "evaluation_id": "AGENT-EVAL-011",
       "observation": {
         "critic_decisions": [
           "accept"
         ],
-        "input_tokens": 2866,
-        "latency_ms": 18.74409999436466,
+        "input_tokens": 4109,
+        "latency_ms": 19.854000012855977,
         "model_calls": 7,
         "output_tokens": 0,
         "replan_count": 0,
         "roles": [
-          "investigation",
-          "policy",
           "supervisor",
-          "policy",
           "investigation",
+          "investigation",
+          "policy",
+          "critic",
           "resolution",
-          "critic"
+          "policy"
         ],
         "status": "ready_for_control_plane",
         "tool_calls": 2,
         "tools": [
-          "search_policies",
-          "get_case"
+          "get_case",
+          "search_policies"
         ]
       },
       "passed": true
@@ -995,17 +995,17 @@
         "critic_decisions": [
           "accept"
         ],
-        "input_tokens": 2854,
-        "latency_ms": 23.75000000029104,
+        "input_tokens": 4033,
+        "latency_ms": 18.448100017849356,
         "model_calls": 7,
         "output_tokens": 0,
         "replan_count": 0,
         "roles": [
           "supervisor",
           "investigation",
+          "policy",
+          "policy",
           "investigation",
-          "policy",
-          "policy",
           "resolution",
           "critic"
         ],
@@ -1075,8 +1075,8 @@
         "critic_decisions": [
           "accept"
         ],
-        "input_tokens": 2859,
-        "latency_ms": 20.08380000188481,
+        "input_tokens": 4034,
+        "latency_ms": 18.74219998717308,
         "model_calls": 7,
         "output_tokens": 0,
         "replan_count": 0,
@@ -1085,8 +1085,8 @@
           "investigation",
           "investigation",
           "policy",
-          "resolution",
           "policy",
+          "resolution",
           "critic"
         ],
         "status": "ready_for_control_plane",
@@ -1156,8 +1156,8 @@
           "revise",
           "accept"
         ],
-        "input_tokens": 5762,
-        "latency_ms": 28.57159999985015,
+        "input_tokens": 8116,
+        "latency_ms": 36.119500000495464,
         "model_calls": 14,
         "output_tokens": 0,
         "replan_count": 1,
@@ -1165,15 +1165,15 @@
           "supervisor",
           "investigation",
           "investigation",
+          "policy",
           "resolution",
           "policy",
-          "policy",
           "critic",
-          "policy",
           "investigation",
-          "policy",
           "supervisor",
           "investigation",
+          "policy",
+          "policy",
           "resolution",
           "critic"
         ],
@@ -1182,8 +1182,8 @@
         "tools": [
           "get_it_snapshot",
           "search_policies",
-          "search_policies",
-          "get_it_snapshot"
+          "get_it_snapshot",
+          "search_policies"
         ]
       },
       "passed": true
@@ -1246,26 +1246,26 @@
           "revise",
           "accept"
         ],
-        "input_tokens": 5749,
-        "latency_ms": 30.36170000268612,
+        "input_tokens": 8106,
+        "latency_ms": 32.176700013224036,
         "model_calls": 14,
         "output_tokens": 0,
         "replan_count": 1,
         "roles": [
           "supervisor",
           "investigation",
+          "investigation",
           "policy",
-          "supervisor",
-          "investigation",
-          "investigation",
           "critic",
+          "supervisor",
           "resolution",
           "policy",
           "investigation",
           "policy",
-          "critic",
+          "investigation",
           "policy",
-          "resolution"
+          "resolution",
+          "critic"
         ],
         "status": "ready_for_control_plane",
         "tool_calls": 4,
@@ -1335,19 +1335,19 @@
         "critic_decisions": [
           "escalate"
         ],
-        "input_tokens": 2847,
-        "latency_ms": 23.79799999471288,
+        "input_tokens": 4025,
+        "latency_ms": 21.42419997835532,
         "model_calls": 7,
         "output_tokens": 0,
         "replan_count": 0,
         "roles": [
           "supervisor",
           "investigation",
-          "policy",
           "investigation",
-          "resolution",
           "policy",
-          "critic"
+          "policy",
+          "critic",
+          "resolution"
         ],
         "status": "escalated",
         "tool_calls": 2,
@@ -1415,19 +1415,19 @@
         "critic_decisions": [
           "escalate"
         ],
-        "input_tokens": 2826,
-        "latency_ms": 42.864700000791345,
+        "input_tokens": 4004,
+        "latency_ms": 20.792399998754263,
         "model_calls": 7,
         "output_tokens": 0,
         "replan_count": 0,
         "roles": [
           "supervisor",
           "investigation",
+          "policy",
+          "policy",
           "investigation",
-          "policy",
-          "policy",
-          "resolution",
-          "critic"
+          "critic",
+          "resolution"
         ],
         "status": "escalated",
         "tool_calls": 2,
@@ -1495,16 +1495,16 @@
         "critic_decisions": [
           "accept"
         ],
-        "input_tokens": 2875,
-        "latency_ms": 21.091300004627556,
+        "input_tokens": 4052,
+        "latency_ms": 19.693899957928807,
         "model_calls": 7,
         "output_tokens": 0,
         "replan_count": 0,
         "roles": [
           "supervisor",
           "investigation",
-          "investigation",
           "policy",
+          "investigation",
           "policy",
           "resolution",
           "critic"
@@ -1575,25 +1575,25 @@
         "critic_decisions": [
           "accept"
         ],
-        "input_tokens": 2854,
-        "latency_ms": 18.560100004833657,
+        "input_tokens": 4031,
+        "latency_ms": 18.215299991425127,
         "model_calls": 7,
         "output_tokens": 0,
         "replan_count": 0,
         "roles": [
-          "investigation",
           "supervisor",
-          "policy",
           "investigation",
-          "policy",
+          "investigation",
+          "resolution",
           "critic",
-          "resolution"
+          "policy",
+          "policy"
         ],
         "status": "ready_for_control_plane",
         "tool_calls": 2,
         "tools": [
-          "search_policies",
-          "get_it_snapshot"
+          "get_it_snapshot",
+          "search_policies"
         ]
       },
       "passed": true
@@ -1655,8 +1655,8 @@
         "critic_decisions": [
           "accept"
         ],
-        "input_tokens": 2866,
-        "latency_ms": 19.301000000268687,
+        "input_tokens": 4109,
+        "latency_ms": 19.410000008065253,
         "model_calls": 7,
         "output_tokens": 0,
         "replan_count": 0,
@@ -1735,8 +1735,8 @@
         "critic_decisions": [
           "accept"
         ],
-        "input_tokens": 2852,
-        "latency_ms": 18.386700001428835,
+        "input_tokens": 4095,
+        "latency_ms": 19.07139999093488,
         "model_calls": 7,
         "output_tokens": 0,
         "replan_count": 0,
@@ -1745,9 +1745,9 @@
           "investigation",
           "investigation",
           "policy",
-          "resolution",
           "policy",
-          "critic"
+          "critic",
+          "resolution"
         ],
         "status": "ready_for_control_plane",
         "tool_calls": 2,
@@ -1815,19 +1815,19 @@
         "critic_decisions": [
           "escalate"
         ],
-        "input_tokens": 2861,
-        "latency_ms": 23.363699998299126,
+        "input_tokens": 4038,
+        "latency_ms": 22.152499994263053,
         "model_calls": 7,
         "output_tokens": 0,
         "replan_count": 0,
         "roles": [
           "supervisor",
           "investigation",
+          "investigation",
+          "policy",
           "policy",
           "resolution",
-          "policy",
-          "critic",
-          "investigation"
+          "critic"
         ],
         "status": "escalated",
         "tool_calls": 2,
