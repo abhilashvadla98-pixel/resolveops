@@ -7,7 +7,7 @@
     "This deterministic suite covers known attack classes and is not proof against novel prompt injection.",
     "Provider-side model behavior and external content sources are outside this offline gate."
   ],
-  "measured_at": "2026-09-30T04:45:40.284499Z",
+  "measured_at": "2026-10-04T05:16:23.644814Z",
   "passed_count": 17,
   "results": [
     {

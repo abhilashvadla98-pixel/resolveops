@@ -1,5 +1,5 @@
 from collections.abc import Callable
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from pathlib import Path
 
@@ -10,16 +10,19 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from resolveops.agents.models import MultiAgentReasoningResult
 from resolveops.database.base import Base
-from resolveops.database.records import CaseIssueRecord, RefundRecord
+from resolveops.database.records import CaseIssueRecord, PaymentRecord, RefundRecord
 from resolveops.database.seed import seed_all
 from resolveops.database.session import create_session_factory
 from resolveops.database.workflow_records import WorkflowApprovalRecord
+from resolveops.events.models import RefundStatusChangedEvent
+from resolveops.events.processor import RefundEventProcessor
 from resolveops.knowledge.embeddings import FeatureHashEmbeddingProvider
 from resolveops.knowledge.ingestion import ingest_directory
 from resolveops.models.case import CaseIssueStatus, IssueFinding
 from resolveops.models.refund import RefundKind
 from resolveops.operations.actions import ActionTools
 from resolveops.operations.models import Actor, ActorRole, IssueRefundRequest, OperationResult
+from resolveops.operations.proposals import investigate_issue
 from resolveops.operations.reliability import ReliabilityPolicy
 from resolveops.reasoning.errors import ReasoningProviderError
 from resolveops.reasoning.models import (
@@ -41,8 +44,218 @@ from resolveops.workflows.models import (
     WorkflowOutcome,
     WorkflowPause,
     WorkflowRequest,
+    WorkflowResult,
     WorkflowStatus,
 )
+
+
+@pytest.mark.parametrize("failed_status", ["failed", "cancelled"])
+def test_final_failure_requires_new_investigation_and_approval_for_replacement(
+    workflow_database: tuple[Engine, sessionmaker[Session]], failed_status: str
+) -> None:
+    _, factory = workflow_database
+    clock_time = [NOW]
+    checkpointer = InMemorySaver()
+    lifecycle = WorkflowLifecycleStore(factory, clock=lambda: clock_time[0], id_generator=ids())
+    tools = ActionTools(factory, clock=lambda: clock_time[0], id_generator=ids())
+    durable = CustomerIssueWorkflow(
+        factory,
+        FeatureHashEmbeddingProvider(dimensions=128),
+        action_tools=tools,
+        checkpointer=checkpointer,
+        lifecycle_store=lifecycle,
+        clock=lambda: clock_time[0],
+    )
+    processor = RefundEventProcessor(factory, clock=lambda: clock_time[0])
+
+    def investigate(workflow_id: str) -> WorkflowPause:
+        result = durable.start(
+            WorkflowRequest(
+                workflow_id=workflow_id,
+                case_id="CASE-1001",
+                issue_id="ISSUE-1001",
+                actor=actor(ActorRole.OPERATOR),
+                investigation_only=True,
+            )
+        )
+        assert isinstance(result, WorkflowPause)
+        return result
+
+    def approve(pause: WorkflowPause) -> WorkflowResult:
+        result = durable.resume(
+            WorkflowApprovalDecision(
+                approval_id=pause.approval.approval_id,
+                decision=ApprovalDecisionType.APPROVE,
+                actor=actor(),
+                note="Reviewed fresh payment evidence and terminal attempt history.",
+            )
+        )
+        assert isinstance(result, WorkflowResult)
+        return result
+
+    def provider_event(event_id: str, refund_id: str, status: str) -> RefundStatusChangedEvent:
+        return RefundStatusChangedEvent.model_validate(
+            {
+                "event_id": event_id,
+                "source": "payment-provider-sandbox",
+                "occurred_at": clock_time[0],
+                "data": {
+                    "refund_id": refund_id,
+                    "provider_reference": f"PROVIDER-{refund_id}",
+                    "status": status,
+                    "completed_at": clock_time[0] if status == "completed" else None,
+                },
+            }
+        )
+
+    original_pause = investigate("WF-FAILED-ATTEMPT")
+    with factory() as session:
+        original_proposal = investigate_issue(session, "CASE-1001", "ISSUE-1001").proposal
+        assert original_proposal is not None
+    original = approve(original_pause)
+    assert original.outcome == WorkflowOutcome.REFUND_SUBMITTED
+    assert original.verified_resource_id is not None
+    clock_time[0] += timedelta(seconds=1)
+    failed_event = provider_event("EVT-FIRST-FAILED", original.verified_resource_id, failed_status)
+    processor.process(failed_event)
+    failed = durable.get_execution(original.workflow_id)
+    assert isinstance(failed, WorkflowResult)
+    assert failed.error_code == f"refund_{failed_status}"
+
+    clock_time[0] += timedelta(seconds=1)
+    recovery_pause = investigate("WF-REPLACEMENT-ATTEMPT")
+    assert recovery_pause.approval.approval_id != original_pause.approval.approval_id
+    with factory() as session:
+        recovery_proposal = investigate_issue(session, "CASE-1001", "ISSUE-1001").proposal
+        assert recovery_proposal is not None
+        assert recovery_proposal.idempotency_key != original_proposal.idempotency_key
+        # Investigation alone did not submit another refund.
+        assert (
+            session.scalar(
+                select(func.count())
+                .select_from(RefundRecord)
+                .where(RefundRecord.order_id == "ORD-48391")
+            )
+            == 2
+        )
+    replacement = approve(recovery_pause)
+    assert replacement.outcome == WorkflowOutcome.REFUND_SUBMITTED
+    assert replacement.verified_resource_id not in {None, original.verified_resource_id}
+    replay = tools.issue_refund(recovery_proposal, actor())
+    assert replay.idempotent_replay is True
+    assert replay.resource_id == replacement.verified_resource_id
+    processor.process(failed_event)
+    clock_time[0] += timedelta(seconds=1)
+    processor.process(
+        provider_event("EVT-FIRST-FAILED-AGAIN", original.verified_resource_id, failed_status)
+    )
+    with factory() as session:
+        assert session.get(CaseIssueRecord, "ISSUE-1001").status == CaseIssueStatus.VERIFYING
+        assert (
+            session.scalar(
+                select(func.count())
+                .select_from(RefundRecord)
+                .where(RefundRecord.order_id == "ORD-48391")
+            )
+            == 3
+        )
+    assert replacement.verified_resource_id is not None
+    processor.process(
+        provider_event("EVT-REPLACEMENT-DONE", replacement.verified_resource_id, "completed")
+    )
+    settled = durable.get_execution(replacement.workflow_id)
+    assert isinstance(settled, WorkflowResult)
+    assert settled.outcome == WorkflowOutcome.REFUND_SETTLED
+    clock_time[0] += timedelta(seconds=1)
+    processor.process(
+        provider_event("EVT-FIRST-FAILED-LATE", original.verified_resource_id, failed_status)
+    )
+    old_result = durable.get_execution(original.workflow_id)
+    assert isinstance(old_result, WorkflowResult)
+    assert old_result.error_code == f"refund_{failed_status}"
+    with factory() as session:
+        assert session.get(CaseIssueRecord, "ISSUE-1001").status == CaseIssueStatus.RESOLVED
+
+
+def test_partial_attempt_history_remains_readable_after_approved_remainder_settles(
+    workflow_database: tuple[Engine, sessionmaker[Session]],
+) -> None:
+    _, factory = workflow_database
+    with factory.begin() as session:
+        session.get(RefundRecord, "REF-2001").amount = Decimal("100.00")
+    lifecycle = WorkflowLifecycleStore(factory, clock=lambda: NOW, id_generator=ids())
+    durable = durable_workflow(
+        factory,
+        InMemorySaver(),
+        lifecycle,
+        action_tools=ActionTools(factory, clock=lambda: NOW, id_generator=ids()),
+    )
+    processor = RefundEventProcessor(factory, clock=lambda: NOW)
+
+    def settle(event_id: str, refund_id: str) -> None:
+        processor.process(
+            RefundStatusChangedEvent.model_validate(
+                {
+                    "event_id": event_id,
+                    "source": "payment-provider-sandbox",
+                    "occurred_at": NOW,
+                    "data": {
+                        "refund_id": refund_id,
+                        "provider_reference": f"PROVIDER-{refund_id}",
+                        "status": "completed",
+                        "completed_at": NOW,
+                    },
+                }
+            )
+        )
+
+    first = durable.start(
+        WorkflowRequest(
+            workflow_id="WF-PARTIAL-RETURN",
+            case_id="CASE-1001",
+            issue_id="ISSUE-1002",
+            actor=actor(ActorRole.OPERATOR),
+            investigation_only=True,
+        )
+    )
+    assert isinstance(first, WorkflowResult)
+    assert first.outcome == WorkflowOutcome.WAITING_EXTERNAL
+    settle("EVT-PARTIAL-DONE", "REF-2001")
+    partial = durable.get_execution(first.workflow_id)
+    assert isinstance(partial, WorkflowResult)
+    assert partial.error_code == "refund_settlement_incomplete"
+    recovery = durable.start(
+        WorkflowRequest(
+            workflow_id="WF-RETURN-REMAINDER",
+            case_id="CASE-1001",
+            issue_id="ISSUE-1002",
+            actor=actor(ActorRole.OPERATOR),
+            investigation_only=True,
+        )
+    )
+    assert isinstance(recovery, WorkflowPause)
+    assert recovery.approval.amount == Decimal("100.00")
+    submitted = durable.resume(
+        WorkflowApprovalDecision(
+            approval_id=recovery.approval.approval_id,
+            decision=ApprovalDecisionType.APPROVE,
+            actor=actor(),
+            note="Approved only the unpaid return remainder after reviewing the prior settlement.",
+        )
+    )
+    assert isinstance(submitted, WorkflowResult)
+    assert submitted.verified_resource_id is not None
+    settle("EVT-REMAINDER-DONE", submitted.verified_resource_id)
+    history = durable.get_execution(first.workflow_id)
+    assert isinstance(history, WorkflowResult)
+    assert history.outcome == WorkflowOutcome.NEEDS_REVIEW
+    assert history.error_code == "refund_settlement_incomplete"
+    final = durable.get_execution(submitted.workflow_id)
+    assert isinstance(final, WorkflowResult)
+    assert final.outcome == WorkflowOutcome.REFUND_SETTLED
+    with factory() as session:
+        assert session.get(CaseIssueRecord, "ISSUE-1002").status == CaseIssueStatus.RESOLVED
+
 
 NOW = datetime(2026, 9, 24, 12, 0, tzinfo=UTC)
 POLICY_DIRECTORY = Path("domain_packs/customer_operations/policies")
@@ -188,8 +401,19 @@ class ScriptedReasoningProvider:
 
 
 class RecordingIntegratedAgentRuntime:
-    def __init__(self) -> None:
+    def __init__(
+        self,
+        *,
+        disposition: str = "refund",
+        resource_id: str = "PAY-1002",
+        amount: str = "1499.00",
+        tenant_id: str | None = None,
+    ) -> None:
         self.calls: list[dict[str, object]] = []
+        self.disposition = disposition
+        self.resource_id = resource_id
+        self.amount = amount
+        self.tenant_id = tenant_id
 
     def run(self, **kwargs: object) -> MultiAgentReasoningResult:
         self.calls.append(kwargs)
@@ -197,7 +421,7 @@ class RecordingIntegratedAgentRuntime:
             {
                 "workflow_id": kwargs["workflow_id"],
                 "case_id": kwargs["case_id"],
-                "tenant_id": kwargs["tenant_id"],
+                "tenant_id": self.tenant_id or kwargs["tenant_id"],
                 "domain": "customer_operations",
                 "supervisor": {
                     "goal": "Investigate the duplicate charge.",
@@ -240,12 +464,26 @@ class RecordingIntegratedAgentRuntime:
                     "issue_resolutions": [
                         {
                             "issue_id": "ISSUE-1001",
+                            "disposition": self.disposition,
                             "recommendation": "Submit to deterministic refund controls.",
+                            "clarification_question": (
+                                "Which charge did you dispute?"
+                                if self.disposition == "request_information"
+                                else None
+                            ),
                             "evidence_ids": ["PAY-1001", "PAY-1002"],
                             "policy_citations": ["POLICY-DUPLICATE-CHARGE"],
                         }
                     ],
-                    "proposed_actions": [],
+                    "proposed_actions": [
+                        {
+                            "action_type": "issue_refund",
+                            "issue_id": "ISSUE-1001",
+                            "resource_id": self.resource_id,
+                            "amount": self.amount,
+                            "requires_approval": True,
+                        }
+                    ],
                     "evidence_support": ["PAY-1001", "PAY-1002"],
                     "policy_support": ["POLICY-DUPLICATE-CHARGE"],
                     "risk_flags": [],
@@ -287,17 +525,23 @@ def make_duplicate_issue_actionable(factory: sessionmaker[Session]) -> None:
         issue.status = CaseIssueStatus.ACTION_PENDING
 
 
-def test_unconfirmed_issue_routes_to_review_without_action(
+def test_missing_obligation_routes_to_review_without_action(
     workflow_database: tuple[Engine, sessionmaker[Session]],
 ) -> None:
     _, factory = workflow_database
+    with factory.begin() as session:
+        payment = session.get(PaymentRecord, "PAY-1002")
+        assert payment is not None
+        payment.obligation_id = None
+        payment.obligation_amount = None
 
     result = workflow(factory).run(request(proposed_refund=refund_request()))
 
     assert result.status == WorkflowStatus.ESCALATED
     assert result.outcome == WorkflowOutcome.NEEDS_REVIEW
     assert result.decision == WorkflowDecision.ESCALATE
-    assert result.error_code == "investigation_not_confirmed"
+    assert result.error_code == "evidence_review_required"
+    assert "obligation" in result.error_message.lower()
     assert result.node_history == [
         "load_case",
         "investigate_duplicate",
@@ -313,6 +557,29 @@ def test_unconfirmed_issue_routes_to_review_without_action(
             .where(RefundRecord.issue_id == "ISSUE-1001")
         )
         assert count == 0
+        issue = session.get(CaseIssueRecord, "ISSUE-1001")
+        assert issue is not None and issue.finding == IssueFinding.UNDETERMINED
+
+
+def test_unconfirmed_issue_with_authoritative_proof_becomes_confirmed(
+    workflow_database: tuple[Engine, sessionmaker[Session]],
+) -> None:
+    _, factory = workflow_database
+    with factory() as session:
+        issue = session.get(CaseIssueRecord, "ISSUE-1001")
+        assert issue is not None and issue.finding == IssueFinding.UNDETERMINED
+
+    result = workflow(factory).run(request())
+
+    assert result.outcome == WorkflowOutcome.REFUND_SUBMITTED
+    assert result.status == WorkflowStatus.WAITING_EXTERNAL
+    assert result.operation is not None and result.operation.verified
+    with factory() as session:
+        issue = session.get(CaseIssueRecord, "ISSUE-1001")
+        assert issue is not None and issue.finding == IssueFinding.CONFIRMED
+        assert issue.status == CaseIssueStatus.VERIFYING
+        refund = session.get(RefundRecord, result.operation.resource_id)
+        assert refund is not None and refund.payment_id == "PAY-1002"
 
 
 def test_existing_return_refund_routes_to_wait_without_duplicate_action(
@@ -341,15 +608,15 @@ def test_authorized_refund_executes_and_is_independently_verified(
         request(proposed_refund=refund_request())
     )
 
-    assert result.status == WorkflowStatus.COMPLETED
-    assert result.outcome == WorkflowOutcome.ACTION_VERIFIED
+    assert result.status == WorkflowStatus.WAITING_EXTERNAL
+    assert result.outcome == WorkflowOutcome.REFUND_SUBMITTED
     assert result.operation is not None
     assert result.reasoning is not None
     assert result.operation.verified is True
     assert result.verified_resource_id == result.operation.resource_id
     assert any(item.document_id == "POLICY-DUPLICATE-CHARGE" for item in result.policy_citations)
     assert result.node_history[-3:] == ["execute_refund", "verify_action", "complete"]
-    assert "case remains open" in result.resolution_summary
+    assert "issue remains open" in result.resolution_summary
 
 
 def test_normal_complex_investigation_runs_agents_before_deterministic_controls(
@@ -368,9 +635,48 @@ def test_normal_complex_investigation_runs_agents_before_deterministic_controls(
     assert agents.calls[0]["tenant_id"] == "TENANT-TEST"
     assert result.agent_assessment is not None
     assert result.agent_assessment.critic.decision.value == "accept"
-    assert result.status == WorkflowStatus.COMPLETED
-    assert result.outcome == WorkflowOutcome.ACTION_VERIFIED
+    assert result.status == WorkflowStatus.WAITING_EXTERNAL
+    assert result.outcome == WorkflowOutcome.REFUND_SUBMITTED
     assert result.operation is not None and result.operation.verified is True
+
+
+@pytest.mark.parametrize(
+    ("runtime_options", "error_code"),
+    [
+        ({"disposition": "escalate"}, "agent_requires_information"),
+        ({"disposition": "request_information"}, "agent_requires_information"),
+        ({"disposition": "no_action"}, "agent_no_action_requires_review"),
+        ({"disposition": "wait"}, "agent_wait_requires_review"),
+        ({"resource_id": "PAY-1001"}, "agent_action_mismatch"),
+        ({"amount": "1498.00"}, "agent_action_mismatch"),
+        ({"amount": "not-a-number"}, "agent_action_mismatch"),
+        ({"tenant_id": "OTHER-TENANT"}, "agent_proposal_requires_review"),
+    ],
+)
+def test_accepted_critic_cannot_override_disposition_scope_or_refund_evidence(
+    workflow_database: tuple[Engine, sessionmaker[Session]],
+    runtime_options: dict[str, str],
+    error_code: str,
+) -> None:
+    _, factory = workflow_database
+    runtime = RecordingIntegratedAgentRuntime(**runtime_options)
+
+    result = workflow(factory, agent_runtime=runtime).run(request())
+
+    assert result.agent_assessment is not None
+    assert result.agent_assessment.critic.decision.value == "accept"
+    assert result.outcome == WorkflowOutcome.NEEDS_REVIEW
+    assert result.error_code == error_code
+    assert result.operation is None
+    with factory() as session:
+        assert (
+            session.scalar(
+                select(func.count())
+                .select_from(RefundRecord)
+                .where(RefundRecord.issue_id == "ISSUE-1001")
+            )
+            == 0
+        )
 
 
 def test_simple_investigation_skips_multi_agent_runtime(
@@ -387,7 +693,8 @@ def test_simple_investigation_skips_multi_agent_runtime(
 
     assert agents.calls == []
     assert result.agent_assessment is None
-    assert result.outcome == WorkflowOutcome.NEEDS_REVIEW
+    assert result.outcome == WorkflowOutcome.REFUND_SUBMITTED
+    assert result.status == WorkflowStatus.WAITING_EXTERNAL
 
 
 def test_approval_failure_routes_to_review(
@@ -476,11 +783,19 @@ def test_workflow_replans_to_monitor_after_partial_verification_failure(
         )
 
 
-def test_model_refund_recommendation_cannot_bypass_persisted_issue_gate(
+@pytest.mark.parametrize("obligation_id", [None, "DIFFERENT-OBLIGATION"])
+def test_model_refund_recommendation_cannot_replace_authoritative_obligation(
     workflow_database: tuple[Engine, sessionmaker[Session]],
+    obligation_id: str | None,
 ) -> None:
     _, factory = workflow_database
     provider = ScriptedReasoningProvider(ReasoningDisposition.REFUND_CANDIDATE)
+    with factory.begin() as session:
+        payment = session.get(PaymentRecord, "PAY-1002")
+        assert payment is not None
+        payment.obligation_id = obligation_id
+        if obligation_id is None:
+            payment.obligation_amount = None
 
     result = workflow(factory, reasoning_provider=provider).run(
         request(proposed_refund=refund_request())
@@ -490,7 +805,8 @@ def test_model_refund_recommendation_cannot_bypass_persisted_issue_gate(
     assert result.reasoning.assessment.recommended_disposition == (
         ReasoningDisposition.REFUND_CANDIDATE
     )
-    assert result.error_code == "investigation_not_confirmed"
+    assert result.error_code == "evidence_review_required"
+    assert result.outcome == WorkflowOutcome.NEEDS_REVIEW
     with factory() as session:
         assert (
             session.scalar(
@@ -619,16 +935,16 @@ def test_durable_workflow_pauses_and_resumes_after_service_restart(
     result = restarted.resume(approval_decision)
 
     assert not isinstance(result, WorkflowPause)
-    assert result.outcome == WorkflowOutcome.ACTION_VERIFIED
-    assert result.status == WorkflowStatus.COMPLETED
+    assert result.outcome == WorkflowOutcome.REFUND_SUBMITTED
+    assert result.status == WorkflowStatus.WAITING_EXTERNAL
     assert result.operation is not None
     assert result.operation.verified is True
-    assert any(
-        "PAY-1001" in fact and "PAY-1002" in fact and "ORD-48391" in fact
-        for fact in result.evidence
+    assert all(
+        any(resource_id in fact for fact in result.evidence)
+        for resource_id in ("PAY-1001", "PAY-1002", "ORD-48391")
     )
     assert restarted_lifecycle.get_run(initial_request.workflow_id).status == (
-        WorkflowLifecycleStatus.COMPLETED
+        WorkflowLifecycleStatus.WAITING_EXTERNAL
     )
     assert [
         event.event_type for event in restarted_lifecycle.list_events(initial_request.workflow_id)
@@ -646,7 +962,7 @@ def test_durable_workflow_pauses_and_resumes_after_service_restart(
         WorkflowEventType.ACTION_EXECUTED,
         WorkflowEventType.ACTION_VERIFIED,
         WorkflowEventType.FINAL_RESPONSE_CREATED,
-        WorkflowEventType.COMPLETED,
+        WorkflowEventType.REFUND_STATUS_CHANGED,
     ]
     action_event = restarted_lifecycle.list_events(initial_request.workflow_id)[10]
     assert action_event.details == {
@@ -744,7 +1060,7 @@ def test_unauthorized_approval_keeps_workflow_paused(
             WorkflowApprovalDecision(
                 approval_id=paused.approval.approval_id,
                 decision=ApprovalDecisionType.APPROVE,
-                actor=actor(ActorRole.OPERATOR),
+                actor=Actor(actor_id="OTHER-OPERATOR", role=ActorRole.OPERATOR),
                 note="Attempted approval without the approver role.",
             )
         )
@@ -771,5 +1087,5 @@ def test_durable_workflow_executes_without_pause_inside_actor_limit(
     )
 
     assert not isinstance(result, WorkflowPause)
-    assert result.outcome == WorkflowOutcome.ACTION_VERIFIED
-    assert lifecycle.get_run(result.workflow_id).status == WorkflowLifecycleStatus.COMPLETED
+    assert result.outcome == WorkflowOutcome.REFUND_SUBMITTED
+    assert lifecycle.get_run(result.workflow_id).status == WorkflowLifecycleStatus.WAITING_EXTERNAL

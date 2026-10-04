@@ -126,6 +126,14 @@ class GeminiStructuredAgentProvider:
                 _provider_error_code(exc), "The agent provider request failed."
             ) from exc
         self._last_usage = _gemini_usage(response.usage_metadata)
+        if any(
+            str(candidate.finish_reason).endswith("MAX_TOKENS")
+            for candidate in (getattr(response, "candidates", None) or [])
+        ):
+            raise ReasoningProviderError(
+                "agent_output_token_limit",
+                "The provider reached its configured output-token limit before completing the structured response.",
+            )
         try:
             if isinstance(response.parsed, response_model):
                 return response.parsed
@@ -135,7 +143,7 @@ class GeminiStructuredAgentProvider:
                 return response_model.model_validate_json(response.text)
         except ValidationError as exc:
             problems = "; ".join(
-                f"{'.'.join(str(part) for part in error['loc'])}:{error['type']}"
+                f"{'.'.join(str(part) for part in error['loc'])}:{error['type']}:{error['msg']}"
                 for error in exc.errors(include_input=False)[:5]
             )
             raise ReasoningProviderError(

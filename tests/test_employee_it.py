@@ -40,6 +40,7 @@ from resolveops.evaluation.employee_workflow import evaluate_employee_workflow_c
 from resolveops.knowledge.embeddings import FeatureHashEmbeddingProvider
 from resolveops.knowledge.ingestion import ingest_directory
 from resolveops.operations.actions import ActionTools
+from resolveops.operations.errors import BusinessRuleError
 from resolveops.operations.models import Actor, ActorRole, AuditEventType, OperationType
 from resolveops.reasoning.models import (
     ReasoningAssessment,
@@ -303,8 +304,21 @@ def test_partial_existing_access_is_escalated_instead_of_overwritten(
 
     assert result.outcome == EmployeeWorkflowOutcome.NEEDS_REVIEW
     assert result.error_code == "existing_access_conflict"
+    direct_request = GrantRepositoryAccessRequest(
+        idempotency_key="direct-partial-grant",
+        case_id="ITCASE-2001",
+        access_request_id="ACCESS-REQUEST-2001",
+        employee_id="EMP-2001",
+        identity_id="IDENTITY-2001",
+        repository_id="REPO-ML-PLATFORM",
+        access_level=RepositoryAccessLevel.WRITE,
+        reason="The direct tool must enforce the same partial-access safety stop.",
+    )
+    with pytest.raises(BusinessRuleError, match="partial directory access"):
+        service.action_tools.grant_repository_access(direct_request, request.actor)
     with factory() as session:
         assert session.scalar(select(func.count(GitRepositoryAccessRecord.access_id))) == 0
+        assert session.scalar(select(func.count(DirectoryGroupMembershipRecord.membership_id))) == 1
 
 
 def test_existing_exact_access_is_idempotent_no_action(
@@ -339,6 +353,30 @@ def test_existing_exact_access_is_idempotent_no_action(
     assert result.decision == EmployeeWorkflowDecision.NO_ACTION
     assert result.verified_access_id == "GITACCESS-EXISTING"
     with factory() as session:
+        assert session.scalar(select(func.count(OperationRecord.operation_id))) == 0
+
+
+@pytest.mark.parametrize("level", [RepositoryAccessLevel.READ, RepositoryAccessLevel.MAINTAIN])
+def test_different_existing_access_level_is_not_overwritten(
+    employee_database: tuple[Engine, sessionmaker[Session]], level: RepositoryAccessLevel
+) -> None:
+    _, factory = employee_database
+    with factory.begin() as session:
+        session.add(
+            GitRepositoryAccessRecord(
+                access_id="GITACCESS-CONFLICT",
+                repository_id="REPO-ML-PLATFORM",
+                git_account_id="GIT-ACCOUNT-2001",
+                level=level,
+                status=MembershipStatus.ACTIVE,
+                granted_at=NOW,
+            )
+        )
+    service, request = workflow(factory)
+    result = service.run(request)
+    assert result.error_code == "existing_access_conflict"
+    with factory() as session:
+        assert session.get(GitRepositoryAccessRecord, "GITACCESS-CONFLICT").level == level
         assert session.scalar(select(func.count(OperationRecord.operation_id))) == 0
 
 

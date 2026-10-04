@@ -107,6 +107,8 @@ def seed_customer_operations(session: Session) -> bool:
     store.add_payment(
         Payment(
             payment_id="PAY-1001",
+            obligation_id="OBL-ORD-48391",
+            obligation_amount=Decimal("1499.00"),
             order_id="ORD-48391",
             amount=Decimal("1499.00"),
             currency="USD",
@@ -118,6 +120,8 @@ def seed_customer_operations(session: Session) -> bool:
     store.add_payment(
         Payment(
             payment_id="PAY-1002",
+            obligation_id="OBL-ORD-48391",
+            obligation_amount=Decimal("1499.00"),
             order_id="ORD-48391",
             amount=Decimal("1499.00"),
             currency="USD",

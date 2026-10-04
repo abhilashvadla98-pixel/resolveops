@@ -125,6 +125,8 @@ class CustomerOperationsStore:
                 status=payment.status,
                 created_at=payment.created_at,
                 captured_at=payment.captured_at,
+                obligation_id=payment.obligation_id,
+                obligation_amount=payment.obligation_amount,
             )
         )
 
@@ -316,6 +318,8 @@ class CustomerOperationsStore:
             status=record.status,
             created_at=record.created_at,
             captured_at=record.captured_at,
+            obligation_id=record.obligation_id,
+            obligation_amount=record.obligation_amount,
         )
 
     @staticmethod

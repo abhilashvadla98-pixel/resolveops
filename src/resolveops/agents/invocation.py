@@ -71,6 +71,8 @@ class AgentInvoker:
         )
         self._notify(run)
         started = perf_counter()
+        input_tokens: int | None = None
+        output_tokens: int | None = None
         try:
             with observed_span(
                 TraceComponent.LLM,
@@ -93,17 +95,21 @@ class AgentInvoker:
                     if isinstance(self.provider, UsageReportingAgentProvider)
                     else None
                 )
-                input_tokens = usage.input_tokens if usage else estimated_tokens
-                output_tokens = usage.output_tokens if usage else 0
-                estimated_cost_usd = self._estimated_cost(input_tokens, output_tokens)
-                span.set_attribute("input_tokens", input_tokens)
-                span.set_attribute("output_tokens", output_tokens)
+                input_tokens = usage.input_tokens if usage else None
+                output_tokens = usage.output_tokens if usage else None
+                estimated_cost_usd = (
+                    self._estimated_cost(usage.input_tokens, usage.output_tokens) if usage else None
+                )
+                if input_tokens is not None:
+                    span.set_attribute("input_tokens", input_tokens)
+                if output_tokens is not None:
+                    span.set_attribute("output_tokens", output_tokens)
                 if estimated_cost_usd is not None:
                     span.set_attribute("cost_usd", estimated_cost_usd)
                 span.set_attribute("latency_ms", (perf_counter() - started) * 1000)
             self.ledger.record_model_usage(
-                actual_input_tokens=input_tokens,
-                output_tokens=output_tokens,
+                actual_input_tokens=input_tokens if input_tokens is not None else estimated_tokens,
+                output_tokens=output_tokens if output_tokens is not None else 0,
                 reserved_input_tokens=estimated_tokens,
                 estimated_cost_usd=estimated_cost_usd,
             )
@@ -120,8 +126,8 @@ class AgentInvoker:
             finished = self.store.finish(
                 run.agent_run_id,
                 output={"error": exc.code},
-                input_tokens=None,
-                output_tokens=None,
+                input_tokens=input_tokens,
+                output_tokens=output_tokens,
                 status=AgentRunStatus.BUDGET_EXCEEDED,
                 error_classification=exc.code,
             )
@@ -129,11 +135,40 @@ class AgentInvoker:
             record_agent_run(finished)
             raise
         except ReasoningProviderError as exc:
+            failed_usage = (
+                self.provider.last_usage
+                if isinstance(self.provider, UsageReportingAgentProvider)
+                else None
+            )
+            if failed_usage is not None:
+                try:
+                    self.ledger.record_model_usage(
+                        actual_input_tokens=failed_usage.input_tokens,
+                        output_tokens=failed_usage.output_tokens,
+                        reserved_input_tokens=estimated_tokens,
+                        estimated_cost_usd=self._estimated_cost(
+                            failed_usage.input_tokens, failed_usage.output_tokens
+                        ),
+                    )
+                except AgentBudgetExceeded:
+                    # Actual usage has already occurred and is retained by the ledger.
+                    pass
+            else:
+                self.ledger.record_model_usage(
+                    actual_input_tokens=estimated_tokens,
+                    output_tokens=0,
+                    reserved_input_tokens=estimated_tokens,
+                )
             finished = self.store.finish(
                 run.agent_run_id,
-                output={"error": exc.code},
-                input_tokens=None,
-                output_tokens=None,
+                output={
+                    "error": exc.code,
+                    "validation_detail": exc.message
+                    if exc.code.startswith("agent_output_")
+                    else None,
+                },
+                input_tokens=failed_usage.input_tokens if failed_usage else None,
+                output_tokens=failed_usage.output_tokens if failed_usage else None,
                 status=AgentRunStatus.FAILED,
                 error_classification=exc.code,
             )

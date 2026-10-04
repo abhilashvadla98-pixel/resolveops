@@ -25,6 +25,7 @@ class RuntimeModeSettings(BaseSettings):
         env_file=".env",
         env_prefix="RESOLVEOPS_",
         extra="ignore",
+        hide_input_in_errors=True,
     )
 
 
@@ -48,6 +49,7 @@ class Settings(BaseSettings):
     gemini_max_attempts: int = Field(default=2, ge=1, le=3)
     gemini_max_input_characters: int = Field(default=24_000, ge=1_000, le=100_000)
     gemini_max_output_tokens: int = Field(default=800, ge=100, le=4_096)
+    agent_max_output_tokens: int = Field(default=1_600, ge=100, le=4_096)
     gemini_key_rotated: bool = False
     integrated_agents_enabled: bool = False
     agent_queue_enabled: bool = False
@@ -67,6 +69,7 @@ class Settings(BaseSettings):
         env_file=".env",
         env_prefix="RESOLVEOPS_",
         extra="ignore",
+        hide_input_in_errors=True,
     )
 
     @model_validator(mode="after")
@@ -130,6 +133,7 @@ class TrafficProtectionSettings(BaseSettings):
         env_file=".env",
         env_prefix="RESOLVEOPS_",
         extra="ignore",
+        hide_input_in_errors=True,
     )
 
 
@@ -141,6 +145,7 @@ class ObservabilitySettings(BaseSettings):
         env_file=".env",
         env_prefix="RESOLVEOPS_",
         extra="ignore",
+        hide_input_in_errors=True,
     )
 
 
@@ -156,6 +161,7 @@ class DemoSettings(BaseSettings):
         env_file=".env",
         env_prefix="RESOLVEOPS_",
         extra="ignore",
+        hide_input_in_errors=True,
     )
 
     @model_validator(mode="after")

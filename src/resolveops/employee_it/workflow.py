@@ -7,6 +7,11 @@ from langgraph.graph import END, START, StateGraph
 from langgraph.graph.state import CompiledStateGraph
 from sqlalchemy.orm import Session, sessionmaker
 
+from resolveops.database.employee_it_records import (
+    ITAccessCaseRecord,
+    ITAccessRequestRecord,
+    ITTicketRecord,
+)
 from resolveops.employee_it.models import (
     AccessRequestStatus,
     EmploymentStatus,
@@ -17,6 +22,7 @@ from resolveops.employee_it.models import (
     ITNotificationStatus,
     ITTicketStatus,
     MembershipStatus,
+    RepositoryAccessLevel,
 )
 from resolveops.employee_it.store import EmployeeITStore
 from resolveops.employee_it.workflow_models import (
@@ -208,6 +214,12 @@ class EmployeeAccessWorkflow:
         snapshot = state["snapshot"]
         checks = (
             (
+                snapshot.access_request.requested_level
+                in {RepositoryAccessLevel.READ, RepositoryAccessLevel.WRITE},
+                "access_level_not_supported",
+                "This workflow permits read or write repository access only.",
+            ),
+            (
                 snapshot.employee.status == EmploymentStatus.ACTIVE,
                 "employee_inactive",
                 "Employee must be active.",
@@ -267,11 +279,11 @@ class EmployeeAccessWorkflow:
         )
         code = state.get("eligibility_error_code")
         message = state.get("eligibility_error_message")
-        if not exact_access and (group_active or snapshot.repository_access is not None):
+        if not exact_access and (
+            snapshot.repository_access is not None or snapshot.group_membership is not None
+        ):
             code = "existing_access_conflict"
-            message = (
-                "Existing group or repository access is partial, inactive, or the wrong level."
-            )
+            message = "Existing access is partial, inactive or at a different level; an operator must reconcile it."
         fact = (
             "Requested repository access and required group membership already exist."
             if exact_access
@@ -364,23 +376,26 @@ class EmployeeAccessWorkflow:
                 cast(str, state["eligibility_error_code"]),
                 cast(str, state["eligibility_error_message"]),
             )
+        request = snapshot.access_request
+        if (
+            request.status not in {AccessRequestStatus.APPROVED, AccessRequestStatus.FULFILLED}
+            or request.approved_by != snapshot.team.manager_employee_id
+            or request.approved_at is None
+            or request.approved_by == snapshot.employee.employee_id
+        ):
+            return self._review(
+                "manager_approval_required",
+                "The target-team manager must approve the access request.",
+            )
         if state.get("already_satisfied"):
             return {
                 "decision": EmployeeWorkflowDecision.NO_ACTION,
                 "status": WorkflowStatus.COMPLETED,
                 "node_history": ["decide"],
             }
-        request = snapshot.access_request
-        if snapshot.access_case.status != ITCaseStatus.ACTION_PENDING:
-            return self._review("case_not_actionable", "IT case must be in action-pending status.")
-        if (
-            request.status != AccessRequestStatus.APPROVED
-            or request.approved_by != snapshot.team.manager_employee_id
-            or request.approved_at is None
-        ):
+        if snapshot.access_case.status not in {ITCaseStatus.ACTION_PENDING, ITCaseStatus.ESCALATED}:
             return self._review(
-                "manager_approval_required",
-                "The target-team manager must approve the access request.",
+                "case_not_actionable", "IT case must be approved or awaiting recovery."
             )
         reasoning = state.get("reasoning")
         if reasoning is not None and (
@@ -481,10 +496,19 @@ class EmployeeAccessWorkflow:
             "node_history": ["complete"],
         }
 
-    @staticmethod
-    def _already_satisfied(state: EmployeeAccessWorkflowState) -> dict[str, object]:
+    def _already_satisfied(self, state: EmployeeAccessWorkflowState) -> dict[str, object]:
         snapshot = state["snapshot"]
         access = snapshot.repository_access
+        with self.session_factory.begin() as session:
+            access_case = session.get(ITAccessCaseRecord, snapshot.access_case.case_id)
+            request = session.get(ITAccessRequestRecord, snapshot.access_request.access_request_id)
+            ticket = session.get(ITTicketRecord, snapshot.ticket.ticket_id)
+            if access_case is not None and request is not None and ticket is not None:
+                access_case.status = ITCaseStatus.RESOLVED
+                access_case.updated_at = self.clock()
+                request.status = AccessRequestStatus.FULFILLED
+                ticket.status = ITTicketStatus.RESOLVED
+                ticket.updated_at = self.clock()
         return {
             "status": WorkflowStatus.COMPLETED,
             "outcome": EmployeeWorkflowOutcome.ALREADY_SATISFIED,

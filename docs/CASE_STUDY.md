@@ -32,17 +32,18 @@ records, durable LangGraph workflows, versioned policy retrieval, optional struc
 human approval, controlled actions, final-state verification, Prometheus metrics, and ordered audit
 events. SQLite supports the no-cost local demo; PostgreSQL is used for concurrency and scale proof.
 
-The optional deep-analysis path uses a LangGraph supervisor over Customer Operations and Employee/IT
-subgraphs. Five separately invoked roles plan, select allowlisted reads, retrieve policy, propose an
-issue-separated resolution, and independently criticize it. They exchange typed state and persist
-run/tool telemetry. They cannot approve or execute. PostgreSQL owns queued work; Redis/Valkey only
-wakes workers and coordinates shared rate limits.
+When enabled, complex customer investigations enter the existing specialist graph through the normal
+workflow. Five roles plan, select allowlisted reads, retrieve policy, propose an issue-separated
+resolution, and criticize it. Evidence or policy failures can stop later roles. This is a bounded
+sequence with conditional stops, not an unrestricted autonomous supervisor. Validated advice cannot
+approve or execute. The employee-access workflow is deterministic and does not invoke this graph.
+PostgreSQL owns queued work; Redis/Valkey only wakes workers and coordinates shared rate limits.
 
 The operator console has five working areas:
 
-1. **Cases** — searchable, paginated customer queue and three-pane investigation workspace.
+1. **Customer Operations** — complaint intake, customer queue and investigation workspace.
 2. **Approvals** — durable pending decisions with operator notes.
-3. **IT Requests** — multiple persisted employee-access cases and their evidence.
+3. **Employee IT** — request intake, manager review, processing attempts and verified access.
 4. **Reliability** — measured lifecycle summaries and operation traces.
 5. **Audit** — global workflow and action history with case filtering.
 
@@ -79,7 +80,7 @@ tenant isolation, currency consistency, refund limits, return chronology, approv
 verification, active policy, timestamp order, and supported states. The validator reports exact
 failures and never silently repairs data.
 
-Seven evaluation datasets are independently versioned and hashed:
+Eight evaluation datasets are independently versioned and hashed:
 
 | Dataset | Examples | Purpose |
 | --- | ---: | --- |
@@ -89,6 +90,7 @@ Seven evaluation datasets are independently versioned and hashed:
 | Response candidates | 24 | deterministic safety checks plus separate human review |
 | Live reasoning | 3 | optional external-model structured reasoning boundary |
 | Agent trajectories | 22 | five-role routing, tools, replanning, escalation, and budgets |
+| Integrated customer agents | 10 | new intake, application read tools, bounded approval and final business state |
 | Adversarial security | 17 | known prompt/tool/secret attacks plus benign controls |
 
 Experiment artifacts record the Git revision, dataset ID/version/hash, model/provider, prompt and
@@ -97,7 +99,7 @@ provider-reported tokens/cost, and failure counts. Human response review exports
 rubric and imports proposed labels into a separate candidate artifact; current truth remains
 explicitly **0/24 human-reviewed**.
 
-## Three failures that changed the system
+## Engineering findings and tradeoffs
 
 ### 1. Generated authorization-hold cases violated financial state
 

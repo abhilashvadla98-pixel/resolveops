@@ -4,7 +4,35 @@ ResolveOps ships one tested container image, a local PostgreSQL Compose stack, s
 deployment verifier, a live synthetic Render demo, and an unprovisioned AWS reference design. The
 Render deployment record is in [PUBLIC_DEMO.md](PUBLIC_DEMO.md). No AWS deployment is claimed.
 
-## Deployment architecture
+## October 4 schema changes
+
+Apply migrations through `0023_refund_lifecycle_states` before starting the updated API. They retain
+IT attempts, add payment obligations/message receipts, and extend persisted refund lifecycle states.
+Back up real databases and test migrations separately first. Do not manufacture obligation IDs for
+old payment rows. Unknown evidence remains manual-review work; new synthetic workspaces have explicit
+fixture obligations. Pending refund submission is no longer a completed case.
+
+Downgrade can be refused after new history exists to prevent data loss. Roll forward with a fix or
+restore a verified backup; do not delete audit history to force downgrade. Source changes are local
+until a release is deployed and verified on Render.
+
+For a no-credential local preview, run `python scripts/run_demo.py`; it creates a temporary,
+shared, loopback-only sandbox. It does not read local secrets, call a model, or change existing databases.
+
+After the release is running, verify the exact commit and complete synthetic journeys:
+
+```powershell
+python scripts/verify_public_workflows.py --base-url https://resolveops-demo.onrender.com --expected-sha FULL_COMMIT_SHA
+```
+
+The verifier requires an isolated synthetic workspace with provider inference disabled before
+creating cases. It checks customer approval, pending settlement, success and failure, plus employee
+intake, simulated manager approval and fresh access verification. It writes a dated report under
+ignored `artifacts/` without saving the demo bearer token. It does not use an owner credential.
+`/health/build` exposes only package version, required schema revision and a validated build SHA;
+readiness still checks the actual database separately.
+
+## AWS reference architecture
 
 ```mermaid
 flowchart LR

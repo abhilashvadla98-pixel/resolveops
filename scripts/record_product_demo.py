@@ -1,9 +1,11 @@
-"""Record a synthetic product walkthrough without exposing local secrets."""
+"""Record the current rules-only synthetic workflow; never imply live-agent execution."""
 
 from __future__ import annotations
 
+import argparse
 import json
 import os
+import re
 import shutil
 import socket
 import subprocess
@@ -18,7 +20,7 @@ from alembic.config import Config
 from playwright.sync_api import Page, expect, sync_playwright
 
 ROOT = Path(__file__).resolve().parents[1]
-OUTPUT = ROOT / "artifacts" / "resolveops-technical-walkthrough.webm"
+OUTPUT = ROOT / "artifacts" / "resolveops-workflow-repair-20261004.webm"
 
 
 def available_port() -> int:
@@ -56,113 +58,156 @@ def caption(page: Page, title: str, detail: str, milliseconds: int = 3300) -> No
     page.evaluate("document.querySelector('#product-demo-caption')?.remove()")
 
 
-def run_walkthrough(page: Page, base_url: str) -> None:
+def run_walkthrough(page: Page) -> None:
+    """Show the current control plane; this recording deliberately makes no model calls."""
     page.set_default_timeout(45_000)
     expect.set_options(timeout=45_000)
-    page.goto(f"{base_url}/console", wait_until="networkidle")
-    if page.locator("#try-demo").is_visible():
-        page.locator("#try-demo").click()
-    expect(page.locator("#sidebar-connection")).to_have_text("Connected")
-    expect(page.locator("#case-table")).to_contain_text("CASE-1001")
     caption(
         page,
-        "ResolveOps · Operations that stay under human control",
-        "This walkthrough uses fictional records. Agents investigate and recommend; people and deterministic controls decide what changes.",
-        5200,
+        "ResolveOps · Two controlled operations workflows",
+        "Synthetic records. This recording is rules-only, not a live-agent trace. No money, email or repository access leaves this sandbox.",
+        4300,
     )
-
+    page.locator("#open-customer-workflow").click()
+    page.locator("#new-case-button").click()
+    page.locator("#complaint-customer").fill("CUST-DEMO-A")
+    page.locator("#complaint-order").fill("ORD-DEMO-A")
+    page.locator("#complaint-text").fill("I was charged twice for this order.")
     caption(
         page,
-        "1 · Start with the work, not the model",
-        "The operator sees customer cases, evidence, approvals, IT requests, reliability, and audit history in one place.",
+        "1 · A complaint becomes a case",
+        "Operator-assisted intake connects the message to known customer and order records. It does not authorize a refund.",
+        4000,
+    )
+    page.get_by_role("button", name="Create case", exact=True).click()
+    expect(page.locator("#detail-complaint")).to_contain_text("charged twice")
+    page.locator("#detail-issues").scroll_into_view_if_needed()
+    caption(
+        page,
+        "2 · Similar payments are only a clue",
+        "The investigation must verify two full captures for the same payable obligation, prior refunds and current policy.",
+        4000,
+    )
+    page.locator("#detail-issues .start-workflow").click()
+    expect(page.locator("#workflow-summary")).to_contain_text("No refund has been submitted")
+    page.locator("#workflow-summary").scroll_into_view_if_needed()
+    caption(
+        page,
+        "3 · Investigation stops at a proposal",
+        "The server selects payment PAY-DEMO-A-2 and bounds the refund to 120 USD. A separate approval is still required.",
         4500,
     )
-
-    page.locator('[data-view="cases"]').click()
-    page.locator("#scenario-select").select_option("CASE-DEMO-D")
-    expect(page.locator("#detail-case-id")).to_have_text("CASE-DEMO-D")
-    caption(
-        page,
-        "2 · A real decision starts with evidence",
-        "Aaron reports a duplicate charge. ResolveOps keeps his complaint, payment records, and policy evidence separate and traceable.",
-        4800,
-    )
-
-    page.locator("#detail-issues .start-workflow").click()
-    expect(page.locator("#workflow-summary")).to_contain_text("Human approval required")
-    expect(page.locator("#agent-summary")).to_be_visible()
-    expect(page.locator("#agent-summary-result")).to_contain_text("Independent review")
-    expect(page.locator("#agent-summary-result")).to_contain_text("Outcome: Accept")
-    trace_summary = page.locator("#agent-summary-subtitle").inner_text()
-    caption(
-        page,
-        "3 · Five roles, one controlled investigation",
-        f"This is the live trace: {trace_summary}. The supervisor routes the work, specialists read evidence and policy, and an independent critic checks the proposal.",
-        7200,
-    )
-    caption(
-        page,
-        "4 · The system stops before money moves",
-        "The agents can recommend a refund, but they cannot approve it. The amount, payment, reason, and evidence wait for a separate human decision.",
-        5000,
-    )
-
-    page.locator('[data-view="approvals"]').click()
-    expect(page.locator("#approval-list")).to_contain_text("650.00 USD")
+    page.locator("#workflow-next-action").click()
     page.get_by_label("Decision note", exact=True).fill(
-        "Evidence and policy support this controlled refund."
+        "Matching obligation and captures support this synthetic refund."
     )
     caption(
         page,
-        "5 · A person owns the decision",
-        "The approver reviews the evidence and records a reason. That decision becomes part of the audit trail.",
-        4800,
+        "4 · Review the exact action",
+        "The sandbox simulates a separate approver. Payment, amount and decision reason are recorded; fresh checks run again before execution.",
+        4500,
     )
     page.locator('.approval-decision[data-decision="approve"]').click()
-    expect(page.locator("#workflow-summary")).to_contain_text("Action Verified")
+    expect(page.locator("#workflow-summary")).to_contain_text("Refund Submitted")
+    page.locator("#workflow-summary").scroll_into_view_if_needed()
     caption(
         page,
-        "6 · Execute once, then read the result back",
-        "ResolveOps creates one simulated refund, prevents duplicate execution, and checks fresh state before reporting the outcome.",
-        5400,
+        "5 · Submitted is not settled",
+        "One idempotent simulator write creates a pending refund. The case stays open while settlement is unknown.",
+        5000,
+    )
+    page.get_by_role("button", name="Simulate settlement success").click()
+    expect(page.locator("#workflow-summary")).to_contain_text("Final settlement verified")
+    page.locator("#workflow-summary").scroll_into_view_if_needed()
+    caption(
+        page,
+        "6 · A provider event completes the outcome",
+        "A synthetic completion event passes through the settlement handler. A fresh read now confirms the refund has settled.",
+        4700,
     )
 
-    page.locator('[data-view="reliability"]').click()
-    expect(page.locator("#reliability-total")).to_have_text("1")
+    page.locator("#scenario-select").select_option("CASE-DEMO-D")
+    page.locator("#detail-issues .start-workflow").click()
+    expect(page.locator("#workflow-summary")).to_contain_text("No refund has been submitted")
+    page.locator("#workflow-next-action").click()
+    page.get_by_label("Decision note", exact=True).fill(
+        "Separate synthetic order; evidence supports this bounded refund."
+    )
+    page.locator('.approval-decision[data-decision="approve"]').click()
+    expect(page.locator("#workflow-summary")).to_contain_text("Refund Submitted")
+    page.get_by_role("button", name="Simulate settlement failure").click()
+    expect(page.locator("#workflow-summary")).to_contain_text("as failed")
+    page.locator("#workflow-summary").scroll_into_view_if_needed()
     caption(
         page,
-        "7 · Operators can see how it behaved",
-        "Attempts, verification, recovery events, latency, and trace IDs are visible instead of disappearing inside a black box.",
+        "7 · Failure stays visible",
+        "On a different synthetic order, settlement fails. The case requires operator review; it is not mislabeled as a completed refund.",
         4800,
     )
 
     page.locator('[data-view="it"]').click()
-    page.locator('[data-it-case="ITCASE-2004"]').click()
-    expect(page.locator("#it-step-identity")).to_contain_text("MFA missing")
-    page.locator("#run-it-workflow").click()
-    expect(page.locator("#it-result-status")).to_have_text("Escalated")
+    page.locator("#new-it-request").click()
+    page.locator("#it-intake-employee").select_option("EMP-2001")
+    page.locator("#it-intake-level").select_option("write")
+    page.locator("#it-intake-reason").fill("Implement the assigned model-serving endpoint.")
     caption(
         page,
-        "8 · Unsafe requests stop clearly",
-        "This employee is missing MFA. The request is escalated, the reason is stored, and no repository permission is granted.",
-        5200,
+        "8 · An employee requests bounded access",
+        "This form creates a request, case and ticket. Requester selection is fictional; normal sessions bind the employee to the authenticated identity.",
+        4500,
     )
-
+    page.locator("#submit-it-request").click()
+    expect(page.locator("#it-intake-panel")).to_be_hidden()
+    expect(page.locator("#it-case-id")).to_have_text(re.compile(r"ITCASE-[a-f0-9]{24}"))
+    case_id = page.locator("#it-case-id").inner_text()
+    page.locator("#review-it-approval").click()
+    page.locator(f'[data-it-note-for="{case_id}"]').fill(
+        "Synthetic manager confirms the assigned repository work."
+    )
+    page.locator(f'[data-it-note-for="{case_id}"]').scroll_into_view_if_needed()
+    caption(
+        page,
+        "9 · Manager approval is a separate step",
+        "The demo records an explicit simulated manager. Normal approval requires the actual current manager, an active identity and MFA; self-approval is denied.",
+        4800,
+    )
+    page.locator(
+        f'.it-approval-decision[data-case-id="{case_id}"][data-decision="approve"]'
+    ).click()
+    page.locator("#run-it-workflow").click()
+    expect(page.locator("#it-attempt-history")).to_contain_text("Access Verified")
+    page.locator("#it-result").scroll_into_view_if_needed()
+    caption(
+        page,
+        "10 · Grant, reread, retain the attempt",
+        "Deterministic checks enforce identity, approval and least privilege. Fresh simulator state verifies access, and every attempt stays in the history.",
+        5000,
+    )
+    page.locator('[data-it-case="ITCASE-2004"]').click()
+    page.locator("#run-it-workflow").click()
+    expect(page.locator("#it-result-status")).to_have_text("Escalated")
+    page.locator("#it-result").scroll_into_view_if_needed()
+    caption(
+        page,
+        "11 · Missing MFA stops the grant",
+        "The safety stop is persisted. No new access is granted, and a later correction must pass a new set of checks.",
+        4000,
+    )
     page.locator('[data-view="audit"]').click()
     caption(
         page,
-        "ResolveOps",
-        "Evidence first. Agents advise. People approve. Deterministic controls execute once, verify fresh state, and keep the history.",
-        6000,
+        "A visible chain of responsibility",
+        "Intake, evidence, approval, action and fresh verification remain auditable. This is local synthetic workflow proof; live-agent evidence and deployment are separate.",
+        5200,
     )
 
 
 def main() -> None:
-    if os.environ.get("RESOLVEOPS_GEMINI_KEY_ROTATED", "").lower() != "true":
-        raise SystemExit(
-            "Recording blocked: rotate the exposed Gemini key and set "
-            "RESOLVEOPS_GEMINI_KEY_ROTATED=true locally."
-        )
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--ffmpeg", default=shutil.which("ffmpeg"))
+    args = parser.parse_args()
+    if not args.ffmpeg or not Path(args.ffmpeg).is_file():
+        raise SystemExit("Provide --ffmpeg so startup frames can be removed and duration checked.")
     OUTPUT.parent.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(
         prefix="resolveops-demo-", ignore_cleanup_errors=True
@@ -184,7 +229,7 @@ def main() -> None:
                     "product-demo-session-secret-more-than-32-characters"
                 ),
                 "RESOLVEOPS_AGENT_QUEUE_ENABLED": "false",
-                "RESOLVEOPS_INTEGRATED_AGENTS_ENABLED": "true",
+                "RESOLVEOPS_INTEGRATED_AGENTS_ENABLED": "false",
             }
         )
 
@@ -236,15 +281,38 @@ def main() -> None:
                     record_video_dir=temp,
                     record_video_size={"width": 1280, "height": 800},
                 )
+                recording_started = time.monotonic()
                 page = context.new_page()
-                run_walkthrough(page, base_url)
+                page.goto(f"{base_url}/console", wait_until="networkidle")
+                expect(page.locator("#sidebar-connection")).to_have_text("Connected")
+                expect(page.locator("#case-table")).to_contain_text("CASE-1001")
+                loaded_offset = time.monotonic() - recording_started
+                run_walkthrough(page)
                 video = page.video
                 page.close()
                 context.close()
                 browser.close()
                 if video is None:
                     raise RuntimeError("Playwright did not create a demo video")
-                shutil.copy2(video.path(), OUTPUT)
+                subprocess.run(
+                    [
+                        args.ffmpeg,
+                        "-y",
+                        "-ss",
+                        f"{loaded_offset:.3f}",
+                        "-i",
+                        str(video.path()),
+                        "-an",
+                        "-c:v",
+                        "libvpx",
+                        "-b:v",
+                        "1200k",
+                        str(OUTPUT),
+                    ],
+                    check=True,
+                    capture_output=True,
+                    text=True,
+                )
         except Exception:
             server_log.flush()
             diagnostics = server_log_path.read_text(encoding="utf-8", errors="replace")
@@ -261,7 +329,18 @@ def main() -> None:
                 server.wait(timeout=5)
             server_log.close()
 
+    probe = subprocess.run(
+        [args.ffmpeg, "-i", str(OUTPUT)], capture_output=True, text=True, check=False
+    )
+    match = re.search(r"Duration: (\d+):(\d+):(\d+\.\d+)", probe.stderr)
+    if match is None:
+        raise RuntimeError("Recording created, but its duration could not be verified")
+    hours, minutes, seconds = (float(value) for value in match.groups())
+    duration = hours * 3600 + minutes * 60 + seconds
     print(f"Product demo recorded: {OUTPUT}")
+    print(f"Duration: {duration:.2f}s; rules-only; synthetic systems; no live model calls.")
+    if not 60 <= duration <= 90:
+        raise RuntimeError("Recording exists, but its duration is outside the 60-90s target")
 
 
 if __name__ == "__main__":

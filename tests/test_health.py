@@ -3,6 +3,7 @@ from collections.abc import Iterator
 from contextlib import contextmanager
 from importlib.metadata import version as package_version
 
+import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, text
 from sqlalchemy.pool import StaticPool
@@ -33,6 +34,65 @@ def test_liveness_does_not_require_database() -> None:
 
     assert response.status_code == 200
     assert response.json() == {"status": "alive"}
+
+
+def test_build_metadata_is_safe_and_does_not_require_database(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv("RENDER_GIT_COMMIT", raising=False)
+    monkeypatch.delenv("RESOLVEOPS_BUILD_SHA", raising=False)
+    monkeypatch.setenv("RESOLVEOPS_GEMINI_API_KEY", "must-not-appear-in-build-metadata")
+
+    response = client.get("/health/build")
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "version": package_version("resolveops"),
+        "required_schema_revision": CURRENT_SCHEMA_REVISION,
+        "build_sha": None,
+    }
+    assert "must-not-appear" not in response.text
+
+
+@pytest.mark.parametrize("environment_key", ["RENDER_GIT_COMMIT", "RESOLVEOPS_BUILD_SHA"])
+@pytest.mark.parametrize("sha_length", [40, 64])
+def test_build_metadata_accepts_valid_commit_identity(
+    monkeypatch: pytest.MonkeyPatch, environment_key: str, sha_length: int
+) -> None:
+    monkeypatch.delenv("RENDER_GIT_COMMIT", raising=False)
+    monkeypatch.delenv("RESOLVEOPS_BUILD_SHA", raising=False)
+    monkeypatch.setenv(environment_key, "AB" * (sha_length // 2))
+
+    response = client.get("/health/build")
+
+    assert response.status_code == 200
+    assert response.json()["build_sha"] == "ab" * (sha_length // 2)
+
+
+@pytest.mark.parametrize(
+    "candidate",
+    ["a" * 39, "a" * 65, "g" * 40, "a" * 40 + "\n", "/private/path/to/config"],
+)
+def test_build_metadata_never_echoes_invalid_identity(
+    monkeypatch: pytest.MonkeyPatch, candidate: str
+) -> None:
+    monkeypatch.setenv("RENDER_GIT_COMMIT", candidate)
+    monkeypatch.setenv("RESOLVEOPS_BUILD_SHA", "b" * 40)
+
+    response = client.get("/health/build")
+
+    assert response.status_code == 200
+    assert response.json()["build_sha"] is None
+    assert candidate not in response.text
+
+
+def test_render_commit_is_authoritative_over_optional_build_sha(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("RENDER_GIT_COMMIT", "a" * 40)
+    monkeypatch.setenv("RESOLVEOPS_BUILD_SHA", "b" * 40)
+
+    assert client.get("/health/build").json()["build_sha"] == "a" * 40
 
 
 @contextmanager

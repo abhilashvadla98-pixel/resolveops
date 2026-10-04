@@ -27,9 +27,13 @@ class Payment(DomainModel):
     status: PaymentStatus
     created_at: AwareDatetime
     captured_at: AwareDatetime | None = None
+    obligation_id: Identifier | None = None
+    obligation_amount: PositiveAmount | None = None
 
     @model_validator(mode="after")
     def validate_capture(self) -> "Payment":
+        if (self.obligation_id is None) != (self.obligation_amount is None):
+            raise ValueError("payment obligation ID and amount must be supplied together")
         if self.status == PaymentStatus.CAPTURED and self.captured_at is None:
             raise ValueError("captured payments require captured_at")
         if self.captured_at is not None and self.captured_at < self.created_at:

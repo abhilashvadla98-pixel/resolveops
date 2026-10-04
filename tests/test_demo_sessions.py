@@ -14,7 +14,7 @@ from resolveops.api.dependencies import (
     get_tenant_registry,
 )
 from resolveops.api.main import app
-from resolveops.config import Settings
+from resolveops.config import DemoSettings, Settings
 from resolveops.database.base import Base
 from resolveops.database.seed import seed_all
 from resolveops.database.session import create_session_factory
@@ -41,7 +41,11 @@ def test_empty_api_identity_list_allows_demo_only_authentication(
 
 
 @pytest.fixture
-def demo_api() -> Iterator[TestClient]:
+def demo_api(monkeypatch: pytest.MonkeyPatch) -> Iterator[TestClient]:
+    configured = Settings(_env_file=None, database_url="sqlite://")
+    configured_demo = DemoSettings(_env_file=None)
+    monkeypatch.setattr("resolveops.api.demo.get_settings", lambda: configured)
+    monkeypatch.setattr("resolveops.api.demo.get_demo_settings", lambda: configured_demo)
     engine: Engine = create_engine(
         "sqlite://",
         connect_args={"check_same_thread": False},
@@ -134,6 +138,41 @@ def test_demo_endpoint_opens_only_the_synthetic_tenant(demo_api: TestClient) -> 
     )
     assert reset.status_code == 200
     assert len(reset.json()) == 8
+
+
+@pytest.mark.parametrize("isolated", [False, True])
+@pytest.mark.parametrize("provider_mode", ["off", "integrated", "queue"])
+def test_demo_session_safety_metadata_matches_configured_mode(
+    demo_api: TestClient, monkeypatch: pytest.MonkeyPatch, isolated: bool, provider_mode: str
+) -> None:
+    configured_demo = DemoSettings(
+        _env_file=None,
+        demo_enabled=True,
+        demo_session_secret=SECRET,
+        demo_isolated_sessions=isolated,
+    )
+    configured = Settings(
+        _env_file=None,
+        database_url="sqlite://",
+        gemini_api_key="synthetic-test-key",
+        gemini_key_rotated=True,
+        integrated_agents_enabled=provider_mode == "integrated",
+        agent_queue_enabled=provider_mode == "queue",
+    )
+    monkeypatch.setattr("resolveops.api.demo.get_demo_settings", lambda: configured_demo)
+    monkeypatch.setattr("resolveops.api.demo.get_settings", lambda: configured)
+
+    result = demo_api.post("/api/v1/demo/session")
+
+    assert result.status_code == 201
+    payload = result.json()
+    assert payload["isolated_workspace"] is isolated
+    assert payload["data_mode"] == "synthetic"
+    assert payload["execution_mode"] == (
+        "rules_only" if provider_mode == "off" else "live_model_enabled"
+    )
+    assert "synthetic-test-key" not in result.text
+    assert SECRET not in result.text
 
 
 def test_demo_reset_restores_customer_and_it_workflows(demo_api: TestClient) -> None:

@@ -1,98 +1,134 @@
 # Operator console
 
-The ResolveOps console is served by FastAPI at `/console`. It is a compact operations workspace for
-Overview, Cases, Approvals, IT Requests, Reliability, and Audit. Business records and timelines
-come from the same authenticated APIs and persistence used by programmatic clients.
+FastAPI serves the console at /console. Customer Operations, Approvals, Employee IT, Reliability
+and Audit use the same authenticated APIs and persisted state as programmatic clients. The
+same-origin HTML/CSS/JavaScript interface needs no separate frontend runtime.
 
-The default light theme uses a compact sidebar, dense tables, thin borders, small radii, and one
-restrained blue accent. Dark mode is optional. The layout intentionally avoids a marketing hero,
-neon/glow styling, gradients, oversized cards, and invented fields such as owner, priority, or SLA.
-Cases use server-side query/status filters and pagination. A selected case opens a three-pane
-workspace for operational context, complaint/activity/timeline/final response, and evidence,
-automated assessment, and operator correction. Audit works globally and can be narrowed to a case.
-The overview summarizes workload and attention items from the same live API state; it contains no
-invented KPI values.
+This document describes current source and local synthetic tests, not confirmation that the public
+deployment runs this revision. See the [walkthrough](DEMO_WALKTHROUGH.md) for operator-facing steps.
 
-## Demo flow
+## Customer intake and investigation
 
-1. Run migrations and `python -m resolveops.database.seed`. The seed command also creates the
-   deterministic 128-dimension demo policy index.
-2. Start the API and open `http://127.0.0.1:8000/console`.
-3. Wait for the workspace to load automatically. No API key is needed; the signed session receives
-   a separate synthetic PostgreSQL workspace and expires after the configured short lifetime.
-4. Submit a natural-language complaint and inspect its persisted classification. Intake never
-   authorizes an action. The console and external adapters share the authenticated case-intake API;
-   the refund-status webhook is a separate later-event path.
-5. Select scenario D and inspect the two payment-provider simulator records. The UI shows both
-   payment IDs, capture status, amount, timestamps and the deterministic duplicate-match rule.
-6. Start the investigation and inspect the pending refund approval. The console allows up to 90
-   seconds for a provider-backed run, shows its current routing stages, and scrolls to the result.
-   A connection timeout is not mislabeled as agent validation failure.
-7. Enter a decision note and approve or reject. Approval resumes the durable workflow.
-8. Inspect the decision summary, trusted workflow facts, versioned policy citations, ordered
-   timeline, fresh verification, and grounded response. The case and issue statuses move with the
-   workflow instead of remaining in their pre-action state. A successful path states that the
-   refund record was created and independently verified, not that an external provider completed
-   settlement.
-9. Use scenario G to run the Employee/IT flow. It checks employment, identity, MFA, team ownership,
-   manager approval, Git identity, and active policy before granting access, then reloads repository,
-   group, ticket, and notification state for verification. Replaying it performs no duplicate grant.
-   Use scenario H for verification recovery.
-10. Choose **Reset workspace** to remove prior customer workflows, IT grants, approval decisions,
-   feedback, audit/reliability records, and event cursors before rebuilding the synthetic records.
+**+ New case** is an operator-assisted form using POST /api/v1/cases. It stores the original
+message, its rule-based classification and relevant operational references. Intake leaves findings
+unconfirmed until investigation. A source-message receipt detects duplicate delivery; conflicting
+content with the same receipt is rejected. Follow-up messages remain attached to the same case.
 
-Pending IT requests show **Approval required** instead of attempting execution. Use **Review
-approval** to open the shared Approvals queue, enter a required decision reason, and approve or
-reject. ResolveOps stores the approver, target-team manager, note, decision, and timestamp. An
-approval returns the operator to the IT request with **Process request** enabled; rejection blocks
-execution.
+A support portal or help-desk adapter could use this authenticated API. No live CRM or public
+customer portal is connected. Supported complaints are duplicate charges, missing return refunds
+and combined complaints. Insufficient details require clarification or review, not invented
+payment evidence.
 
-Every terminal IT workflow is also stored independently from the repository grant. Successful,
-already-satisfied, and safety-stopped outcomes therefore remain visible after refresh. A blocked
-request such as missing MFA becomes an escalated IT case and appears in the global audit history;
-no access is granted.
+**Investigate** rereads operational and current policy records. Similar amounts and nearby capture
+times alone do not establish a duplicate: the action candidate must satisfy the trusted
+payment-obligation checks. The server derives the refund target and amount; browser input is not
+an authoritative refund proposal.
 
-The reset also creates several IT requests in different states so the queue is a real multi-record
-working surface rather than a single flagship card. Submitting an operator correction persists
-structured feedback in a pending review state; it does not change the case outcome or evaluation
-truth automatically.
+The execution label identifies rules-only or configured specialist execution for the current run.
+Model output remains advisory. Investigation cannot submit a refund. Every eligible proposal,
+including a low-value one, pauses for a separate recorded approval.
 
-The Reliability view calculates operation outcomes and p50/p95 lifecycle duration from persisted
-operation records. It also counts real retry, wait, recovery, failure, and manual-review events. The
-recent-operation list drills into the stored execution sequence, while the latest HTTP trace ID is a
-separate correlation key for structured server logs. Empty datasets display no samples instead of
-inventing history.
+## Approval is not settlement
 
-The demo session represents separate synthetic duties: workflow submissions use `DEMO-OPERATOR`,
-while approval decisions use `DEMO-APPROVER`. This makes the approval pause visible without granting
-arbitrary tenant or real-system access. Normal authenticated requests continue to use the actor and
-role from their trusted API-key identity.
+The approval card shows the case, issue, payment, amount, currency and reason. Approval rechecks
+evidence and safety controls before the idempotent write. Rejection does not execute the action.
 
-## Security boundary
+| State | Meaning | Next step |
+| --- | --- | --- |
+| Waiting approval | Proposal exists; no refund submitted | Review the target and decide |
+| Refund submitted / waiting external | Fresh read confirms a pending refund, not settled money | Wait for provider status; reconcile before retrying |
+| Refund settled | Completed refund passes fresh verification | Review the customer response draft |
+| Needs review | Missing, conflicting or failed evidence/provider result | Inspect the reason and reconcile |
 
-- Demo and operator tokens stay only in JavaScript memory; the page uses neither `localStorage` nor
-  `sessionStorage`.
-- The server chooses tenant and role. Request bodies cannot select either.
-- Reset is accepted only from a signed demo session and affects only that session's synthetic
-  PostgreSQL schema.
-- Refund and access execution still passes deterministic permissions, limits, idempotency, approval,
-  and fresh-state verification.
-- The same-origin Content Security Policy loads no analytics, CDN scripts, or remote fonts.
-- Screenshots must contain synthetic data only and must never include keys, `.env` content, account
-  pages, or cloud credentials.
+Pending demo refunds offer **Simulate settlement success** and **Simulate settlement failure**.
+These synthetic events use the refund-event processor. Normal authenticated sessions cannot use
+the controls. Repeating the same final event is idempotent; replacing it with the opposite outcome
+is rejected. Real payment integration is not implemented, and draft responses are not sent to
+customers automatically.
 
-## Browser regression
+All issues must meet their resolution conditions before the whole case is resolved. Tracking an
+existing refund must not appear as a new refund action. An authorization hold without a second
+capture is a no-action result.
 
-`tests/test_browser_e2e.py` starts the actual application with a migrated and seeded disposable
-database, opens Chromium, creates a complaint, runs scenario D to an approval pause, approves it,
-checks synchronized case state, trusted evidence, the persisted completion timeline, and grounded
-final response, inspects real reliability metrics, completes the controlled Employee/IT access
-flow, proves an MFA safety stop, and verifies that reset restores both domains. CI installs Chromium
-and runs this test in its own browser job. The test writes its screenshot only to a temporary test
-directory.
+## Employee IT intake and authorization
+
+**New access request** loads tenant-scoped repositories and the requesting identity. Normal
+sessions can request only for the employee bound to their authenticated principal. The sandbox
+allows fictional employee selection and explicitly labels it as simulation.
+
+POST /api/v1/it/requests saves a request, case and ticket. Its required source-message receipt makes
+same-content retries idempotent; conflicting content is rejected. Only read/write levels are
+supported. Request submission grants no access.
+
+The manager decision requires a note. Outside the sandbox, an approver/system role must also map
+to an active, MFA-enabled enterprise identity for the current target-team manager. Unmapped
+subjects, other managers and self-approval fail closed. The stored decision preserves the real
+subject instead of substituting a manager ID. Demo decisions use DEMO-MANAGER:<employee>.
+
+**Run safety checks and process** validates employment, identity, MFA, team and Git membership,
+repository ownership, manager approval, active policy and current access. The public IT endpoint
+is deterministic and does not call an LLM. Partial, inactive or different-level access requires
+operator reconciliation, including when a caller attempts the raw action tool.
+
+A successful simulator action creates bounded directory/repository state and a saved notice, then
+verifies through a fresh read. No real email or GitHub permission is changed. Each attempt has a
+new workflow ID. **Processing attempts** lists newest first; recovery after a source correction
+does not overwrite an earlier safety stop. Exact existing approved access is a no-new-action
+outcome, not another grant.
+
+## Security and operation boundaries
+
+- Demo sessions isolate synthetic data. Local tests use disposable SQLite; PostgreSQL-backed demo
+  sessions use separate schemas. This is not evidence about the current cloud deployment.
+- The server determines tenant and role. Bodies cannot choose either. Normal employee binding uses
+  provisioned identity records; the console does not implement enterprise SSO.
+- Tokens stay in JavaScript memory, not localStorage or sessionStorage.
+- Demo reset affects only its synthetic workspace and restores baseline records after removing
+  accumulated activity. It is not an ordinary operator action.
+- Actions enforce permissions, scope, approval, idempotency and fresh checks. A timeout is an
+  unknown result: reconcile persisted state before retrying.
+- Reliability uses recorded operation attempts and latency samples. Empty data means no samples.
+  HTTP trace IDs correlate logs; they are not proof of model execution.
+- Corrections stay pending human review. They do not automatically become labels, trusted memory,
+  policy or verified case findings.
+- Content Security Policy loads no third-party analytics, CDN scripts or remote fonts.
+- Screenshots contain only synthetic business records, never keys, secret files, account pages or
+  cloud credentials.
+
+## Browser regression and captures
+
+The browser fixture migrates/seeds a disposable database, starts the real application and operates
+it through Chromium. It explicitly disables live-agent and queued-provider execution, regardless
+of the owner’s environment. These tests prove application/control-plane behavior, not live LLM
+execution or an external provider connection.
+
+- tests/test_browser_e2e.py: loaded workspace, new complaint, seeded approval, pending/settled
+  refund, evidence/response, reliability, employee grants, MFA safety stop and reset.
+- tests/test_customer_journey_browser.py: new complaint through separate approval and pending
+  refund to completed or failed synthetic provider outcomes.
+- tests/test_employee_it_browser.py: new fictional requester, separate manager simulation,
+  processing and newest-attempt verification.
+
+From the repository root, with Chromium installed in the test environment:
+
+```powershell
+$env:RESOLVEOPS_SCREENSHOT_DIR = "$PWD/artifacts/workflow-proof"
+.\.venv\Scripts\python.exe -m pytest -q -m browser tests/test_browser_e2e.py tests/test_customer_journey_browser.py tests/test_employee_it_browser.py
+```
+
+The optional directory receives approval-target, pending/settled/failed refund and IT
+intake/approval/verification screenshots. Without it, captures go to temporary test directories.
+The artifacts directory is ignored by Git. Inspect images before promoting selected captures to
+public documentation. Existing checked-in images and videos are historical until explicitly
+replaced. The current local 63.2-second rules-only recording is
+`artifacts/resolveops-workflow-repair-20261004.webm`; it is not yet a published release asset.
+`scripts/record_product_demo.py --ffmpeg <path-to-ffmpeg>` reproduces the current synthetic
+walkthrough, removes startup frames and verifies the 60–90 second duration. It deliberately
+disables provider calls. The previous video remains intact and historical.
 
 ## Current limits
 
-The console has no enterprise SSO, live payment/CRM/directory/Git integration, shared multi-process
-rate limiter, or customer-facing workflow. The small same-origin HTML/CSS/JavaScript interface does
-not yet justify a separate frontend build and deployment.
+This is a synthetic operations application with enforced controls, not a production payment or
+identity service. There is no live payment/CRM/directory/Git integration, customer-facing portal,
+enterprise SSO or demonstrated production load. Live model behavior requires separate trace and
+evaluation evidence. More frameworks would not close those integration and evidence gaps.

@@ -1,6 +1,6 @@
 import os
 from collections.abc import Iterator
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from pathlib import Path
 
@@ -8,7 +8,7 @@ import pytest
 from alembic import command
 from alembic.config import Config
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine, select
+from sqlalchemy import create_engine, delete, inspect, select
 from sqlalchemy.orm import Session
 
 from resolveops.api.dependencies import get_principal, get_tenant_session
@@ -23,6 +23,7 @@ from resolveops.database.seed import seed_all
 from resolveops.database.session import create_session_factory
 from resolveops.database.simulator_store import SimulatorStore
 from resolveops.database.store import CustomerOperationsStore
+from resolveops.database.workflow_records import WorkflowRunRecord
 from resolveops.employee_it.store import EmployeeITStore
 from resolveops.employee_it.workflow import EmployeeAccessWorkflow
 from resolveops.employee_it.workflow_models import (
@@ -37,7 +38,7 @@ from resolveops.knowledge.ingestion import ingest_directory
 from resolveops.knowledge.models import RetrievalMethod
 from resolveops.knowledge.retrieval import HybridPolicyRetriever, PolicyRetriever
 from resolveops.models.case import CaseIssueStatus, CaseIssueType, IssueFinding
-from resolveops.models.refund import RefundKind
+from resolveops.models.refund import RefundKind, RefundStatus
 from resolveops.operations.actions import ActionTools
 from resolveops.operations.models import Actor, ActorRole, IssueRefundRequest
 from resolveops.reasoning.models import (
@@ -53,9 +54,11 @@ from resolveops.workflows.lifecycle import WorkflowLifecycleStore
 from resolveops.workflows.models import (
     ApprovalDecisionType,
     WorkflowApprovalDecision,
+    WorkflowLifecycleStatus,
     WorkflowOutcome,
     WorkflowPause,
     WorkflowRequest,
+    WorkflowStatus,
 )
 
 
@@ -160,7 +163,8 @@ def test_postgres_migration_and_seed() -> None:
             issue.finding = IssueFinding.CONFIRMED
             issue.status = CaseIssueStatus.ACTION_PENDING
 
-        actions = ActionTools(session_factory)
+        test_clock = lambda: datetime(2026, 9, 24, 12, 0, tzinfo=UTC)
+        actions = ActionTools(session_factory, clock=test_clock)
         refund_request = IssueRefundRequest(
             idempotency_key="postgres-refund-key",
             case_id="CASE-1001",
@@ -197,8 +201,11 @@ def test_postgres_migration_and_seed() -> None:
             actor=operator,
             refund_request=refund_request,
         )
-        lifecycle = WorkflowLifecycleStore(session_factory)
+        lifecycle = WorkflowLifecycleStore(session_factory, clock=test_clock)
         with open_postgres_checkpointer(database_url) as checkpointer:
+            # The test owns this exact thread; LangGraph tables are independent
+            # of the application's migration lifecycle.
+            checkpointer.delete_thread(workflow_request.workflow_id)
             paused = CustomerIssueWorkflow(
                 session_factory,
                 embedding_provider,
@@ -217,7 +224,7 @@ def test_postgres_migration_and_seed() -> None:
                 action_tools=actions,
                 reasoning_provider=PostgresReasoningProvider(),
                 checkpointer=checkpointer,
-                lifecycle_store=WorkflowLifecycleStore(session_factory),
+                lifecycle_store=WorkflowLifecycleStore(session_factory, clock=test_clock),
                 clock=lambda: datetime(2026, 9, 24, 12, 0, tzinfo=UTC),
             ).resume(
                 WorkflowApprovalDecision(
@@ -228,12 +235,50 @@ def test_postgres_migration_and_seed() -> None:
                 )
             )
         assert not isinstance(workflow_result, WorkflowPause)
-        assert workflow_result.outcome == WorkflowOutcome.ACTION_VERIFIED
+        assert workflow_result.outcome == WorkflowOutcome.REFUND_SUBMITTED
+        assert workflow_result.status == WorkflowStatus.WAITING_EXTERNAL
         assert workflow_result.operation is not None
         assert workflow_result.reasoning is not None
-        replay_result = actions.issue_refund(refund_request, approver)
+        with session_factory() as session:
+            submitted = session.get(RefundRecord, workflow_result.operation.resource_id)
+            issue = session.get(CaseIssueRecord, "ISSUE-1001")
+            assert submitted is not None and submitted.status == RefundStatus.PENDING
+            assert issue is not None and issue.status == CaseIssueStatus.VERIFYING
+            approved_request = refund_request.model_copy(update={"reason": submitted.reason})
+        replay_result = actions.issue_refund(approved_request, approver)
         assert replay_result.resource_id == workflow_result.operation.resource_id
         assert replay_result.idempotent_replay is True
+        settled_at = test_clock() + timedelta(minutes=1)
+        RefundEventProcessor(session_factory, clock=lambda: settled_at).process(
+            RefundStatusChangedEvent(
+                event_id="POSTGRES-REFUND-SETTLED",
+                source="postgres-test-provider",
+                occurred_at=settled_at,
+                data=RefundStatusChangedData(
+                    refund_id=workflow_result.operation.resource_id,
+                    provider_reference="POSTGRES-DUPLICATE-REF",
+                    status="completed",
+                    completed_at=settled_at,
+                ),
+            )
+        )
+        settled_run = lifecycle.get_run(workflow_request.workflow_id)
+        assert settled_run.status == WorkflowLifecycleStatus.COMPLETED
+        assert settled_run.outcome == WorkflowOutcome.REFUND_SETTLED
+        with open_postgres_checkpointer(database_url, setup=False) as checkpointer:
+            refreshed = CustomerIssueWorkflow(
+                session_factory,
+                embedding_provider,
+                action_tools=actions,
+                checkpointer=checkpointer,
+                lifecycle_store=lifecycle,
+                clock=lambda: settled_at,
+            ).get_execution(workflow_request.workflow_id)
+        assert not isinstance(refreshed, WorkflowPause)
+        assert refreshed.outcome == WorkflowOutcome.REFUND_SETTLED
+        settled_replay = actions.issue_refund(approved_request, approver)
+        assert settled_replay.resource_id == workflow_result.operation.resource_id
+        assert settled_replay.verified and settled_replay.idempotent_replay
 
         employee_result = EmployeeAccessWorkflow(
             session_factory,
@@ -292,5 +337,10 @@ def test_postgres_migration_and_seed() -> None:
             assert len(response.json()["issues"]) == 2
     finally:
         app.dependency_overrides.clear()
+        # This dedicated test database was validated above. Discard test history
+        # explicitly rather than weakening the production downgrade safety gate.
+        if inspect(engine).has_table("workflow_runs"):
+            with engine.begin() as connection:
+                connection.execute(delete(WorkflowRunRecord))
         command.downgrade(config, "base")
         engine.dispose()

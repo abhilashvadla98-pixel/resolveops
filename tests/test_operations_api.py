@@ -1,12 +1,11 @@
 from collections.abc import Iterator
 from datetime import UTC, datetime
-from decimal import Decimal
 from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
 from pydantic import SecretStr
-from sqlalchemy import Engine, create_engine
+from sqlalchemy import Engine, create_engine, func, select
 from sqlalchemy.orm import Session
 from sqlalchemy.pool import StaticPool
 
@@ -14,19 +13,26 @@ from resolveops.api.dependencies import get_principal, get_tenant_session
 from resolveops.api.main import app
 from resolveops.config import Settings
 from resolveops.database.base import Base
-from resolveops.database.records import CaseIssueRecord
+from resolveops.database.employee_it_records import EnterpriseIdentityRecord
+from resolveops.database.event_records import InboundEventRecord
+from resolveops.database.records import CaseMessageRecord, RefundRecord
 from resolveops.database.seed import seed_additional_it_cases, seed_all
 from resolveops.database.session import create_session_factory
+from resolveops.employee_it.models import IdentityStatus
 from resolveops.jobs.store import AgentJobStore
 from resolveops.knowledge.embeddings import FeatureHashEmbeddingProvider
 from resolveops.knowledge.ingestion import ingest_directory
-from resolveops.models.case import CaseIssueStatus, IssueFinding
 from resolveops.operations.models import ActorRole
 from resolveops.security.models import SecurityPrincipal
 
 
 @pytest.fixture
-def operations_api() -> Iterator[tuple[TestClient, dict[str, ActorRole], Engine]]:
+def operations_api(
+    monkeypatch: pytest.MonkeyPatch,
+) -> Iterator[tuple[TestClient, dict[str, ActorRole], Engine]]:
+    # Exercise the control plane without inheriting an owner's live-provider settings.
+    monkeypatch.setenv("RESOLVEOPS_INTEGRATED_AGENTS_ENABLED", "false")
+    monkeypatch.setenv("RESOLVEOPS_AGENT_QUEUE_ENABLED", "false")
     engine = create_engine(
         "sqlite://",
         connect_args={"check_same_thread": False},
@@ -35,6 +41,15 @@ def operations_api() -> Iterator[tuple[TestClient, dict[str, ActorRole], Engine]
     Base.metadata.create_all(engine)
     with Session(engine) as session:
         seed_all(session)
+        session.add(
+            EnterpriseIdentityRecord(
+                identity_id="TEST-APPROVER",
+                employee_id="EMP-2000",
+                username="test.manager",
+                status=IdentityStatus.ACTIVE,
+                mfa_enrolled=True,
+            )
+        )
         ingest_directory(
             session,
             Path("domain_packs/customer_operations/policies"),
@@ -106,6 +121,35 @@ def test_agent_run_trace_endpoint_is_tenant_scoped(
     response = client.get("/api/v1/agent-workflows/WF-NOT-RUN/runs")
     assert response.status_code == 200
     assert response.json() == []
+
+
+def test_disabled_inference_blocks_legacy_analysis_even_with_a_saved_key(
+    operations_api: tuple[TestClient, dict[str, ActorRole], Engine],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    client, _role, _engine = operations_api
+    configured = Settings(
+        database_url=SecretStr("sqlite://"),
+        gemini_api_key=SecretStr("synthetic-test-key"),
+        gemini_key_rotated=True,
+        integrated_agents_enabled=False,
+    )
+    monkeypatch.setattr("resolveops.api.agents.get_settings", lambda: configured)
+
+    def forbidden_runtime(*args: object, **kwargs: object) -> None:
+        raise AssertionError("Disabled inference must not build a provider runtime")
+
+    monkeypatch.setattr("resolveops.api.agents.build_agent_runtime", forbidden_runtime)
+    response = client.post(
+        "/api/v1/agent-workflows",
+        json={
+            "workflow_id": "DISABLED-AI",
+            "case_id": "CASE-1001",
+            "domain": "customer_operations",
+            "objective": "Investigate this complaint.",
+        },
+    )
+    assert response.status_code == 503
 
 
 def test_agent_job_api_is_idempotent_tenant_scoped_and_streams_terminal_events(
@@ -225,7 +269,9 @@ def test_employee_access_api_executes_verifies_and_replays_safely(
     assert replay.json()["outcome"] == "already_satisfied"
     assert replay.json()["decision"] == "no_action"
     stored_after_replay = client.get("/api/v1/it/cases/ITCASE-2001/workflow")
-    assert stored_after_replay.json()["outcome"] == "access_verified"
+    assert stored_after_replay.json()["outcome"] == "already_satisfied"
+    history = client.get("/api/v1/it/cases/ITCASE-2001/workflows").json()
+    assert [item["outcome"] for item in history] == ["already_satisfied", "access_verified"]
 
 
 def test_pending_it_request_can_be_approved_then_processed(
@@ -302,36 +348,38 @@ def test_workflow_approval_can_be_listed_and_resumed(
     operations_api: tuple[TestClient, dict[str, ActorRole], Engine],
 ) -> None:
     client, role, engine = operations_api
+    created = client.post(
+        "/api/v1/cases",
+        json={
+            "customer_id": "CUST-1001",
+            "order_id": "ORD-48391",
+            "complaint": "I was charged twice.",
+            "source_message_id": "CUSTOMER-NEW-DUPLICATE-1",
+        },
+    )
+    assert created.status_code == 201
+    new_case = created.json()
+    case_id = new_case["case_id"]
+    issue_id = new_case["issues"][0]["issue_id"]
+    assert new_case["issues"][0]["finding"] == "undetermined"
     with Session(engine) as session:
-        issue = session.get(CaseIssueRecord, "ISSUE-1001")
-        assert issue is not None
-        issue.finding = IssueFinding.CONFIRMED
-        issue.status = CaseIssueStatus.ACTION_PENDING
-        session.commit()
+        refund_count_before = session.scalar(select(func.count(RefundRecord.refund_id)))
     started = client.post(
         "/api/v1/workflows",
         json={
             "workflow_id": "WORKFLOW-API-1001",
-            "case_id": "CASE-1001",
-            "issue_id": "ISSUE-1001",
-            "refund_request": {
-                "idempotency_key": "api-refund-1001",
-                "case_id": "CASE-1001",
-                "issue_id": "ISSUE-1001",
-                "payment_id": "PAY-1002",
-                "amount": str(Decimal("1499.00")),
-                "currency": "USD",
-                "kind": "duplicate_charge",
-                "reason": "Confirmed duplicate charge",
-            },
+            "case_id": case_id,
+            "issue_id": issue_id,
         },
     )
 
     assert started.status_code == 201
     pause = started.json()
     assert pause["status"] == "waiting_approval", started.text
-    waiting_case = client.get("/api/v1/cases/CASE-1001").json()
+    waiting_case = client.get(f"/api/v1/cases/{case_id}").json()
     assert waiting_case["status"] == "pending_approval"
+    with Session(engine) as session:
+        assert session.scalar(select(func.count(RefundRecord.refund_id))) == refund_count_before
     approvals = client.get("/api/v1/approvals?status=pending")
     assert approvals.status_code == 200
     assert [item["approval_id"] for item in approvals.json()] == [pause["approval"]["approval_id"]]
@@ -343,37 +391,27 @@ def test_workflow_approval_can_be_listed_and_resumed(
     )
 
     assert decided.status_code == 200
-    assert decided.json()["outcome"] == "action_verified"
-    updated_case = client.get("/api/v1/cases/CASE-1001").json()
+    assert decided.json()["outcome"] == "refund_submitted"
+    assert decided.json()["status"] == "waiting_external"
+    updated_case = client.get(f"/api/v1/cases/{case_id}").json()
     assert updated_case["status"] == "in_progress"
-    duplicate_issue = next(
-        item for item in updated_case["issues"] if item["issue_id"] == "ISSUE-1001"
-    )
-    assert duplicate_issue["status"] == "resolved"
-    assert duplicate_issue["verification"]["status"] == "passed"
-    assert duplicate_issue["resolution"]["summary"]
+    duplicate_issue = next(item for item in updated_case["issues"] if item["issue_id"] == issue_id)
+    assert duplicate_issue["status"] == "verifying"
+    assert duplicate_issue["verification"]["status"] == "pending"
+    assert duplicate_issue["resolution"] is None
+    with Session(engine) as session:
+        refund = session.get(RefundRecord, decided.json()["verified_resource_id"])
+        assert refund is not None and refund.status.value == "pending"
     final_response = client.get("/api/v1/workflows/WORKFLOW-API-1001/response")
     assert final_response.status_code == 200
     assert "independently verified" in final_response.json()["message"]
-    assert "complete" not in final_response.json()["message"].lower()
+    assert "Settlement is still pending" in final_response.json()["message"]
     events = client.get("/api/v1/workflows/WORKFLOW-API-1001/events")
     assert events.status_code == 200
-    assert [event["event_type"] for event in events.json()] == [
-        "started",
-        "customer_verified",
-        "order_loaded",
-        "payment_evidence_loaded",
-        "policy_retrieved",
-        "advisory_assessed",
-        "decision_recorded",
-        "approval_requested",
-        "approval_approved",
-        "safety_gate_evaluated",
-        "action_executed",
-        "action_verified",
-        "final_response_created",
-        "completed",
-    ]
+    event_types = [event["event_type"] for event in events.json()]
+    assert event_types.index("payment_evidence_loaded") < event_types.index("approval_requested")
+    assert event_types.index("approval_approved") < event_types.index("action_executed")
+    assert event_types.index("action_executed") < event_types.index("action_verified")
     reliability = client.get("/api/v1/reliability/summary")
     assert reliability.status_code == 200
     summary = reliability.json()
@@ -389,3 +427,124 @@ def test_workflow_approval_can_be_listed_and_resumed(
         "attempt_succeeded",
         "verification_attempted",
     ]
+
+
+@pytest.mark.parametrize("actor_role", [ActorRole.OPERATOR, ActorRole.APPROVER, ActorRole.SYSTEM])
+def test_demo_settlement_refuses_every_non_demo_principal(
+    operations_api: tuple[TestClient, dict[str, ActorRole], Engine],
+    actor_role: ActorRole,
+) -> None:
+    client, role, engine = operations_api
+    role["value"] = actor_role
+    result = client.post("/api/v1/demo/refunds/REF-2001/status", json={"status": "completed"})
+    assert result.status_code == 403
+    assert result.json()["detail"] == "demo session required"
+    with Session(engine) as session:
+        assert session.get(RefundRecord, "REF-2001").status.value == "pending"
+        assert session.scalar(select(func.count(InboundEventRecord.event_id))) == 0
+
+
+@pytest.mark.parametrize("final_status", ["completed", "failed"])
+def test_demo_settlement_same_final_is_idempotent_and_conflicting_final_is_denied(
+    operations_api: tuple[TestClient, dict[str, ActorRole], Engine],
+    final_status: str,
+) -> None:
+    client, _role, engine = operations_api
+    app.dependency_overrides[get_principal] = lambda: SecurityPrincipal(
+        subject_id="DEMO-OPERATOR",
+        tenant_id="TENANT-TEST",
+        role=ActorRole.OPERATOR,
+        authentication_method="demo_session",
+    )
+    endpoint = "/api/v1/demo/refunds/REF-2001/status"
+    first = client.post(endpoint, json={"status": final_status})
+    replay = client.post(endpoint, json={"status": final_status})
+    assert first.status_code == replay.status_code == 200
+    assert (
+        first.json()
+        == replay.json()
+        == {
+            "status": final_status,
+            "mode": "synthetic_provider",
+            "refund_id": "REF-2001",
+        }
+    )
+    conflicting = client.post(
+        endpoint, json={"status": "failed" if final_status == "completed" else "completed"}
+    )
+    assert conflicting.status_code == 409
+    assert "cannot be overwritten" in conflicting.json()["detail"]
+    with Session(engine) as session:
+        assert session.get(RefundRecord, "REF-2001").status.value == final_status
+        assert session.scalar(select(func.count(InboundEventRecord.event_id))) == 1
+
+
+def test_client_cannot_choose_refund_target_or_amount(
+    operations_api: tuple[TestClient, dict[str, ActorRole], Engine],
+) -> None:
+    client, _role, engine = operations_api
+    with Session(engine) as session:
+        count_before = session.scalar(select(func.count(RefundRecord.refund_id)))
+    response = client.post(
+        "/api/v1/workflows",
+        json={
+            "workflow_id": "FORGED-REFUND",
+            "case_id": "CASE-1001",
+            "issue_id": "ISSUE-1001",
+            "refund_request": {
+                "idempotency_key": "forged-key",
+                "case_id": "CASE-1001",
+                "issue_id": "ISSUE-1001",
+                "payment_id": "PAY-1001",
+                "amount": "100.00",
+                "currency": "USD",
+                "kind": "duplicate_charge",
+                "reason": "Client chooses amount",
+            },
+        },
+    )
+    assert response.status_code == 422
+    with Session(engine) as session:
+        assert session.scalar(select(func.count(RefundRecord.refund_id))) == count_before
+
+
+def test_intake_receipts_and_clarification_continue_one_case(
+    operations_api: tuple[TestClient, dict[str, ActorRole], Engine],
+) -> None:
+    client, _role, engine = operations_api
+    body = {
+        "customer_id": "CUST-1001",
+        "order_id": "ORD-48391",
+        "complaint": "My payment looks wrong.",
+        "source_message_id": "INTAKE-MSG-1",
+    }
+    first = client.post("/api/v1/cases", json=body)
+    assert first.status_code == 201
+    case_id = first.json()["case_id"]
+    assert first.json()["intake_status"] == "needs_clarification"
+    assert first.json()["issues"] == []
+    again = client.post("/api/v1/cases", json=body)
+    assert again.json()["case_id"] == case_id
+    changed = client.post("/api/v1/cases", json={**body, "complaint": "Different message"})
+    assert changed.status_code == 422
+    reply = {"source_message_id": "REPLY-MSG-1", "message": "I was charged twice for this order."}
+    clarified = client.post(f"/api/v1/cases/{case_id}/messages", json=reply)
+    assert clarified.status_code == 200
+    assert clarified.json()["case_id"] == case_id
+    assert [issue["issue_type"] for issue in clarified.json()["issues"]] == ["duplicate_charge"]
+    assert client.post(f"/api/v1/cases/{case_id}/messages", json=reply).json() == clarified.json()
+    conflict = client.post(
+        f"/api/v1/cases/{case_id}/messages", json={**reply, "message": "Something else"}
+    )
+    assert conflict.status_code == 422
+    messages = client.get(f"/api/v1/cases/{case_id}/messages").json()
+    assert [item["source_message_id"] for item in messages] == ["INTAKE-MSG-1", "REPLY-MSG-1"]
+    with Session(engine) as session:
+        assert (
+            session.scalar(
+                select(func.count(CaseMessageRecord.message_id)).where(
+                    CaseMessageRecord.case_id == case_id
+                )
+            )
+            == 2
+        )

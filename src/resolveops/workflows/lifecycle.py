@@ -263,6 +263,9 @@ class WorkflowLifecycleStore:
             lifecycle_status = (
                 WorkflowLifecycleStatus.ESCALATED
                 if result.outcome == WorkflowOutcome.NEEDS_REVIEW
+                else WorkflowLifecycleStatus.WAITING_EXTERNAL
+                if result.outcome
+                in {WorkflowOutcome.REFUND_SUBMITTED, WorkflowOutcome.WAITING_EXTERNAL}
                 else WorkflowLifecycleStatus.COMPLETED
             )
             if record.status in {
@@ -276,15 +279,21 @@ class WorkflowLifecycleStore:
                     )
                 return self._run_from_record(record)
             now = self.clock()
+            if record.status == lifecycle_status and record.outcome == result.outcome:
+                return self._run_from_record(record)
             record.status = lifecycle_status
             record.outcome = result.outcome
             record.error_code = result.error_code
             record.error_message = result.error_message
             record.updated_at = now
-            record.completed_at = now
+            record.completed_at = (
+                None if lifecycle_status == WorkflowLifecycleStatus.WAITING_EXTERNAL else now
+            )
             event_type = (
                 WorkflowEventType.ESCALATED
                 if lifecycle_status == WorkflowLifecycleStatus.ESCALATED
+                else WorkflowEventType.REFUND_STATUS_CHANGED
+                if lifecycle_status == WorkflowLifecycleStatus.WAITING_EXTERNAL
                 else WorkflowEventType.COMPLETED
             )
             self._add_event(
@@ -385,6 +394,11 @@ class WorkflowLifecycleStore:
     def _authorize_decider(
         record: WorkflowApprovalRecord, decision: WorkflowApprovalDecision
     ) -> None:
+        if decision.actor.actor_id == record.requested_by:
+            raise ApprovalDecisionError(
+                "approval_permission_denied",
+                "A different authorized person must review the proposal.",
+            )
         if decision.actor.role not in {ActorRole.APPROVER, ActorRole.SYSTEM}:
             raise ApprovalDecisionError(
                 "approval_permission_denied",

@@ -79,7 +79,7 @@ def test_workflow_trace_covers_nodes_retrieval_tools_and_llm() -> None:
     assert report.passed_count == 2
     assert summary.trace_count == 2
     assert summary.workflow_count == 2
-    assert summary.workflow_outcomes == {"action_verified": 2}
+    assert summary.workflow_outcomes == {"refund_submitted": 2}
     assert summary.total_input_tokens is None
     assert summary.total_output_tokens is None
     assert summary.total_cost_usd is None

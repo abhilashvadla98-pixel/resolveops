@@ -19,6 +19,12 @@ def available_port() -> int:
         return int(listener.getsockname()[1])
 
 
+def browser_artifact_path(tmp_path: Path, filename: str) -> Path:
+    directory = Path(os.environ.get("RESOLVEOPS_SCREENSHOT_DIR", tmp_path))
+    directory.mkdir(parents=True, exist_ok=True)
+    return directory / filename
+
+
 @pytest.fixture
 def running_demo(tmp_path: Path) -> Iterator[str]:
     database_path = (tmp_path / "browser-e2e.db").as_posix()
@@ -37,6 +43,8 @@ def running_demo(tmp_path: Path) -> Iterator[str]:
             "RESOLVEOPS_DEMO_SESSION_SECRET": (
                 "browser-e2e-session-secret-with-more-than-32-characters"
             ),
+            "RESOLVEOPS_INTEGRATED_AGENTS_ENABLED": "false",
+            "RESOLVEOPS_AGENT_QUEUE_ENABLED": "false",
         }
     )
     config = Config("alembic.ini")
@@ -49,6 +57,8 @@ def running_demo(tmp_path: Path) -> Iterator[str]:
         capture_output=True,
         text=True,
     )
+    server_log_path = tmp_path / "browser-server.log"
+    server_log = server_log_path.open("w", encoding="utf-8")
     process = subprocess.Popen(
         [
             os.sys.executable,
@@ -61,8 +71,8 @@ def running_demo(tmp_path: Path) -> Iterator[str]:
             str(port),
         ],
         env=environment,
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
+        stdout=server_log,
+        stderr=subprocess.STDOUT,
     )
     base_url = f"http://127.0.0.1:{port}"
     try:
@@ -83,6 +93,10 @@ def running_demo(tmp_path: Path) -> Iterator[str]:
         except subprocess.TimeoutExpired:
             process.kill()
             process.wait(timeout=5)
+        server_log.close()
+        log_text = server_log_path.read_text(encoding="utf-8")
+        if "Traceback" in log_text:
+            print(log_text[-6000:])
 
 
 @pytest.mark.browser
@@ -108,7 +122,7 @@ def test_operator_completes_demo_approval_workflow(running_demo: str, tmp_path: 
         expect(page.locator("#case-journey-title")).to_have_text(
             "From complaint to verified outcome"
         )
-        expect(page.locator(".intake-explainer")).to_contain_text(
+        expect(page.locator('[data-view-panel="cases"] .intake-explainer')).to_contain_text(
             "One intake API, several support channels"
         )
 
@@ -132,11 +146,11 @@ def test_operator_completes_demo_approval_workflow(running_demo: str, tmp_path: 
         )
         expect(page.locator("#detail-evidence")).to_contain_text("120 seconds apart")
         page.locator("#detail-issues .start-workflow").click()
-        expect(page.locator("#toast")).to_contain_text("separate approval is required")
+        expect(page.locator("#toast")).to_contain_text("Review before any refund is submitted")
         expect(page.locator("#workflow-summary")).to_be_visible()
-        expect(page.locator("#workflow-summary")).to_contain_text("Human approval required")
-        expect(page.locator("#workflow-summary")).to_contain_text("Separate human decision")
-        expect(page.locator("#workflow-summary")).to_contain_text("Next operator step")
+        expect(page.locator("#workflow-summary")).to_contain_text("Review the refund proposal")
+        expect(page.locator("#workflow-summary")).to_contain_text("Separate approval required")
+        expect(page.locator("#workflow-summary")).to_contain_text("No refund has been submitted")
         page.screenshot(
             path=screenshot_directory / "resolveops-customer-approval.png",
             full_page=True,
@@ -150,25 +164,32 @@ def test_operator_completes_demo_approval_workflow(running_demo: str, tmp_path: 
             "Evidence and policy support this controlled refund."
         )
         page.locator('.approval-decision[data-decision="approve"]').click()
-        expect(page.locator("#toast")).to_contain_text("independently verified")
+        expect(page.locator("#toast")).to_contain_text("Settlement is still pending")
 
         expect(page.locator('[data-view-panel="cases"]')).to_have_class("view active")
+        expect(page.locator("#detail-case-status")).to_have_text("In Progress")
+        expect(page.locator("#workflow-summary")).to_contain_text("Refund Submitted")
+        expect(page.locator("#final-response-text")).to_contain_text("Settlement is still pending")
+        page.get_by_role("button", name="Simulate settlement success").click()
         expect(page.locator("#detail-case-status")).to_have_text("Resolved")
         expect(page.locator("#detail-issues")).to_contain_text("Resolved")
-        expect(page.locator("#workflow-summary")).to_contain_text("Action Verified")
-        expect(page.locator("#workflow-summary")).to_contain_text("Passed")
+        expect(page.locator("#workflow-summary")).to_contain_text("Refund Settled")
+        expect(page.locator("#workflow-summary")).to_contain_text("Final settlement verified")
         expect(page.locator("#case-journey")).to_contain_text(
-            "Refund created in payment-provider simulator"
+            "Linked refund found in the payment simulator"
         )
         expect(page.locator("#case-journey")).to_contain_text(
-            "Fresh provider read matched the approved action"
+            "Every issue has a verified final outcome"
         )
         expect(page.locator("#detail-evidence")).to_contain_text("Verified case fact")
         expect(page.locator("#detail-evidence")).to_contain_text("POLICY-DUPLICATE-CHARGE")
-        expect(page.locator("#case-timeline")).to_contain_text("Completed")
+        expect(page.locator("#case-timeline")).to_contain_text("Refund Status Changed")
+        expect(page.locator("#case-timeline")).to_contain_text("refund_settled")
         expect(page.locator("#final-response")).to_be_visible()
-        expect(page.locator("#final-response-text")).to_contain_text("created refund")
-        expect(page.locator("#final-response-text")).to_contain_text("independently verified")
+        expect(page.locator("#final-response-text")).to_contain_text("has settled")
+        expect(page.locator("#final-response-text")).to_contain_text(
+            "checked the final refund records"
+        )
         page.screenshot(
             path=screenshot_directory / "resolveops-customer-workflow.png",
             full_page=True,
@@ -266,7 +287,7 @@ def test_failed_agent_validation_blocks_approval_and_explains_safe_stop(
 
 
 @pytest.mark.browser
-def test_escalated_investigation_can_be_retried(running_demo: str) -> None:
+def test_authorization_hold_does_not_create_a_refund(running_demo: str) -> None:
     with sync_playwright() as playwright:
         browser = playwright.chromium.launch()
         page: Page = browser.new_page(viewport={"width": 1440, "height": 1000})
@@ -275,11 +296,12 @@ def test_escalated_investigation_can_be_retried(running_demo: str) -> None:
         page.locator('[data-view="cases"]').click()
         page.locator("#scenario-select").select_option("CASE-DEMO-E")
 
-        expect(page.locator("#detail-evidence")).to_contain_text("No duplicate pair confirmed")
+        expect(page.locator("#detail-evidence")).to_contain_text("No similar capture pair found")
         expect(page.locator("#detail-evidence")).to_contain_text("Authorized")
         page.locator("#detail-issues .start-workflow").click()
 
-        expect(page.locator("#workflow-title")).to_have_text("Investigation needs review")
-        expect(page.locator("#workflow-summary")).to_contain_text("No sensitive action executed")
-        expect(page.locator("#detail-issues .start-workflow")).to_have_text("Retry investigation")
+        expect(page.locator("#workflow-summary")).to_contain_text("No Action Required")
+        expect(page.locator("#workflow-summary")).to_contain_text("No refund needed")
+        expect(page.locator("#workflow-next-action")).to_be_hidden()
+        expect(page.locator("#detail-issues .view-workflow")).to_have_text("View outcome")
         browser.close()

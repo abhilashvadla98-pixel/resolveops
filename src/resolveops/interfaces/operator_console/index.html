@@ -5,9 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="description" content="ResolveOps operations console">
 <title>ResolveOps | Operations Console</title>
-<link rel="stylesheet" href="/console/app.css?v=20261002b">
-<script src="/console/app.js?v=20261002b" defer>
+<link rel="stylesheet" href="/console/app.css?v=20261004a">
+<script src="/console/app.js?v=20261004a" defer>
 </script>
+<script src="/console/it_intake.js?v=20261004a" defer></script>
 </head>
 <body>
 <a class="skip-link" href="#main-content">Skip to content</a>
@@ -420,10 +421,25 @@
 <div class="page-heading">
 <div>
 <h1>Employee IT Operations</h1>
-<p>Identity, manager approval and repository-access workflow</p>
+<p>Repository requests · deterministic identity, approval and access checks</p>
 </div>
+<button class="primary-button" id="new-it-request" type="button">+ New access request</button>
 <button class="secondary-button refresh-button" type="button">Refresh</button>
 </div>
+<section class="intake-explainer" id="it-intake-panel" hidden aria-labelledby="it-intake-title">
+<div class="pane-heading"><h2 id="it-intake-title">Request repository access</h2><button class="secondary-button" id="cancel-it-request" type="button">Cancel</button></div>
+<p id="it-intake-mode">Requests are tied to the signed-in employee. Identity, MFA and approval are checked by rules; this flow does not call an AI model.</p>
+<form id="it-intake-form">
+<div class="detail-grid">
+<label>Requester<select id="it-intake-employee" required aria-label="Requesting employee"></select></label>
+<label>Repository<select id="it-intake-repository" required aria-label="Requested repository"></select></label>
+<label>Access level<select id="it-intake-level" required aria-label="Requested access level"></select></label>
+<label>Business reason<textarea id="it-intake-reason" required minlength="10" maxlength="2000" placeholder="Describe the assigned work that needs this access." aria-label="Access business reason"></textarea></label>
+</div>
+<p id="it-intake-error" role="alert" hidden></p>
+<button class="primary-button" id="submit-it-request" type="submit">Submit access request</button>
+</form>
+</section>
 <div class="workflow-guide" aria-label="Employee IT workflow steps">
 <span>
 <b>1</b>Request</span>
@@ -504,6 +520,11 @@
 </div>
 <div id="it-result" class="empty-state">Select a request to inspect persisted state.</div>
 </div>
+<section class="result-box" aria-labelledby="it-attempt-history-title">
+<h3 id="it-attempt-history-title">Processing attempts</h3>
+<p>Each attempt checks current records. Sandbox notices are saved here; no real email or repository change is sent.</p>
+<div id="it-attempt-history" class="record-list"><p class="empty-state">Select a request to see its history.</p></div>
+</section>
 </article>
 </div>
 </section>

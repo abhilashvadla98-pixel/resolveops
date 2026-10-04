@@ -2,197 +2,137 @@
 
 [![CI](https://github.com/abhilashvadla98-pixel/resolveops/actions/workflows/ci.yml/badge.svg)](https://github.com/abhilashvadla98-pixel/resolveops/actions/workflows/ci.yml)
 
-ResolveOps is a case-resolution service for customer-support and employee-IT teams. It connects an
-incoming request to evidence, a controlled decision, an idempotent action and an independent read
-of the resulting state. Complex customer cases use a five-role LangGraph investigation, but model
-output stays advisory: deterministic code owns approvals, writes and verification.
+ResolveOps investigates customer billing complaints and processes employee repository-access
+requests. Evidence supports a proposal; authorized people approve it; deterministic code executes
+and verifies the result. An accepted refund request is **not** a completed refund.
 
-The public demo opens with populated synthetic data and two distinct paths:
+[Synthetic demo](https://resolveops-demo.onrender.com/console) ·
+[Workflow guide](docs/DEMO_WALKTHROUGH.md) · [Release status](docs/RELEASE_GATES.md)
 
-- **Customer Operations:** complaint intake → evidence investigation → human approval → controlled
-  action → fresh verification.
-- **Employee IT Operations:** access request → identity and MFA checks → manager approval →
-  least-privilege grant → fresh verification.
+The public sandbox uses fictional records and local provider simulators. Its configuration disables
+live AI calls. The October 4 repairs described below are local changes until deployment is verified;
+the public link may still show the previous build.
 
-[Open the synthetic demo](https://resolveops-demo.onrender.com/console) *(the free host may need about
-one minute to wake)* · [watch the 42-second overview](https://github.com/abhilashvadla98-pixel/resolveops/releases/download/v1.0.0/resolveops-product-demo.webm)
-· [watch the 72-second technical walkthrough](https://github.com/abhilashvadla98-pixel/resolveops/releases/download/v1.1.0/resolveops-technical-walkthrough.webm)
+## Two bounded workflows
 
-## Three-minute recruiter path
+**Customer Operations:** enter a duplicate-charge or missing-return-refund complaint. ResolveOps
+reads payment obligations, captures, returned items and prior refunds. It proposes an eligible
+refund, tracks an existing refund, explains a no-action result, or stops for review. Approval submits
+one simulated refund. A later provider event determines settlement or failure.
 
-1. Open the demo. It creates an isolated workspace with fictional records; no login or key is
-   required.
-2. Select **Open customer workflow**, choose **D · High-value refund approval**, then select
-   **Investigate**.
-3. Read the evidence and proposed action. Select **Review approval**, record a reason and approve.
-4. Confirm that the case is **Resolved**, the action is **Verified**, and the five-stage data
-   journey is complete.
-5. Open **Reliability** to inspect the persisted attempt and verification. Then open **Employee IT**
-   and select `ITCASE-2004` to see missing MFA stop an access request.
+**Employee IT:** submit a repository and permission request. Rules check employment, identity, MFA,
+team, the actual manager's approval and current access. The service applies the allowed grant and
+reads back directory membership and repository permission. This path is not an LLM agent.
+Demo manager decisions are explicitly labeled simulations.
 
-Every payment, directory, repository and ticket interaction in the public demo uses a local
-simulator. The interface never claims that a real bank transfer or repository grant occurred.
-
-![ResolveOps overview with separate customer and employee workflows](docs/assets/resolveops-overview.png)
-
-## Flagship workflow
+## Flagship: keep the case open until settlement
 
 ```mermaid
 flowchart LR
-    A[Complaint] --> B[Persist case and issues]
-    B --> C{Complex case?}
-    C -- yes --> D[Supervisor routes investigator, policy, resolution, critic]
-    C -- no --> E[Bounded advisory reasoner]
-    D --> F[Deterministic policy and safety gates]
-    E --> F
-    F --> G{Human approval required?}
-    G -- yes --> H[Durable approval pause]
-    G -- no --> I[Idempotent action]
-    H --> I
-    I --> J[Fresh-state verification]
-    J --> K[Audit trail and grounded response]
+    A[Complaint + receipt ID] --> B[Scoped order, capture, return and refund evidence]
+    B --> C{Complex or conflicting?}
+    C -- no --> D[Bounded business rules]
+    C -- yes, AI enabled --> E[Read-only specialist graph]
+    E --> F[Validate evidence and typed recommendation]
+    D --> F
+    F --> G{Supported action?}
+    G -- missing evidence --> H[Clarify or operator review]
+    H --> A
+    G -- refund --> I[Separate approval + expiry + revalidation]
+    I --> J[Idempotent submission + fresh read]
+    J --> K[Pending settlement: case stays open]
+    K --> L{Provider status event}
+    L -- completed --> M[Verify final state; resolve eligible issues]
+    L -- failed --> H
+    G -- already refunded / no action --> N[Track or explain]
 ```
 
-The same control pattern supports employee repository-access requests: identity, employment, MFA,
-team, manager approval, directory membership, Git account, repository ownership, action, and fresh
-verification are all checked independently.
+Two equal-looking charges are only a candidate. Automatic duplicate handling requires two full
+captures of the same explicit payable obligation, a matching order total and currency, active policy
+and no prior refund covering that obligation. Split captures, unknown obligations and overlapping
+returns stop automatic action. The server chooses the eligible capture and calculates the amount;
+the browser and model cannot supply their own financial authority.
 
-## Customer workflow: complaint to verified outcome
+In live mode, the graph has supervisor, investigator, policy, resolution and critic roles. Later
+roles are skipped after an evidence or policy safety stop. This is a bounded sequence with conditional
+stops, not a general autonomous supervisor. Simple cases do not need model calls.
 
-Complaints can arrive through the console or the authenticated intake API used by a support-portal
-or help-desk adapter. The separate signed event endpoint accepts later refund-status updates; it is
-not a complaint-intake path. The demo queue is preloaded so the complete flow is reviewable without connecting a CRM.
-The selected-case panel shows where the complaint came from and how its customer, order, payment
-and policy records stay connected.
+## Try the repaired flow locally
 
-### 1. Investigate, then stop for approval
+1. Open **Customer Operations → New case**. Use `CUST-DEMO-A`, `ORD-DEMO-A` and
+   “I was charged twice for this order.”
+2. Select **Investigate**. Inspect the obligation, exact capture, amount and policy. No refund exists yet.
+3. Select **Review approval**, enter a reason and approve using the explicitly simulated reviewer.
+4. Expect **Refund submitted; settlement pending**. The case remains open.
+5. Select **Simulate settlement success**. Only then should the issue resolve. Repeat in a fresh
+   workspace with **Simulate settlement failure** to see the recovery path.
+6. Open **Employee IT → New access request** for the requester/manager/provisioning journey.
 
-A sensitive refund pauses durably and shows the proposed amount, payment, reason and authority
-boundary before an operator can approve or reject it. The investigation cannot move money.
-
-![Customer refund waiting for human approval](docs/assets/resolveops-customer-approval.png)
-
-### 2. Execute once and verify from fresh state
-
-After approval, the control plane records one simulated refund using an idempotency key. It then
-reads the payment-provider simulator independently; only a matching read marks the case resolved.
-The UI retains the policy citations, ordered timeline and draft customer response.
-
-![Resolved customer workflow with policy evidence and fresh verification](docs/assets/resolveops-customer-workflow.png)
-
-### 3. Inspect operational evidence
-
-The reliability view exposes the persisted attempt, latency and verification events instead of
-reducing the run to a chat response.
-
-![Reliability record for the verified refund operation](docs/assets/resolveops-reliability.png)
-
-## Employee workflow: request to least-privilege access
-
-The separate internal flow checks employment, identity, MFA, manager approval, group membership,
-repository ownership and the final permission. `ITCASE-2002` demonstrates the approval pause;
-`ITCASE-2004` demonstrates the missing-MFA safety stop. Unsafe requests fail closed and create no
-grant.
-
-![Employee IT access workflow and safety checks](docs/assets/resolveops-employee-it.png)
-
-See the [click-by-click demo guide](docs/DEMO_WALKTHROUGH.md) for both complete paths.
+See the [illustrated guide](docs/DEMO_WALKTHROUGH.md) for both workflows. The existing
+[42-second teaser](https://github.com/abhilashvadla98-pixel/resolveops/releases/download/v1.0.0/resolveops-product-demo.webm)
+and [72-second recording](https://github.com/abhilashvadla98-pixel/resolveops/releases/download/v1.1.0/resolveops-technical-walkthrough.webm)
+show an earlier release, not the repaired settlement lifecycle or current live-agent behavior.
 
 ## Measured evidence
 
-| Evidence | Recorded result | What it proves |
-|---|---:|---|
-| Customer workflow regression | 24/24 | Real workflow, persistence, approvals, actions and verification |
-| Employee IT regression | 14/14 | Access controls, idempotency and partial-state handling |
-| Offline multi-agent trajectories | 22/22 | Five-role routing, tools, critic, replanning and budgets |
-| Adversarial security set | 17/17 | Known injection and unsafe-request patterns are rejected |
-| Live single-reasoner Gemini check | 3/3 | Provider integration worked for that dated run |
-| Reviewed-memory ablation | 8 paired cases | Tenant/policy-scoped memory path and token/routing comparison |
-| Human response review | 0/24 | Owner labels are intentionally still pending |
-| Demo data contract | 325 connected records | Repeatable customer, payment, return, IT, approval and audit state |
-| Public demo isolation | 2 independent sessions | A write in one visitor workspace was absent from the other |
+| Check | Evidence | Scope |
+|---|---|---|
+| Customer regression | [24-case v2 report](evals/workflows/settlement-v2-report.json) | Actual workflow and persisted issue/refund state; scripted, not live AI |
+| New-request browser journeys | [Customer tests](tests/test_customer_journey_browser.py), [IT tests](tests/test_employee_it_browser.py) | Intake, approval, pending, settlement/failure and grant verification |
+| Integrated agent evaluation | [Ten tasks](evals/integrated/cases.jsonl), [runner](scripts/run_integrated_agent_evaluation.py) | Application read tools and business outcomes; expectations excluded from model input |
+| Grounding and control | [Grounding tests](tests/test_agent_grounding.py), [workflow tests](tests/test_workflows.py) | Fabricated observations, altered actions and unsupported recommendations stop safely |
+| Combined complaint | [Two settlement-order tests](tests/test_combined_customer_journey.py) | Duplicate capture plus partial return; no repeat refund; both final events required |
+| Human review | [Evaluation guide](docs/EVALUATION.md) | 24 owner labels remain pending; code does not invent them |
 
-See [docs/EVALUATION.md](docs/EVALUATION.md) for datasets, checksums, commands and limitations.
-The 10-task × 3-trial live multi-agent runner and its dated failure report are retained as evidence;
-provider failures are not recast as model-quality passes. Unknown pricing remains `null` rather
-than being invented.
+Rules-only repeats are deterministic regressions, not a stochastic benchmark. Historical provider
+contract tests used simulated tools and are labeled accordingly. Failures remain in immutable
+reports. Unknown token usage or pricing stays unknown. See [evaluation methodology](docs/EVALUATION.md)
+for provenance and current live results.
 
 ## Quick start
 
-Requirements: Python 3.12. Docker is optional.
+Python 3.12 is required. Docker is optional for the disposable local sandbox.
 
 ```powershell
 python -m venv .venv
-.\.venv\Scripts\python.exe -m pip install -e ".[dev]"
-Copy-Item .env.example .env
-.\.venv\Scripts\python.exe -m uvicorn resolveops.api.main:app --host 127.0.0.1 --port 8000
+.\.venv\Scripts\python.exe -m pip install -e ".[dev,interfaces,llm,workflow]"
+.\.venv\Scripts\python.exe scripts/run_demo.py
 ```
 
-Open `http://127.0.0.1:8000/console`. The isolated fictional workspace loads automatically. The
-complete deterministic demo needs no paid service or model key.
-
-Run the required checks:
+Open `http://127.0.0.1:8000/console`. This loopback-only shared sandbox creates a temporary database,
+ignores existing secrets and disables model calls. Its activity is discarded when stopped; restart
+the same command after reboot. Use `--port 8001` if 8000 is occupied. For an existing database,
+follow the [deployment runbook](docs/DEPLOYMENT.md); do not
+replace unknown payment obligations with guesses.
 
 ```powershell
 .\.venv\Scripts\python.exe -m pytest -q
 .\.venv\Scripts\ruff.exe check .
 .\.venv\Scripts\mypy.exe src
-.\.venv\Scripts\python.exe scripts/run_agent_evaluation.py
-.\.venv\Scripts\python.exe scripts/run_memory_ablation.py
+.\.venv\Scripts\python.exe scripts/run_integrated_agent_evaluation.py --mode rules_only
 ```
 
-## Safety boundaries
+## Tradeoffs and limits
 
-- Models can plan, investigate, cite policy, propose and criticize; they cannot approve or write.
-- Tools are typed, role-allowlisted and tenant-scoped.
-- Sensitive actions require deterministic RBAC, state, amount, policy and idempotency checks.
-- Approval resumes a persisted workflow; page refreshes and retries do not duplicate the action.
-- Completion is reported only after a fresh read verifies the expected state.
-- Reviewed memory is advisory, expires, remains tenant-scoped and must match current policy versions.
-- Retrieved case, policy and memory text is always treated as untrusted data.
+- No live bank, CRM, identity-provider or Git-host write is connected. An operator enters customer
+  messages through an authenticated API. Customer authentication and email/CRM delivery are not implemented.
+- Supported complaints are duplicate charges and missing return refunds. Arbitrary disputes and
+  complex capture allocations require manual review.
+- Separate human roles are enforced outside the sandbox. Demo role switching is not a real manager
+  decision. Delegated manager authority is not supported.
+- Reviewed memory is typed, tenant/policy scoped and expiring. Neither its quality benefit nor
+  multi-role superiority over one investigator is established by a live controlled comparison.
+- SQLite keeps the demo small. PostgreSQL supplies durable checkpoints and row locking. A free,
+  single-instance Render demo is not a production availability claim.
+- AWS Terraform is reference infrastructure, not an AWS deployment. CI and deployed checks must
+  pass for the exact release commit before new capabilities are described as deployed.
+- Live inference requires a rotated credential in ignored local storage. Never reuse the exposed key.
 
-## Tradeoffs
+## Engineering notes
 
-- Five-role analysis costs more than one reasoning call, so only complex cases route through it.
-- SQLite makes the local demo easy; PostgreSQL is the production persistence target.
-- Hybrid retrieval remains in process for the small policy corpus; measured pgvector evidence shows
-  the scale-up path.
-- The MCP consumer is a small read-only case lookup with local fallback only on availability
-  failure. Security denial never falls back.
-- Redis improves worker coordination but PostgreSQL remains the durable source of truth.
+[Architecture](docs/MULTI_AGENT_ARCHITECTURE.md) · [Audit](docs/WORKFLOW_DESIGN_AUDIT.md) ·
+[Evaluation](docs/EVALUATION.md) · [Security](docs/SECURITY.md) ·
+[Operations](docs/OPERATIONS_RUNBOOK.md) · [Deployment](docs/DEPLOYMENT.md) ·
+[Cost](docs/COST_ANALYSIS.md) · [Feedback case study](docs/CASE_STUDY.md)
 
-## Current limitations
-
-- The synthetic demo is deployed on Render. It is a single-instance, free-tier demonstration, not
-  a production service or an availability claim.
-- `infra/terraform` is an unprovisioned AWS reference design; no AWS resources are claimed.
-- The exposed Gemini credential must remain revoked. Its replacement is kept only in ignored local
-  secret storage and is never included in public demo configuration.
-- The owner must manually label all 24 response-review rows; labels are never generated by code.
-- One genuine owner correction completed the reviewed feedback loop in dataset v1.0.0; the focused
-  browser regression proves failed agent validation blocks approval. See
-  [the case study](docs/CASE_STUDY.md#closed-owner-feedback-loop).
-- The first 30-trial live multi-agent run completed with 0 passes: strict evidence/policy validation
-  stopped seven trajectories and provider failures stopped 23. It is retained as failure evidence,
-  not presented as model-quality proof.
-- No live payment, CRM, identity, Git, ticketing or settlement vendor is connected. All checked-in
-  business data is synthetic.
-- Local measurements are not production SLOs, and the recorded 3/3 provider result is not a general
-  model-quality claim.
-
-## Documentation
-
-- [Architecture and agent control](docs/MULTI_AGENT_ARCHITECTURE.md)
-- [Evaluation methodology](docs/EVALUATION.md)
-- [Engineering case study](docs/CASE_STUDY.md)
-- [Operator console](docs/OPERATOR_CONSOLE.md)
-- [Security and threat model](docs/SECURITY.md)
-- [Deployment and reference infrastructure](docs/DEPLOYMENT.md)
-- [Safe public demo runbook](docs/PUBLIC_DEMO.md)
-- [Operations and recovery](docs/OPERATIONS_RUNBOOK.md)
-- [Cost and latency](docs/COST_ANALYSIS.md)
-- [Demo walkthrough](docs/DEMO_WALKTHROUGH.md)
-
-## License
-
-MIT. See [LICENSE](LICENSE).
+MIT licensed. See [LICENSE](LICENSE).

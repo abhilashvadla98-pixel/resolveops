@@ -14,14 +14,18 @@ from resolveops.database.base import Base
 from resolveops.database.records import (
     CaseIssuePaymentRecord,
     CaseIssueRecord,
+    PaymentRecord,
     RefundRecord,
+    ReturnItemRecord,
+    ReturnRecord,
 )
 from resolveops.database.seed import seed_all
 from resolveops.database.session import create_session_factory
 from resolveops.database.simulator_records import NotificationRecord, TicketRecord
 from resolveops.models.case import CaseIssueStatus, IssueFinding
 from resolveops.models.notification import NotificationChannel
-from resolveops.models.refund import RefundKind
+from resolveops.models.refund import RefundKind, RefundStatus
+from resolveops.models.returns import ReturnStatus
 from resolveops.operations.actions import ActionTools
 from resolveops.operations.errors import (
     ApprovalRequiredError,
@@ -48,6 +52,7 @@ from resolveops.operations.models import (
     ReliabilityEventType,
     SendNotificationRequest,
 )
+from resolveops.operations.proposals import investigate_issue
 from resolveops.operations.reads import OperationsReadTools
 from resolveops.operations.reliability import ReliabilityPolicy
 
@@ -112,6 +117,114 @@ def make_duplicate_issue_actionable(factory: sessionmaker[Session]) -> None:
         assert issue is not None
         issue.finding = IssueFinding.CONFIRMED
         issue.status = CaseIssueStatus.ACTION_PENDING
+
+
+def test_recovery_lineage_changed_after_proposal_is_rejected_under_write_lock(
+    operation_database: tuple[Engine, sessionmaker[Session]],
+    ids: Callable[[str], str],
+) -> None:
+    _, factory = operation_database
+    make_duplicate_issue_actionable(factory)
+    with factory() as session:
+        stale = investigate_issue(session, "CASE-1001", "ISSUE-1001").proposal
+        assert stale is not None
+    with factory.begin() as session:
+        session.add(
+            RefundRecord(
+                refund_id="REF-PRIOR-FAILED",
+                payment_id="PAY-1002",
+                order_id="ORD-48391",
+                issue_id="ISSUE-1001",
+                return_id=None,
+                amount=Decimal("1499.00"),
+                currency="USD",
+                status=RefundStatus.FAILED,
+                kind=RefundKind.DUPLICATE_CHARGE,
+                reason="A separately submitted attempt failed before this stale proposal executed.",
+                created_at=NOW,
+                completed_at=None,
+            )
+        )
+    with pytest.raises(BusinessRuleError) as error:
+        action_tools(factory, ids).issue_refund(stale, actor(ActorRole.APPROVER))
+    assert error.value.code == "proposal_evidence_changed"
+    with factory() as session:
+        assert (
+            session.scalar(
+                select(func.count())
+                .select_from(RefundRecord)
+                .where(
+                    RefundRecord.payment_id == "PAY-1002",
+                    RefundRecord.status == RefundStatus.PENDING,
+                )
+            )
+            == 0
+        )
+
+
+def test_concurrent_replacement_submission_keeps_one_stable_attempt(tmp_path: Path) -> None:
+    engine = create_engine(f"sqlite:///{(tmp_path / 'refund-recovery.db').as_posix()}")
+    Base.metadata.create_all(engine)
+    factory = create_session_factory(engine)
+    with factory.begin() as session:
+        seed_all(session)
+    make_duplicate_issue_actionable(factory)
+    with factory() as session:
+        original = investigate_issue(session, "CASE-1001", "ISSUE-1001").proposal
+        assert original is not None
+    tools = ActionTools(factory, clock=lambda: NOW)
+    first = tools.issue_refund(original, actor(ActorRole.APPROVER))
+    with factory.begin() as session:
+        session.get(RefundRecord, first.resource_id).status = RefundStatus.FAILED
+    with factory() as session:
+        replacement = investigate_issue(session, "CASE-1001", "ISSUE-1001").proposal
+        again = investigate_issue(session, "CASE-1001", "ISSUE-1001").proposal
+        assert replacement is not None and again is not None
+        assert replacement.idempotency_key == again.idempotency_key != original.idempotency_key
+    started, release = Event(), Event()
+
+    class BlockingRefundTools(ActionTools):
+        execution_calls = 0
+
+        def _execute_refund(
+            self, session: Session, refund_id: str, request: IssueRefundRequest
+        ) -> None:
+            self.execution_calls += 1
+            started.set()
+            if not release.wait(timeout=5):
+                raise RuntimeError("test did not release replacement submission")
+            super()._execute_refund(session, refund_id, request)
+
+    replacement_tools = BlockingRefundTools(factory, clock=lambda: NOW)
+    approver = actor(ActorRole.APPROVER)
+    try:
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            one = executor.submit(replacement_tools.issue_refund, replacement, approver)
+            assert started.wait(timeout=5)
+            two = executor.submit(replacement_tools.issue_refund, again, approver)
+            with pytest.raises(OperationInProgressError):
+                two.result(timeout=5)
+            release.set()
+            submitted = one.result(timeout=5)
+        replay = replacement_tools.issue_refund(replacement, approver)
+        assert replay.idempotent_replay is True
+        assert replay.resource_id == submitted.resource_id
+        assert replacement_tools.execution_calls == 1
+        with factory() as session:
+            assert (
+                session.scalar(
+                    select(func.count())
+                    .select_from(RefundRecord)
+                    .where(
+                        RefundRecord.payment_id == "PAY-1002",
+                        RefundRecord.status == RefundStatus.PENDING,
+                    )
+                )
+                == 1
+            )
+    finally:
+        release.set()
+        engine.dispose()
 
 
 def test_read_tools_return_typed_resources_and_explicit_not_found(
@@ -203,6 +316,68 @@ def test_approver_refund_is_verified_audited_and_idempotent(
         ]
 
 
+@pytest.mark.parametrize("provider_status", [RefundStatus.PROCESSING, RefundStatus.COMPLETED])
+def test_refund_replay_after_provider_progress_only_verifies_existing_submission(
+    operation_database: tuple[Engine, sessionmaker[Session]],
+    ids: Callable[[str], str],
+    provider_status: RefundStatus,
+) -> None:
+    _, factory = operation_database
+    make_duplicate_issue_actionable(factory)
+    tools = action_tools(factory, ids)
+    request = duplicate_refund_request()
+    first = tools.issue_refund(request, actor(ActorRole.APPROVER))
+    with factory.begin() as session:
+        refund = session.get(RefundRecord, first.resource_id)
+        assert refund is not None
+        refund.status = provider_status
+        refund.completed_at = NOW if provider_status == RefundStatus.COMPLETED else None
+
+    replay = tools.issue_refund(request, actor(ActorRole.APPROVER))
+
+    assert replay.verified is True
+    assert replay.idempotent_replay is True
+    assert replay.resource_id == first.resource_id
+    with factory() as session:
+        refunds = list(
+            session.scalars(select(RefundRecord).where(RefundRecord.issue_id == request.issue_id))
+        )
+        assert len(refunds) == 1 and refunds[0].status == provider_status
+
+
+@pytest.mark.parametrize("provider_status", [RefundStatus.FAILED, RefundStatus.CANCELLED])
+def test_failed_refund_replay_cannot_execute_replacement_or_report_verified_success(
+    operation_database: tuple[Engine, sessionmaker[Session]],
+    ids: Callable[[str], str],
+    provider_status: RefundStatus,
+) -> None:
+    _, factory = operation_database
+    make_duplicate_issue_actionable(factory)
+    tools = ActionTools(
+        factory,
+        clock=lambda: NOW,
+        id_generator=ids,
+        reliability_policy=ReliabilityPolicy(max_attempts=2, initial_backoff_seconds=0),
+        sleeper=lambda _: None,
+    )
+    request = duplicate_refund_request()
+    first = tools.issue_refund(request, actor(ActorRole.APPROVER))
+    with factory.begin() as session:
+        refund = session.get(RefundRecord, first.resource_id)
+        assert refund is not None
+        refund.status = provider_status
+
+    with pytest.raises(VerificationError):
+        tools.issue_refund(request, actor(ActorRole.APPROVER))
+    with factory() as session:
+        refunds = list(
+            session.scalars(select(RefundRecord).where(RefundRecord.issue_id == request.issue_id))
+        )
+        assert len(refunds) == 1
+        assert refunds[0].refund_id == first.resource_id
+        assert refunds[0].status == provider_status
+
+
 def test_same_idempotency_key_rejects_changed_payload(
     operation_database: tuple[Engine, sessionmaker[Session]],
     ids: Callable[[str], str],
@@ -259,7 +434,157 @@ def test_existing_pending_return_refund_blocks_over_refund(
 
     with pytest.raises(BusinessRuleError) as error:
         action_tools(factory, ids).issue_refund(request, actor(ActorRole.APPROVER))
-    assert error.value.code == "return_refund_limit_exceeded"
+    assert error.value.code == "proposal_evidence_changed"
+    with factory() as session:
+        refunds = list(
+            session.scalars(select(RefundRecord).where(RefundRecord.return_id == "RET-3001"))
+        )
+        assert len(refunds) == 1
+        assert refunds[0].amount == Decimal("200.00")
+
+
+@pytest.mark.parametrize("obligation_id", [None, "OTHER-OBLIGATION"])
+def test_preconfirmed_issue_cannot_override_missing_or_conflicting_obligation(
+    operation_database: tuple[Engine, sessionmaker[Session]],
+    ids: Callable[[str], str],
+    obligation_id: str | None,
+) -> None:
+    _, factory = operation_database
+    make_duplicate_issue_actionable(factory)
+    with factory.begin() as session:
+        payment = session.get(PaymentRecord, "PAY-1002")
+        assert payment is not None
+        payment.obligation_id = obligation_id
+        if obligation_id is None:
+            payment.obligation_amount = None
+
+    with pytest.raises(BusinessRuleError) as error:
+        action_tools(factory, ids).issue_refund(
+            duplicate_refund_request(), actor(ActorRole.APPROVER)
+        )
+
+    assert error.value.code == "proposal_evidence_changed"
+    with factory() as session:
+        assert (
+            session.scalar(
+                select(func.count())
+                .select_from(RefundRecord)
+                .where(RefundRecord.issue_id == "ISSUE-1001")
+            )
+            == 0
+        )
+
+
+@pytest.mark.parametrize(
+    "changed",
+    [{"payment_id": "PAY-1001"}, {"amount": Decimal("1498.00")}],
+)
+def test_caller_cannot_choose_other_capture_or_change_authoritative_amount(
+    operation_database: tuple[Engine, sessionmaker[Session]],
+    ids: Callable[[str], str],
+    changed: dict[str, object],
+) -> None:
+    _, factory = operation_database
+    make_duplicate_issue_actionable(factory)
+    request = duplicate_refund_request().model_copy(update=changed)
+
+    with pytest.raises(BusinessRuleError) as error:
+        action_tools(factory, ids).issue_refund(request, actor(ActorRole.APPROVER))
+
+    assert error.value.code == "proposal_evidence_changed"
+    with factory() as session:
+        assert (
+            session.scalar(
+                select(func.count())
+                .select_from(RefundRecord)
+                .where(RefundRecord.issue_id == "ISSUE-1001")
+            )
+            == 0
+        )
+
+
+def test_mixed_capture_currencies_require_review_not_false_no_action(
+    operation_database: tuple[Engine, sessionmaker[Session]],
+    ids: Callable[[str], str],
+) -> None:
+    _, factory = operation_database
+    make_duplicate_issue_actionable(factory)
+    with factory.begin() as session:
+        payment = session.get(PaymentRecord, "PAY-1001")
+        assert payment is not None
+        payment.currency = "EUR"
+    with factory() as session:
+        investigation = investigate_issue(session, "CASE-1001", "ISSUE-1001")
+        assert investigation.finding == IssueFinding.UNDETERMINED
+        assert investigation.proposal is None
+        assert investigation.error and "currencies" in investigation.error
+    with pytest.raises(BusinessRuleError) as error:
+        action_tools(factory, ids).issue_refund(
+            duplicate_refund_request(), actor(ActorRole.APPROVER)
+        )
+    assert error.value.code == "proposal_evidence_changed"
+
+
+def test_overlapping_received_returns_cannot_refund_same_item_twice(
+    operation_database: tuple[Engine, sessionmaker[Session]],
+    ids: Callable[[str], str],
+) -> None:
+    _, factory = operation_database
+    with factory.begin() as session:
+        issue = session.get(CaseIssueRecord, "ISSUE-1002")
+        refund = session.get(RefundRecord, "REF-2001")
+        assert issue is not None and refund is not None
+        issue.finding = IssueFinding.CONFIRMED
+        issue.status = CaseIssueStatus.ACTION_PENDING
+        refund.status = RefundStatus.FAILED
+        session.add(
+            ReturnRecord(
+                return_id="RET-OVERLAP",
+                order_id="ORD-48391",
+                customer_id="CUST-1001",
+                status=ReturnStatus.RECEIVED,
+                created_at=NOW,
+                received_at=NOW,
+            )
+        )
+        session.flush()
+        session.add(
+            ReturnItemRecord(
+                return_id="RET-OVERLAP",
+                order_item_id="ITEM-1002",
+                order_id="ORD-48391",
+                quantity=1,
+                reason="Conflicting second warehouse receipt of the same purchased unit",
+            )
+        )
+    with factory() as session:
+        investigation = investigate_issue(session, "CASE-1001", "ISSUE-1002")
+        assert investigation.finding == IssueFinding.UNDETERMINED
+        assert investigation.proposal is None
+        assert investigation.error and "overlap" in investigation.error
+    request = IssueRefundRequest(
+        idempotency_key="overlapping-return",
+        case_id="CASE-1001",
+        issue_id="ISSUE-1002",
+        payment_id="PAY-1001",
+        return_id="RET-3001",
+        amount=Decimal("200.00"),
+        currency="USD",
+        kind=RefundKind.RETURN,
+        reason="Attempted replacement with conflicting received-unit records",
+    )
+    with pytest.raises(BusinessRuleError) as error:
+        action_tools(factory, ids).issue_refund(request, actor(ActorRole.APPROVER))
+    assert error.value.code == "proposal_evidence_changed"
+    with factory() as session:
+        assert (
+            session.scalar(
+                select(func.count())
+                .select_from(RefundRecord)
+                .where(RefundRecord.return_id == "RET-3001")
+            )
+            == 1
+        )
 
 
 def test_notification_and_ticket_actions_validate_and_replay(

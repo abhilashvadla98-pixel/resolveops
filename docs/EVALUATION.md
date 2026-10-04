@@ -6,34 +6,66 @@ case resolution.
 
 Every evaluation set has a manifest under `evals/manifests/` with a stable dataset ID, semantic
 version, exact record count, SHA-256 hash, task type, split, creation method, and review status. The
-seven manifests currently cover 154 records. Tests verify every hash so a changed dataset cannot be
+eight manifests currently cover 164 records. Tests verify every hash so a changed dataset cannot be
 mistaken for the previous baseline.
 
 ## Multi-agent trajectory contracts
 
 `python scripts/run_agent_evaluation.py` runs 22 hand-authored synthetic scenarios through the real
 hierarchical orchestrator with a deterministic offline provider double. Together with the 24
-customer and 14 employee-IT workflow cases, the repository contains 60 versioned operational
-workflow/trajectory cases. The agent suite checks all five roles, bounded read tools, critic
+customer and 14 employee-IT workflow cases, these three suites contain 60 versioned operational
+workflow/trajectory cases; the integrated suite adds ten business tasks. The agent suite checks all five roles, bounded read tools, critic
 decisions, replanning, escalation, forbidden writes, call budgets, and both domains. It makes no
 paid model calls and does not claim live-model quality or human labels. The stored report includes
 the dataset checksum, environment, measured local latency, estimated context tokens, and explicit
 limitations.
 
-## Live stochastic multi-agent evaluation
+## Integrated customer business-outcome evaluation
 
-`scripts/run_live_agent_evaluation.py` is the provider-backed companion to the offline gate. It
-runs 10 difficult curated tasks three times each and records outcome, role routing, read tools,
-policy citations, critic decisions, per-agent and end-to-end latency, tokens, tool/model calls, and
-cost only when explicit pricing is configured. Quota/provider failures remain visible rather than
-being dropped. The runner refuses to use the previously exposed credential and requires the local
-rotation acknowledgement before it starts.
+`scripts/run_integrated_agent_evaluation.py` starts with a **new, undetermined complaint**, not a
+preconfirmed case. Ten tasks vary actual source records: duplicate and split captures, authorization
+holds, missing obligations/policy, prior refunds on another case, rejected approval, and return
+eligibility. It uses `AgentReadToolRegistry`, the normal durable `CustomerIssueWorkflow`, explicit
+synthetic test approval and the normal settlement-event processor. Expectations exist only in the
+fixture/scorer, never the provider context. Required record reads cannot be replaced by case
+classification summaries.
+
+Each immutable report saves the intake, source records, real tool observations, structured agent
+outputs, approval/events, final database state, exact refund target/amount, calls, usage and limits.
+Agent calls use the separate `RESOLVEOPS_AGENT_MAX_OUTPUT_TOKENS` setting (default 1600), not the
+ordinary single-response Gemini limit. Lower explicit limits are honored and can cause safe
+truncation failures. Full prompt/schema hashes and source-tree/diff digests identify dirty-tree
+runs; successful recovery does not erase a failed invocation. Missing provider usage remains null
+in invocation records; estimated budget reservations are not measured token consumption.
+The 90-second orchestration deadline is checked at call boundaries; an in-flight provider request
+can exceed it. Provider transport uses its configured timeout/retry bounds, not a strict 90-second
+end-to-end cancellation timer.
+The scorer verifies read-only investigation, correct business outcome, no extra refund, explicit
+approval and final issue/settlement state. A deliberately scripted provider also tests this route;
+its result proves integration, not model quality.
 
 ```powershell
-.\.venv\Scripts\python.exe scripts/run_live_agent_evaluation.py --tasks 10 --trials 3
+.\.venv\Scripts\python.exe scripts/run_integrated_agent_evaluation.py --mode rules_only --trials 3
+# Requires owner-authorized free-tier quota, a rotated local key and rotation acknowledgement:
+.\.venv\Scripts\python.exe scripts/run_integrated_agent_evaluation.py --mode live_multi_role --tasks 1 --trials 1
+# Run only after inspecting the initial trial; quota/rate limits stop the batch:
+.\.venv\Scripts\python.exe scripts/run_integrated_agent_evaluation.py --mode live_multi_role --tasks 10 --trials 3
 ```
 
-The offline 22-case suite remains the required deterministic regression gate.
+Reports default to ignored `artifacts/integrated-evaluation/` and refuse overwrites. The local
+rules-only run on 2026-10-04 passed 30/30 repeated regression trials; this is **not stochastic AI
+evidence**. Live development failures are separate immutable artifacts, not discarded attempts.
+Until a final integrated live report exists, do not claim a passing 30-trial live result. The
+single-agent comparison and human response-quality labels remain outstanding. These service-level
+runs do not test HTTP authentication or Render deployment and use simulated business providers.
+
+## Provider-backed orchestration contract smoke
+
+`scripts/run_live_agent_evaluation.py` and `scripts/run_verified_live_trace.py` invoke Gemini but use
+`OfflineTrajectoryTools` fixtures. They check orchestration/structured-output contracts, not business
+resolution through real application tools. Expected scenario labels have been removed from tool
+payloads. Reports say `provider_backed_contract_smoke`, identify fixture tools and explicitly set
+`business_outcome_evaluated=false`. The offline 22-case suite remains the deterministic gate.
 
 ### Recorded live multi-agent results
 
@@ -46,15 +78,19 @@ The complete failure evidence remains in `evals/agents/live-report.json`.
 After that run, one separately recorded provider-backed case passed the full seven-call route:
 supervisor, investigation with rework, policy with rework, resolution and critic. It used two read
 tools, cited policy, received an `accept` critic decision and reached `ready_for_control_plane` in
-8.07 seconds. This trace is stored in `evals/agents/verified-live-trace.json`. It proves the path can
-complete, but it is not presented as a replacement for the failed stochastic sample.
+8.07 seconds. This trace is stored in `evals/agents/verified-live-trace.json`. Those two reads were
+contract fixtures, not real case/payment/policy-store reads. It proves provider-backed orchestration
+can complete with those fixtures, not normal case resolution, deployed AI operation, or a replacement
+for the failed stochastic sample. Historical results also precede the stricter source-grounding
+contracts introduced on 2026-10-04.
 
 ## Reviewed-memory ablation
 
 `scripts/run_memory_ablation.py` compares eight paired trajectories with reviewed memory disabled
 and enabled. The stored `evals/agents/memory-ablation.json` report measures outcome, routing,
 latency, tokens, calls and critic behavior. It proves the tenant- and policy-scoped memory plumbing,
-not live answer-quality improvement. Memory remains typed, expiring, advisory and eligible only
+not live answer-quality improvement: its deterministic provider does not change its answer based
+on retrieved memory. An eight-pair rerun on 2026-10-04 retained equal outcomes/routing. Memory remains typed, expiring, advisory and eligible only
 after human review; arbitrary model text is never promoted.
 
 ## Retrieval evaluation
@@ -107,7 +143,8 @@ Run the gate with:
 
 The checked-in measured result is 24 of 24 cases passing. Category counts and the dataset checksum
 are recorded in `evals/workflows/README.md`; detailed observations are in
-`evals/workflows/latest-report.json`. These numbers are reproducible regression evidence only, not
+`evals/workflows/settlement-v2-report.json`. The older `latest-report.json` is historical version-1
+evidence. These numbers are reproducible regression evidence only, not
 an estimate of general accuracy, business savings, or production readiness.
 
 ## Employee and IT workflow regression
@@ -196,8 +233,9 @@ cases when they can be represented safely.
 
 ## Current limitations
 
-- The customer and IT workflow sets have 38 carefully reviewed cases; the separate trajectory set
-  brings operational workflow/trajectory coverage to 60, not the longer-term 300–500 case target.
+- The customer and IT workflow sets have 38 author-defined regression cases; the separate 22
+  trajectory contracts and 10 integrated cases are not human labels or statistically independent
+  evidence of general accuracy.
 - It varies a realistic flagship case topology; it is not a statistically representative customer
   distribution.
 - The required regression gates use deterministic offline embeddings and a scripted reasoning

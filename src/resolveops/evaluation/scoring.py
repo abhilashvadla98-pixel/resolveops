@@ -27,6 +27,17 @@ def score_workflow_case(
         ),
         _assertion("verified", expected.verified, observation.verified),
     ]
+    for name in ("status", "issue_status", "refund_status"):
+        expected_value = getattr(expected, name)
+        actual_value = getattr(observation, name)
+        if expected_value is not None:
+            assertions.append(
+                _assertion(
+                    name,
+                    expected_value.value,
+                    actual_value.value if actual_value is not None else None,
+                )
+            )
     if expected.required_policy_document_id is not None:
         assertions.append(
             _assertion(
