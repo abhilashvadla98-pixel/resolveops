@@ -39,7 +39,22 @@ the demo URL and old videos do not establish that current changes are deployed o
 | Secret safety | Owner revokes exposed key; replacement local only; no secrets in tracked source or artifacts |
 | GitHub release | Reviewed change, clean checks on release commit, accurate metadata/links/version and no large generated data |
 
-## Recorded result — v1.2.0
+## Recorded result — v1.2.1
+
+Application commit: `5179640c495960293a6dfa7ae1165ae351d5c184`.
+
+- **Deployed live workflow:** one `CASE-1001` browser run completed the normal five-role Gemini
+  investigation, deterministic validation, separate approval, controlled refund submission, pending
+  settlement, fresh final verification and audit. The 85.28-second recording is release evidence for
+  that run, not a reliability or latency benchmark.
+- **CI:** all six jobs passed for PR #13 and the merged application commit.
+- **Presentation:** eight current deployed screenshots and the technical walkthrough show the exact
+  live-agent/control-plane boundary. Historical rules-only media remains labeled historical.
+- **Human review:** still 0/24. Only the owner can supply these labels.
+- **Limits:** the incomplete 30-trial stochastic sample remains incomplete; no live bank, CRM,
+  directory or Git-host integration is claimed.
+
+## Previous recorded result — v1.2.0
 
 Core release commit: `020ef9d2ecd6311d7b99f73d9030c6fb0fbe5aac`.
 
@@ -58,12 +73,9 @@ Core release commit: `020ef9d2ecd6311d7b99f73d9030c6fb0fbe5aac`.
 - **Credentials:** the repository credential-pattern scan passed. Live tests required the local
   rotation acknowledgement. No replacement key is shipped; the owner must keep the old key revoked.
 
-The source release does not mean every evidence gate is complete. In particular, public inference
-remains disabled while the live reliability and public abuse-control gates are unmet.
-
-The public configuration deliberately disables provider inference. Enabling it is a separate
-deployment decision requiring safe quota, credentials, per-visitor budgets and abuse controls.
-Do not describe a rules-only public run as live multi-agent execution.
+The source release does not mean every evidence gate is complete. Public inference is narrowly
+enabled for complex synthetic investigations with safe budgets. Do not describe simple rules-only
+runs as live multi-agent execution, and do not infer reliability from the one recorded deployed run.
 
 ## Claims not established
 

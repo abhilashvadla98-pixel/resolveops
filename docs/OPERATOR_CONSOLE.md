@@ -119,12 +119,13 @@ $env:RESOLVEOPS_SCREENSHOT_DIR = "$PWD/artifacts/workflow-proof"
 The optional directory receives approval-target, pending/settled/failed refund and IT
 intake/approval/verification screenshots. Without it, captures go to temporary test directories.
 The artifacts directory is ignored by Git. Inspect images before promoting selected captures to
-public documentation. Existing checked-in images and videos are historical until explicitly
-replaced. The current local 63.2-second rules-only recording is
-`artifacts/resolveops-workflow-repair-20261004.webm`; it is not yet a published release asset.
-`scripts/record_product_demo.py --ffmpeg <path-to-ffmpeg>` reproduces the current synthetic
-walkthrough, removes startup frames and verifies the 60–90 second duration. It deliberately
-disables provider calls. The previous video remains intact and historical.
+public documentation. Current deployed live-agent screenshots are in
+`docs/assets/live-agent-20261004/`. `scripts/record_public_live_agent_demo.py` records the bounded
+complex-case investigation, persisted five-role trace, approval, pending action, fresh settlement
+verification and audit from the public sandbox. Its v1.2.1 recording is a release asset. Running it
+spends provider quota and should not be used as an ordinary health check.
+`scripts/record_product_demo.py` remains the rules-only local recorder; that earlier video is
+historical.
 
 ## Current limits
 

@@ -4,11 +4,55 @@ Two workflows share one console: customer refund complaints and employee reposit
 All business records, money movement, access grants and notices in the sandbox are synthetic.
 No bank, CRM, directory or Git provider is changed.
 
-This guide describes **version 1.2.0**, tested locally on **2026-10-04**. Check the
+This guide describes **version 1.2.1**, verified on the deployed sandbox on **2026-10-04**. Check the
 [deployment record](PUBLIC_DEMO.md) and `/health/build` before using the
 [public demo](https://resolveops-demo.onrender.com/console) as release evidence. A sleeping free
 instance can take time to start. The repository quick start also runs the same synthetic workflow
 locally. Open /console and wait until the workspace is connected.
+
+## Flagship live-agent walkthrough
+
+This is the shortest honest recruiter demonstration. It uses fictional data but real Gemini role
+calls. The normal **Investigate** action decides whether the specialist graph is needed; there is no
+separate toy agent button.
+
+1. Open **Customer Operations** and select `CASE-1001`, a combined duplicate-charge and missing-return-refund complaint.
+
+   ![Complex synthetic case selected in the deployed console](assets/live-agent-20261004/02-complex-case.png)
+
+2. Select **Investigate**. The supervisor routes the case; investigator and policy roles read scoped
+   records; the resolution role drafts a typed recommendation; the independent critic checks evidence,
+   citations and unsafe actions. The trace is persisted with real call, tool-read and token counts.
+
+   ![Persisted five-role live-agent trace with grounded evidence](assets/live-agent-20261004/03-live-agent-trace.png)
+
+3. Review the grounded proposal. Agent output remains advisory. Deterministic code verifies the exact
+   evidence IDs, policy citations, payment target, amount and allowed action.
+
+   ![Grounded proposal before any sensitive action](assets/live-agent-20261004/04-grounded-proposal.png)
+
+4. Open the approval and record the explicitly simulated second-person decision. Approval is separate
+   from investigation and is revalidated before execution.
+
+   ![Human approval boundary for the exact refund](assets/live-agent-20261004/05-human-approval.png)
+
+5. After approval, the simulator records a pending refund. The case stays open because submission is
+   not settlement.
+
+   ![Controlled action waiting for settlement](assets/live-agent-20261004/06-settlement-pending.png)
+
+6. Select **Simulate settlement success**. A fresh provider read must confirm completion before the
+   issue is resolved and a customer-response draft is shown.
+
+   ![Fresh final-state verification](assets/live-agent-20261004/07-fresh-verification.png)
+
+7. Open **Audit** to show the retained decisions, actors and outcomes.
+
+   ![Audit trail for the completed deployed walkthrough](assets/live-agent-20261004/08-audit-trail.png)
+
+The [85.28-second recording](https://github.com/abhilashvadla98-pixel/resolveops/releases/download/v1.2.1/resolveops-live-agent-walkthrough-v1.2.1.webm)
+shows this complete deployed run. It proves that the configured path worked once; it does not prove
+general model accuracy, availability or production payment integration.
 
 ## Customer Operations: complaint to settled refund
 
@@ -140,7 +184,12 @@ not deploy code or repair a real external system.
 
 ## Media status
 
-The [63.2-second local workflow recording](https://github.com/abhilashvadla98-pixel/resolveops/releases/download/v1.2.0/resolveops-workflow-repair-20261004.webm)
+The v1.2.1 screenshots above and 85.28-second recording were captured from the deployed Render
+sandbox after `/health/build` reported commit `5179640c495960293a6dfa7ae1165ae351d5c184`.
+They contain synthetic business records and no credentials. The video shows real Gemini role calls
+and simulated business-system actions; no bank, CRM or Git provider was changed.
+
+The older [63.2-second local workflow recording](https://github.com/abhilashvadla98-pixel/resolveops/releases/download/v1.2.0/resolveops-workflow-repair-20261004.webm)
 starts after the workspace loads and shows
 new customer intake, approval, pending settlement, success, failed settlement on a separate order,
 employee request/manager approval/verification, an MFA safety stop and audit history. Captions

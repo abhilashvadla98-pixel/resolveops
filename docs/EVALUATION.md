@@ -76,7 +76,18 @@ The [v1.2.0 release](https://github.com/abhilashvadla98-pixel/resolveops/release
 includes the immutable raw report and compact per-role summary. Core commit `466a22f` has the same
 `src/` and `scripts/` Git content as release commit `020ef9d`; the source did not change during
 the batch. Earlier calibration failures remain separate local artifacts, not discarded or mixed
-into this frozen sample. Public inference stays disabled. Owner labels remain **0/24**.
+into this frozen sample. Owner labels remain **0/24**.
+
+### Deployed v1.2.1 end-to-end observation
+
+After the bounded evidence-loading and critic-revision fixes, one deployed `CASE-1001` browser run
+completed the normal five-role Gemini path, deterministic recommendation validation, separate human
+approval, typed refund action, pending settlement and fresh final verification. The public walkthrough
+records the persisted role trace and reports seven model calls, seven tool reads and 21,710 tokens.
+Cost remains **unknown** because no verified price calculation was captured. The 85.28-second video
+duration includes browser interaction and must not be presented as model latency. This is evidence
+that the deployed integration worked for one difficult synthetic case, not a completed stochastic
+benchmark, SLO or architecture comparison. The incomplete 30-trial sample above remains unchanged.
 
 ## Provider-backed orchestration contract smoke
 

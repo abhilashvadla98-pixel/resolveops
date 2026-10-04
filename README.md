@@ -9,9 +9,11 @@ and verifies the result. An accepted refund request is **not** a completed refun
 [Synthetic demo](https://resolveops-demo.onrender.com/console) ·
 [Workflow guide](docs/DEMO_WALKTHROUGH.md) · [Release status](docs/RELEASE_GATES.md)
 
-The public sandbox uses fictional records and local provider simulators. Its configuration disables
-live AI calls. Check the [deployment record](docs/PUBLIC_DEMO.md) for the last verified build;
-`/health/build` identifies the version actually running. Free hosting can take time to wake.
+The public sandbox uses fictional records and local business-system simulators. Complex customer
+cases run a bounded Gemini-backed specialist graph; simple cases and Employee IT stay deterministic.
+No model can approve or execute a sensitive action. Check the
+[deployment record](docs/PUBLIC_DEMO.md) for the exact verified build; `/health/build` identifies
+the version actually running. Free hosting can take time to wake.
 
 ## Two bounded workflows
 
@@ -59,18 +61,21 @@ stops, not a general autonomous supervisor. Simple cases do not need model calls
 
 ## Try the workflow
 
-1. Open **Customer Operations → New case**. Use `CUST-DEMO-A`, `ORD-DEMO-A` and
-   “I was charged twice for this order.”
-2. Select **Investigate**. Inspect the obligation, exact capture, amount and policy. No refund exists yet.
+1. Open **Customer Operations** and select the seeded combined case `CASE-1001`.
+2. Select **Investigate**. Inspect the persisted supervisor, investigator, policy, resolution and
+   independent-review trace. The agents read synthetic case, payment, return and policy records;
+   they can recommend, but cannot move money.
 3. Select **Review approval**, enter a reason and approve using the explicitly simulated reviewer.
 4. Expect **Refund submitted; settlement pending**. The case remains open.
 5. Select **Simulate settlement success**. Only then should the issue resolve. Repeat in a fresh
    workspace with **Simulate settlement failure** to see the recovery path.
 6. Open **Employee IT → New access request** for the requester/manager/provisioning journey.
 
-See the [illustrated guide](docs/DEMO_WALKTHROUGH.md) and
-[63-second workflow recording](https://github.com/abhilashvadla98-pixel/resolveops/releases/download/v1.2.0/resolveops-workflow-repair-20261004.webm).
-The recording uses local synthetic systems and rules-only execution. The existing
+See the [illustrated guide](docs/DEMO_WALKTHROUGH.md) and the
+[85-second live-agent walkthrough](https://github.com/abhilashvadla98-pixel/resolveops/releases/download/v1.2.1/resolveops-live-agent-walkthrough-v1.2.1.webm).
+It was recorded against the deployed v1.2.1 sandbox and shows real Gemini role calls, their grounded
+trace, separate human approval, controlled synthetic refund submission and fresh settlement
+verification. It is one observed successful run, not a reliability benchmark. The existing
 [42-second teaser](https://github.com/abhilashvadla98-pixel/resolveops/releases/download/v1.0.0/resolveops-product-demo.webm)
 and [72-second recording](https://github.com/abhilashvadla98-pixel/resolveops/releases/download/v1.1.0/resolveops-technical-walkthrough.webm)
 show an earlier release, not the repaired settlement lifecycle or current live-agent behavior.
@@ -83,6 +88,7 @@ show an earlier release, not the repaired settlement lifecycle or current live-a
 | New-request browser journeys | [Customer tests](tests/test_customer_journey_browser.py), [IT tests](tests/test_employee_it_browser.py) | Intake, approval, pending, settlement/failure and grant verification |
 | Integrated agent evaluation | [Ten tasks](evals/integrated/cases.jsonl), [runner](scripts/run_integrated_agent_evaluation.py) | Application read tools and business outcomes; expectations excluded from model input |
 | Live integrated sample | [Release evidence](https://github.com/abhilashvadla98-pixel/resolveops/releases/tag/v1.2.0) | 30 requested; 1 passed, 1 quota failure, 28 not run. Not a reliability claim |
+| Deployed live-agent walkthrough | [v1.2.1 release](https://github.com/abhilashvadla98-pixel/resolveops/releases/tag/v1.2.1) | One successful CASE-1001 run through real model roles, human approval, action and fresh verification; not an SLO |
 | Grounding and control | [Grounding tests](tests/test_agent_grounding.py), [workflow tests](tests/test_workflows.py) | Fabricated observations, altered actions and unsupported recommendations stop safely |
 | Combined complaint | [Two settlement-order tests](tests/test_combined_customer_journey.py) | Duplicate capture plus partial return; no repeat refund; both final events required |
 | Human review | [Evaluation guide](docs/EVALUATION.md) | 24 owner labels remain pending; code does not invent them |
