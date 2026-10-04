@@ -1,6 +1,7 @@
 from collections.abc import Iterator
 from contextlib import contextmanager
 from threading import Lock
+from time import monotonic
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -51,6 +52,9 @@ Principal = Annotated[SecurityPrincipal, Depends(get_principal)]
 
 _sqlite_checkpointers: dict[int, InMemorySaver] = {}
 _checkpointer_lock = Lock()
+_demo_agent_admission_lock = Lock()
+_demo_agent_session_runs: dict[str, int] = {}
+_last_demo_agent_started_at: float | None = None
 
 
 class ComplaintSubmission(DomainModel):
@@ -109,6 +113,40 @@ def _workflow_actor(principal: SecurityPrincipal) -> Actor:
     return principal.actor()
 
 
+def _admit_demo_agent_run(
+    session: Session,
+    body: StartWorkflow,
+    principal: SecurityPrincipal,
+    settings: Settings,
+) -> bool:
+    """Choose live specialists when admitted; otherwise preserve the rules workflow."""
+    if not settings.integrated_agents_enabled:
+        return False
+    if principal.authentication_method != "demo_session":
+        return True
+    customer_case = session.scalar(
+        select(CaseRecord)
+        .options(selectinload(CaseRecord.issues))
+        .where(CaseRecord.case_id == body.case_id)
+    )
+    if customer_case is None or len(customer_case.issues) <= 1:
+        return False
+    if settings.demo_agent_max_runs_per_session == 0:
+        return False
+    global _last_demo_agent_started_at
+    now = monotonic()
+    with _demo_agent_admission_lock:
+        used = _demo_agent_session_runs.get(principal.subject_id, 0)
+        if used >= settings.demo_agent_max_runs_per_session:
+            return False
+        cooldown = settings.demo_agent_global_cooldown_seconds
+        if _last_demo_agent_started_at is not None and now - _last_demo_agent_started_at < cooldown:
+            return False
+        _demo_agent_session_runs[principal.subject_id] = used + 1
+        _last_demo_agent_started_at = now
+        return True
+
+
 def _approval_actor(principal: SecurityPrincipal) -> Actor:
     if principal.authentication_method == "demo_session":
         return Actor(actor_id="DEMO-APPROVER", role=ActorRole.APPROVER)
@@ -124,7 +162,10 @@ def _factory(session: Session) -> tuple[Engine, sessionmaker[Session]]:
 
 @contextmanager
 def _workflow_service(
-    session: Session, principal: SecurityPrincipal
+    session: Session,
+    principal: SecurityPrincipal,
+    *,
+    live_agents_allowed: bool | None = None,
 ) -> Iterator[CustomerIssueWorkflow]:
     engine, factory = _factory(session)
     settings = Settings(database_url=SecretStr(engine.url.render_as_string(hide_password=False)))
@@ -132,13 +173,27 @@ def _workflow_service(
     if engine.dialect.name == "postgresql":
         database_url = engine.url.render_as_string(hide_password=False)
         with open_postgres_checkpointer(database_url) as postgres_saver:
-            yield _build_workflow(factory, lifecycle, postgres_saver, principal, settings)
+            yield _build_workflow(
+                factory,
+                lifecycle,
+                postgres_saver,
+                principal,
+                settings,
+                live_agents_allowed=live_agents_allowed,
+            )
         return
     with _checkpointer_lock:
         memory_saver = _sqlite_checkpointers.setdefault(
             id(engine), InMemorySaver(serde=checkpoint_serializer())
         )
-    yield _build_workflow(factory, lifecycle, memory_saver, principal, settings)
+    yield _build_workflow(
+        factory,
+        lifecycle,
+        memory_saver,
+        principal,
+        settings,
+        live_agents_allowed=live_agents_allowed,
+    )
 
 
 def _build_workflow(
@@ -147,12 +202,17 @@ def _build_workflow(
     saver: BaseCheckpointSaver[Any],
     principal: SecurityPrincipal,
     settings: Settings,
+    *,
+    live_agents_allowed: bool | None = None,
 ) -> CustomerIssueWorkflow:
+    use_live_agents = (
+        settings.integrated_agents_enabled if live_agents_allowed is None else live_agents_allowed
+    )
     agent_runtime = (
         HierarchicalAgentOrchestrator(
             build_agent_runtime(factory, settings, tenant_id=principal.tenant_id)
         )
-        if settings.integrated_agents_enabled
+        if use_live_agents
         else None
     )
     return CustomerIssueWorkflow(
@@ -332,7 +392,14 @@ def start_workflow(
         actor=_workflow_actor(principal), investigation_only=True, **body.model_dump()
     )
     try:
-        with _workflow_service(session, principal) as workflow:
+        engine, _ = _factory(session)
+        settings = Settings(
+            database_url=SecretStr(engine.url.render_as_string(hide_password=False))
+        )
+        live_agents_allowed = _admit_demo_agent_run(session, body, principal, settings)
+        with _workflow_service(
+            session, principal, live_agents_allowed=live_agents_allowed
+        ) as workflow:
             return workflow.start(request)
     except WorkflowLifecycleError as exc:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=exc.message) from exc

@@ -305,3 +305,52 @@ def test_authorization_hold_does_not_create_a_refund(running_demo: str) -> None:
         expect(page.locator("#workflow-next-action")).to_be_hidden()
         expect(page.locator("#detail-issues .view-workflow")).to_have_text("View outcome")
         browser.close()
+
+
+@pytest.mark.browser
+def test_live_agent_evidence_panel_shows_persisted_role_telemetry(
+    running_demo: str,
+) -> None:
+    with sync_playwright() as playwright:
+        browser = playwright.chromium.launch()
+        page: Page = browser.new_page(viewport={"width": 1440, "height": 1000})
+        page.goto(f"{running_demo}/console")
+        expect(page.locator("#sidebar-connection")).to_have_text("Connected")
+        expect(page.locator("#health-label")).to_have_text("Service healthy")
+        page.locator("#open-customer-workflow").click()
+        page.evaluate(
+            """
+            renderAgentAnalysis({
+              workflow_id: "WF-LIVE-PROOF",
+              status: "ready_for_control_plane",
+              agent_call_count: 5,
+              tool_call_count: 3,
+              usage: {input_tokens: 1200, output_tokens: 300, estimated_cost_usd: null},
+              supervisor: {goal: "Investigate the combined complaint", next_agent: "investigation"},
+              investigation: {evidence_ids: ["EOBS-1", "EOBS-2"], complete: true},
+              policy: {policy_interpretation: "Policy evidence supports review", missing_policy: false, citations: ["P1"]},
+              resolution: {issue_resolutions: [{recommendation: "Propose the verified refund"}], escalation_needed: false},
+              critic: {summary: "Evidence and citations validated", decision: "accept"},
+              agent_run_ids: ["ARUN-SUPERVISOR-LIVE"]
+            }, [{
+              agent_run_id: "ARUN-SUPERVISOR-LIVE",
+              role: "supervisor",
+              status: "completed",
+              provider: "gemini",
+              model: "gemini-flash",
+              latency_ms: 842,
+              input_tokens: 600,
+              output_tokens: 120,
+              tool_call_count: 0
+            }])
+            """
+        )
+        panel = page.locator("#agent-summary")
+        expect(panel).to_be_visible()
+        expect(panel).to_contain_text("5 model calls")
+        expect(panel).to_contain_text("Persisted execution records")
+        expect(panel).to_contain_text("Supervisor · Completed")
+        expect(panel).to_contain_text("842 ms")
+        expect(panel).to_contain_text("720 tokens")
+        expect(panel).to_contain_text("ARUN-SUPERVISOR-LIVE")
+        browser.close()

@@ -52,6 +52,8 @@ class Settings(BaseSettings):
     agent_max_output_tokens: int = Field(default=1_600, ge=100, le=4_096)
     gemini_key_rotated: bool = False
     integrated_agents_enabled: bool = False
+    demo_agent_max_runs_per_session: int = Field(default=0, ge=0, le=5)
+    demo_agent_global_cooldown_seconds: int = Field(default=0, ge=0, le=3_600)
     agent_queue_enabled: bool = False
     agent_queue_capacity: int = Field(default=500, ge=10, le=100_000)
     agent_job_lease_seconds: int = Field(default=120, ge=30, le=3_600)

@@ -21,9 +21,11 @@ def test_operator_console_serves_secure_shell_and_local_assets() -> None:
     assert ">Audit<" in page.text
     assert "Open customer workflow" in page.text
     assert "Open employee IT workflow" in page.text
-    assert 'src="/console/app.js?v=20261004a"' in page.text
+    assert "Checking whether live specialist reasoning is available" in page.text
+    assert 'src="/console/app.js?v=20261004b"' in page.text
+    assert 'id="inference-mode"' in page.text
     assert 'src="/console/it_intake.js?v=20261004a"' in page.text
-    assert 'href="/console/app.css?v=20261004a"' in page.text
+    assert 'href="/console/app.css?v=20261004b"' in page.text
     assert 'role="dialog"' in page.text
     assert 'aria-modal="true"' in page.text
     assert styles.status_code == 200
@@ -32,6 +34,11 @@ def test_operator_console_serves_secure_shell_and_local_assets() -> None:
     assert "--bg:#f6f7f9" in styles.text
     assert "glow" not in styles.text
     assert script.status_code == 200
+    assert "Investigate · live agents when available" in script.text
+    assert "agent_call_count" in script.text
+    assert "agent_run_ids" in script.text
+    assert "Persisted execution records" in script.text
+    assert "/agent-workflows/${encodeURIComponent(workflowId)}/runs" in script.text
     assert script.headers["cache-control"] == "no-store"
     assert "localStorage" not in script.text
     assert "sessionStorage" not in script.text

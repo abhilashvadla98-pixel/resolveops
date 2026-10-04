@@ -18,7 +18,7 @@ FROM ${PYTHON_IMAGE} AS runtime
 
 ARG APP_UID=10001
 ARG APP_GID=10001
-ARG VERSION=1.2.0
+ARG VERSION=1.2.1
 ARG REVISION=local
 
 LABEL org.opencontainers.image.title="ResolveOps" \
