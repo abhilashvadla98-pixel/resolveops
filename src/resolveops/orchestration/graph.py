@@ -2,6 +2,7 @@ from typing import Any, cast
 
 from langgraph.graph import END, START, StateGraph
 
+from resolveops.agents.grounding import observation_context
 from resolveops.agents.models import (
     AgentDomain,
     AgentRole,
@@ -80,6 +81,7 @@ class HierarchicalAgentOrchestrator:
         builder.add_node("customer_operations", self.customer_subgraph)
         builder.add_node("employee_it", self.employee_it_subgraph)
         builder.add_node("independent_critic", self._criticize)
+        builder.add_node("revise_resolution", self._revise_resolution)
         builder.add_node("ready_for_control_plane", self._ready)
         builder.add_node("recovery", self.recovery_subgraph)
         builder.add_node("escalate", self._escalate)
@@ -103,10 +105,11 @@ class HierarchicalAgentOrchestrator:
             self._route_critic,
             {
                 "accept": "ready_for_control_plane",
-                "revise": "supervisor",
+                "revise": "revise_resolution",
                 "escalate": "recovery",
             },
         )
+        builder.add_edge("revise_resolution", "independent_critic")
         builder.add_edge("recovery", "escalate")
         builder.add_edge("ready_for_control_plane", END)
         builder.add_edge("escalate", END)
@@ -156,6 +159,57 @@ class HierarchicalAgentOrchestrator:
             parent_run_id=state["supervisor_run_id"],
         )
         return {"critic": report, "agent_run_ids": [run_id], "status": "critic_complete"}
+
+    def _revise_resolution(self, state: HierarchicalAgentState) -> dict[str, object]:
+        """Revise the proposal without repeating authoritative source reads.
+
+        A critic can request one bounded correction. The same grounded evidence and
+        policy are reused; the graph does not restart the costly investigation or
+        grant the model any new authority.
+        """
+        memory_results = self.runtime.reviewed_memory_context(
+            tenant_id=state["tenant_id"],
+            investigation_results=list(state.get("investigation_results", [])),
+            policy=state["policy"],
+        )
+        context = self.runtime.context_builder.build(
+            role=AgentRole.RESOLUTION,
+            workflow_id=state["workflow_id"],
+            case_id=state["case_id"],
+            tenant_id=state["tenant_id"],
+            objective=state["objective"],
+            facts=[state["investigation"].model_dump(mode="json")],
+            prior_outputs=[
+                state["supervisor"].model_dump(mode="json"),
+                state["policy"].model_dump(mode="json"),
+                state["resolution"].model_dump(mode="json"),
+                state["critic"].model_dump(mode="json"),
+            ],
+            tool_results=[
+                observation_context(item) for item in state.get("investigation_results", [])
+            ],
+            policy_results=[
+                item.model_dump(mode="json") for item in state.get("policy_results", [])
+            ],
+            memory_results=memory_results,
+            valid_evidence_ids=list(state["investigation"].evidence_ids),
+            valid_policy_citation_ids=list(state["policy"].citations),
+        )
+        proposal, run_ids = self.runtime.resolve_with_validation(
+            tenant_id=state["tenant_id"],
+            workflow_id=state["workflow_id"],
+            trace_id=state["trace_id"],
+            context=context,
+            investigation=state["investigation"],
+            policy=state["policy"],
+            parent_run_id=state["supervisor_run_id"],
+        )
+        return {
+            "resolution": proposal,
+            "agent_run_ids": run_ids,
+            "replan_count": state["replan_count"] + 1,
+            "status": "resolution_revised",
+        }
 
     @staticmethod
     def _route_domain(state: HierarchicalAgentState) -> str:
