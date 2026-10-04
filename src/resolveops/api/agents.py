@@ -62,6 +62,17 @@ def _require_access(principal: SecurityPrincipal) -> None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="permission denied")
 
 
+def _require_normal_workflow_for_demo(principal: SecurityPrincipal) -> None:
+    if principal.authentication_method == "demo_session":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=(
+                "Direct agent execution is disabled in the public demo. "
+                "Start a customer investigation through the normal operations workflow."
+            ),
+        )
+
+
 @router.post("", response_model=MultiAgentReasoningResult)
 def run_agent_workflow(
     body: AgentWorkflowRequest,
@@ -69,6 +80,7 @@ def run_agent_workflow(
     principal: Principal,
 ) -> MultiAgentReasoningResult:
     _require_access(principal)
+    _require_normal_workflow_for_demo(principal)
     settings = get_settings()
     if (
         not settings.integrated_agents_enabled
@@ -109,6 +121,7 @@ def enqueue_agent_workflow(
     principal: Principal,
 ) -> AgentWorkflowJob:
     _require_access(principal)
+    _require_normal_workflow_for_demo(principal)
     settings = get_settings()
     if not settings.agent_queue_enabled:
         raise HTTPException(

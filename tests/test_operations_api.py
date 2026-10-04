@@ -185,6 +185,40 @@ def test_disabled_inference_blocks_legacy_analysis_even_with_a_saved_key(
     assert response.status_code == 503
 
 
+def test_public_demo_cannot_bypass_normal_workflow_with_direct_agent_api(
+    operations_api: tuple[TestClient, dict[str, ActorRole], Engine],
+) -> None:
+    client, _role, _engine = operations_api
+    app.dependency_overrides[get_principal] = lambda: SecurityPrincipal(
+        subject_id="DEMO-DIRECT-AGENT",
+        tenant_id="TENANT-TEST",
+        role=ActorRole.APPROVER,
+        authentication_method="demo_session",
+    )
+    response = client.post(
+        "/api/v1/agent-workflows",
+        json={
+            "workflow_id": "DEMO-DIRECT-AGENT-WF",
+            "case_id": "CASE-1001",
+            "domain": "customer_operations",
+            "objective": "Bypass the normal workflow.",
+        },
+    )
+    assert response.status_code == 403
+    assert "normal operations workflow" in response.json()["detail"]
+    queued = client.post(
+        "/api/v1/agent-workflows/jobs",
+        json={
+            "workflow_id": "DEMO-DIRECT-AGENT-WF",
+            "case_id": "CASE-1001",
+            "domain": "customer_operations",
+            "objective": "Bypass the normal workflow.",
+            "idempotency_key": "DEMO-DIRECT-AGENT-JOB",
+        },
+    )
+    assert queued.status_code == 403
+
+
 def test_agent_job_api_is_idempotent_tenant_scoped_and_streams_terminal_events(
     operations_api: tuple[TestClient, dict[str, ActorRole], Engine],
     monkeypatch: pytest.MonkeyPatch,
