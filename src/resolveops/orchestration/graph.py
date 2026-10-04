@@ -2,7 +2,6 @@ from typing import Any, cast
 
 from langgraph.graph import END, START, StateGraph
 
-from resolveops.agents.grounding import observation_context
 from resolveops.agents.models import (
     AgentDomain,
     AgentRole,
@@ -180,16 +179,9 @@ class HierarchicalAgentOrchestrator:
             objective=state["objective"],
             facts=[state["investigation"].model_dump(mode="json")],
             prior_outputs=[
-                state["supervisor"].model_dump(mode="json"),
                 state["policy"].model_dump(mode="json"),
                 state["resolution"].model_dump(mode="json"),
                 state["critic"].model_dump(mode="json"),
-            ],
-            tool_results=[
-                observation_context(item) for item in state.get("investigation_results", [])
-            ],
-            policy_results=[
-                item.model_dump(mode="json") for item in state.get("policy_results", [])
             ],
             memory_results=memory_results,
             valid_evidence_ids=list(state["investigation"].evidence_ids),
