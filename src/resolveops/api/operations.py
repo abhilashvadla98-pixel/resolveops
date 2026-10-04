@@ -206,9 +206,7 @@ def _build_workflow(
     live_agents_allowed: bool | None = None,
 ) -> CustomerIssueWorkflow:
     use_live_agents = (
-        settings.integrated_agents_enabled
-        if live_agents_allowed is None
-        else live_agents_allowed
+        settings.integrated_agents_enabled if live_agents_allowed is None else live_agents_allowed
     )
     agent_runtime = (
         HierarchicalAgentOrchestrator(
