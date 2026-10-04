@@ -146,7 +146,9 @@ function renderWorkflowSummary(issueId = "") {
   const panel = byId("workflow-summary"); const next = byId("workflow-next-action");
   next.hidden = true; byId("agent-summary").hidden = true;
   if (!workflow) { panel.hidden = true; return; }
-  panel.hidden = false; if (workflow.agent_assessment) renderAgentAnalysis(workflow.agent_assessment, workflow.agent_runs || []);
+  panel.hidden = false;
+  if (workflow.agent_assessment) renderAgentAnalysis(workflow.agent_assessment, workflow.agent_runs || []);
+  else if ((workflow.agent_runs || []).length) renderStoppedAgentRuns(workflow);
   setText("workflow-title", workflow.status === "waiting_approval" ? "Review the refund proposal" : workflow.status === "escalated" ? "Investigation needs review" : "Workflow outcome");
   setText("workflow-subtitle", `${workflow.workflow_id} · Execution: ${titleCase(workflow.execution_mode || "unknown")}`);
   setStatus("workflow-status", workflow.status);
@@ -204,6 +206,17 @@ function renderAgentAnalysis(result, persistedRuns = []) {
   const cost = usage.estimated_cost_usd == null ? "Unknown" : `$${Number(usage.estimated_cost_usd).toFixed(6)}`;
   const runEvidence = persistedRuns.length ? `<h4>Persisted execution records</h4><div class="record-list">${persistedRuns.map((run) => { const runTokens = run.input_tokens == null || run.output_tokens == null ? "tokens unknown" : `${run.input_tokens + run.output_tokens} tokens`; const latency = run.latency_ms == null ? "latency unknown" : `${Math.round(run.latency_ms)} ms`; return `<div class="record"><strong>${escapeHtml(titleCase(run.role))} · ${escapeHtml(titleCase(run.status))}</strong><p>${escapeHtml(run.provider)} / ${escapeHtml(run.model)}</p><small>${escapeHtml(latency)} · ${escapeHtml(runTokens)} · ${escapeHtml(run.tool_call_count)} tool calls · ${escapeHtml(run.agent_run_id)}</small></div>`; }).join("")}</div>` : `<p>Persisted execution records are not available for this result.</p>`;
   byId("agent-summary-result").innerHTML = `<div class="detail-grid"><div class="detail-item"><span>Model calls</span><strong>${escapeHtml(result.agent_call_count)}</strong></div><div class="detail-item"><span>Tool reads</span><strong>${escapeHtml(result.tool_call_count)}</strong></div><div class="detail-item"><span>Tokens</span><strong>${escapeHtml((usage.input_tokens || 0) + (usage.output_tokens || 0))}</strong></div><div class="detail-item"><span>Estimated cost</span><strong>${escapeHtml(cost)}</strong></div></div><div class="record-list">${roles.map(([role, summary, outcome]) => `<div class="record"><strong>${escapeHtml(role)}</strong><p>${escapeHtml(summary)}</p><small>Outcome: ${escapeHtml(titleCase(outcome))}</small></div>`).join("")}</div>${runEvidence}${result.stop_reason ? `<p>Stopped: ${escapeHtml(result.stop_reason)}</p>` : ""}<p><strong>Trace:</strong> ${escapeHtml((result.agent_run_ids || []).join(", "))}</p><p><strong>Authority boundary:</strong> Agents can recommend. Policy rules, human approval, typed actions and fresh-state checks control every sensitive change.</p>`;
+}
+function renderStoppedAgentRuns(workflow) {
+  const runs = workflow.agent_runs || [];
+  const modelCalls = runs.length;
+  const toolCalls = runs.reduce((total, run) => total + (run.tool_call_count || 0), 0);
+  const knownTokens = runs.every((run) => run.input_tokens != null && run.output_tokens != null);
+  const tokens = knownTokens ? runs.reduce((total, run) => total + run.input_tokens + run.output_tokens, 0) : "Unknown";
+  byId("agent-summary").hidden = false;
+  setStatus("agent-summary-status", "failed");
+  setText("agent-summary-subtitle", `${workflow.workflow_id} · stopped safely before control-plane handoff`);
+  byId("agent-summary-result").innerHTML = `<div class="detail-grid"><div class="detail-item"><span>Persisted model calls</span><strong>${escapeHtml(modelCalls)}</strong></div><div class="detail-item"><span>Tool reads</span><strong>${escapeHtml(toolCalls)}</strong></div><div class="detail-item"><span>Tokens</span><strong>${escapeHtml(tokens)}</strong></div><div class="detail-item"><span>Sensitive action</span><strong>Blocked</strong></div></div><h4>Persisted execution records</h4><div class="record-list">${runs.map((run) => { const runTokens = run.input_tokens == null || run.output_tokens == null ? "tokens unknown" : `${run.input_tokens + run.output_tokens} tokens`; const latency = run.latency_ms == null ? "latency unknown" : `${Math.round(run.latency_ms)} ms`; return `<div class="record"><strong>${escapeHtml(titleCase(run.role))} · ${escapeHtml(titleCase(run.status))}</strong><p>${escapeHtml(run.provider)} / ${escapeHtml(run.model)}</p><small>${escapeHtml(latency)} · ${escapeHtml(runTokens)} · ${escapeHtml(run.tool_call_count)} tool calls · ${escapeHtml(run.error_classification || "no classified error")} · ${escapeHtml(run.agent_run_id)}</small></div>`; }).join("")}</div><p><strong>Authority boundary:</strong> This trace is retained for diagnosis. No approval or action can be created from an incomplete agent result.</p>`;
 }
 async function submitComplaint(event) {
   event.preventDefault(); const button = event.submitter; button.disabled = true;
