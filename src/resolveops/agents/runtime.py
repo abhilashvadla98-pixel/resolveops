@@ -414,9 +414,85 @@ class MultiAgentReasoningRuntime:
                     request=scoped_request,
                 )
             )
+            if (
+                isinstance(self.tools, AgentReadToolRegistry)
+                and scoped_request.tool_name == "get_case"
+            ):
+                self._read_linked_case_evidence(
+                    tenant_id=tenant_id,
+                    run_id=run_id,
+                    results=results,
+                )
         if turn is None:
             raise RuntimeError("investigation did not start")
         raise AgentBudgetExceeded("investigation_turn_limit_exceeded")
+
+    def _read_linked_case_evidence(
+        self,
+        *,
+        tenant_id: str,
+        run_id: str,
+        results: list[AgentToolResult],
+    ) -> None:
+        """Read the authoritative records linked by the scoped case and order.
+
+        The investigator must first select the scoped case read. From that point,
+        record identifiers come only from trusted source data, so following those
+        links is deterministic data loading rather than another model decision.
+        Every read still passes through the role allowlist, tenant scope, budget,
+        and persisted tool-call audit trail.
+        """
+        case = next((item.data for item in reversed(results) if item.tool_name == "get_case"), None)
+        if not isinstance(case, dict) or not isinstance(case.get("order_id"), str):
+            return
+
+        def already_read(tool_name: str, identifier: str) -> bool:
+            category = tool_name.removeprefix("get_")
+            return any(
+                item.tool_name == tool_name and str(item.data.get(f"{category}_id")) == identifier
+                for item in results
+            )
+
+        def read(tool_name: str, argument_name: str, identifier: str) -> None:
+            if already_read(tool_name, identifier):
+                return
+            results.append(
+                self._execute_tool(
+                    tenant_id=tenant_id,
+                    role=AgentRole.INVESTIGATION,
+                    run_id=run_id,
+                    request=ToolRequest(
+                        tool_name=tool_name,
+                        arguments=ToolArguments.model_validate({argument_name: identifier}),
+                        purpose="Load source records linked by the scoped case.",
+                    ),
+                )
+            )
+
+        order_id = str(case["order_id"])
+        read("get_order", "order_id", order_id)
+        order = next(
+            (item.data for item in reversed(results) if item.tool_name == "get_order"), None
+        )
+        if not isinstance(order, dict):
+            return
+
+        issues = case.get("issues", [])
+        issue_rows = (
+            [row for row in issues if isinstance(row, dict)] if isinstance(issues, list) else []
+        )
+        if any(row.get("issue_type") == "duplicate_charge" for row in issue_rows):
+            payment_ids = order.get("payment_ids", [])
+            if isinstance(payment_ids, list):
+                for payment_id in payment_ids:
+                    read("get_payment", "payment_id", str(payment_id))
+        for issue in issue_rows:
+            if issue.get("issue_type") == "missing_return_refund" and issue.get("return_id"):
+                read("get_return", "return_id", str(issue["return_id"]))
+        refund_ids = order.get("refund_ids", [])
+        if isinstance(refund_ids, list):
+            for refund_id in refund_ids:
+                read("get_refund", "refund_id", str(refund_id))
 
     def research_policy(
         self,

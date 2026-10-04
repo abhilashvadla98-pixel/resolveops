@@ -368,7 +368,10 @@ def test_normal_workflow_consumes_actual_multi_role_read_tools(fabricate: bool) 
         assert record["workflow_result"]["outcome"] == "needs_review"
     else:
         assert record["passed"], (record["checks"], record["error"], record["workflow_result"])
-        assert record["model_calls"] >= 10
+        # Linked source records are loaded deterministically after the model selects
+        # the scoped case. All five roles still execute without spending one model
+        # call per database read.
+        assert 5 <= record["model_calls"] <= 9
         assert len(record["tool_observations"]) >= 7
         assert record["workflow_result"]["outcome"] == "refund_submitted"
         assert record["new_refunds"][0]["status"] == "completed"
