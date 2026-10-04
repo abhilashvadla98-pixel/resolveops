@@ -374,14 +374,12 @@ class MultiAgentReasoningRuntime:
                 try:
                     if (
                         not turn.facts
-                        and not turn.evidence_ids
-                        and not turn.source_provenance
                         and not turn.missing_evidence
                         and isinstance(self.tools, AgentReadToolRegistry)
                     ):
-                        # Provider output controls investigation and tool selection. The
-                        # authoritative fact registry is reconstructed only from the exact
-                        # scoped observations after the required coverage contract passes.
+                        # If the provider omits the fact registry, reconstruct it from
+                        # exact scoped observations. Non-empty provider facts are still
+                        # validated strictly; fabricated claims never get overwritten.
                         self.tools.require_investigation_coverage(results)
                         facts, evidence_ids, provenance = canonical_observation_evidence(
                             results, now=self.clock()

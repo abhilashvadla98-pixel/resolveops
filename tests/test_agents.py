@@ -741,6 +741,60 @@ def test_hierarchical_langgraph_routes_customer_domain_through_specialists() -> 
     assert len(result.agent_run_ids) == 7
 
 
+def test_critic_revision_reuses_evidence_without_restarting_investigation() -> None:
+    class ReviseOnceProvider(ScriptedProvider):
+        critic_calls = 0
+
+        def invoke(self, *, instructions, context, response_model):  # type: ignore[no-untyped-def]
+            if response_model is CriticReport:
+                self.roles.append(response_model.__name__)
+                self.critic_calls += 1
+                return CriticReport(
+                    decision=(
+                        CriticDecision.REVISE if self.critic_calls == 1 else CriticDecision.ACCEPT
+                    ),
+                    summary="Tighten the proposal." if self.critic_calls == 1 else "Supported.",
+                )
+            return super().invoke(
+                instructions=instructions,
+                context=context,
+                response_model=response_model,
+            )
+
+    engine = create_engine("sqlite:///:memory:")
+    Base.metadata.create_all(engine)
+    factory = sessionmaker(engine, expire_on_commit=False)
+    store = AgentRunStore(factory, clock=lambda: NOW)
+    ledger = BudgetLedger(
+        AgentBudget(max_model_calls=12, max_agent_steps=12, max_replans=1),
+        datetime.now(UTC),
+    )
+    provider = ReviseOnceProvider()
+    runtime = MultiAgentReasoningRuntime(
+        invoker=AgentInvoker(provider=provider, store=store, ledger=ledger),
+        tools=ScriptedTools(),
+        run_store=store,
+        ledger=ledger,
+        clock=lambda: NOW,
+    )
+
+    result = HierarchicalAgentOrchestrator(runtime).run(
+        workflow_id="WF-REVISE-1",
+        case_id="CASE-1",
+        tenant_id="TENANT-A",
+        domain=AgentDomain.CUSTOMER_OPERATIONS,
+        objective="Resolve a suspected duplicate payment.",
+        trace_id="f" * 32,
+    )
+
+    assert result.status == "ready_for_control_plane"
+    assert result.replan_count == 1
+    assert provider.investigation_calls == 2
+    assert provider.roles.count("ResolutionProposal") == 2
+    assert provider.roles.count("CriticReport") == 2
+    assert provider.roles.count("SupervisorPlan") == 1
+
+
 def test_reviewed_memory_is_explicit_tenant_scoped_and_advisory() -> None:
     engine = create_engine("sqlite:///:memory:")
     Base.metadata.create_all(engine)
