@@ -6,8 +6,9 @@ remains reference infrastructure unless an AWS deployment is actually completed.
 ## Free Render deployment
 
 The root `render.yaml` provisions one free Docker web service and one dedicated free PostgreSQL 16
-database in the Ohio region. Render generates the session and webhook secrets; no provider key is
-requested or stored. On every service start, the container runs forward migrations, idempotently
+database in the Ohio region. Render generates the session and webhook secrets. A rotated Gemini
+credential is stored only as an encrypted service environment variable; it is never sent to the
+browser or committed. On every service start, the container runs forward migrations, idempotently
 loads the fictional baseline, and starts the API on Render's assigned port. The Blueprint requests
 deployment after GitHub checks pass. For the October 4 release, no automatic deployment appeared;
 the owner authorized a manual deployment after all checks passed. No billing or plan change was made.
@@ -36,7 +37,9 @@ infrastructure.
 - a bounded `RESOLVEOPS_DEMO_MAX_ISOLATED_SESSIONS` value
 - a new random webhook secret of at least 32 characters
 - no real customer, employee, payment, identity or repository data
-- `RESOLVEOPS_INTEGRATED_AGENTS_ENABLED=false`; rotation alone is not sufficient to enable public inference
+- `RESOLVEOPS_INTEGRATED_AGENTS_ENABLED=true`
+- `RESOLVEOPS_GEMINI_KEY_ROTATED=true` and the rotated key stored only in Render's secret environment
+- strict per-run call, token and time budgets; page load and Employee IT do not spend model quota
 
 The Blueprint runs migrations and the synthetic seed automatically. After Render reports the deploy
 as live, verify `/health/live`, `/health/ready`, `/console`, demo-session isolation, reset behavior,
@@ -45,7 +48,26 @@ Run `scripts/verify_deployment.py --base-url https://your-demo-host` and store i
 deployment date, host, image revision and region. Keep deployed latency separately from local
 measurements.
 
-## Verified deployment — October 4, v1.2.0
+## Verified deployment — October 4, v1.2.1
+
+- Public URL: [ResolveOps console](https://resolveops-demo.onrender.com/console)
+- Application commit: `5179640c495960293a6dfa7ae1165ae351d5c184`
+- `/health/build`: version `1.2.1`, schema `0023_refund_lifecycle_states`, exact commit above
+- Complex-case proof: one deployed `CASE-1001` investigation completed with real Gemini calls for
+  supervisor, investigator, policy, resolution and critic roles, then passed deterministic validation
+- Control-plane proof: a separate simulated human approval authorized one typed refund action; pending
+  settlement did not resolve the case; a fresh synthetic provider event and read verified final settlement
+- Recorded walkthrough: 85.28 seconds end to end. This duration includes browser interaction and is not
+  model latency, an SLO or a reliability estimate
+- Evidence: [screenshots and walkthrough](DEMO_WALKTHROUGH.md) and the
+  [v1.2.1 release asset](https://github.com/abhilashvadla98-pixel/resolveops/releases/download/v1.2.1/resolveops-live-agent-walkthrough-v1.2.1.webm)
+- Safety: fictional records only; no live bank, CRM, directory or Git-host action; no credential appears
+  in source, screenshots, video or browser responses
+
+The earlier v1.2.0 verification below remains useful deterministic lifecycle evidence. It is not the
+live-agent proof for v1.2.1.
+
+## Previous deterministic deployment verification — v1.2.0
 
 - Public URL: [ResolveOps console](https://resolveops-demo.onrender.com/console)
 - Release commit: `020ef9d2ecd6311d7b99f73d9030c6fb0fbe5aac`
@@ -97,9 +119,9 @@ migration readiness and fresh isolated workflow results separately from these me
 
 ## Release boundary
 
-The public visitor path should use deterministic seeded cases and must not spend provider quota on
-page load. If live integrated agents are later enabled, require the rotated credential, strict call
-budgets, synthetic cases only and visible quota-failure handling. Never put the key in browser code,
+The public visitor path uses deterministic seeded cases and does not spend provider quota on page
+load. Live agents are enabled only for configured complex investigations, with a rotated credential,
+strict call budgets, synthetic cases and visible quota-failure handling. Never put the key in browser code,
 the image, repository variables visible to forks, screenshots or videos.
 
 The original public link was published after those checks. They are historical evidence, not a
