@@ -39,6 +39,8 @@ def test_operator_console_serves_secure_shell_and_local_assets() -> None:
     assert "agent_run_ids" in script.text
     assert "Persisted execution records" in script.text
     assert "/agent-workflows/${encodeURIComponent(workflowId)}/runs" in script.text
+    assert "renderStoppedAgentRuns(workflow)" in script.text
+    assert "stopped safely before control-plane handoff" in script.text
     assert script.headers["cache-control"] == "no-store"
     assert "localStorage" not in script.text
     assert "sessionStorage" not in script.text

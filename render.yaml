@@ -39,6 +39,8 @@ services:
         value: "true"
       - key: RESOLVEOPS_GEMINI_API_KEY
         sync: false
+      - key: RESOLVEOPS_GEMINI_MODEL
+        value: gemini-3.5-flash-lite
       - key: RESOLVEOPS_GEMINI_KEY_ROTATED
         value: "true"
       - key: RESOLVEOPS_DEMO_AGENT_MAX_RUNS_PER_SESSION

@@ -6,6 +6,7 @@ from pydantic import SecretStr
 
 from resolveops.agents.context import AgentContextBuilder
 from resolveops.agents.grounding import (
+    canonical_observation_evidence,
     ground_investigation,
     ground_policy,
     observation_context,
@@ -68,6 +69,36 @@ def test_grounded_fact_is_reconstructed_from_the_actual_observation() -> None:
     assert result.facts[0].fact == 'Observed /status: "captured"'
     assert turn.facts[0].fact != result.facts[0].fact
     assert observation_context(observation)["observation_id"] == result.evidence_ids[0]
+
+
+def test_canonical_registry_uses_exact_decision_scalars_without_model_prose() -> None:
+    observation = _observation()
+    facts, evidence_ids, provenance = canonical_observation_evidence([observation], now=NOW)
+    assert evidence_ids == [observation_id(observation)]
+    assert provenance == [observation.source]
+    assert {fact.source_field for fact in facts} == {
+        "/payment_id",
+        "/status",
+        "/amount",
+    }
+    grounded = ground_investigation(
+        InvestigationTurn(
+            facts=facts,
+            evidence_ids=evidence_ids,
+            source_provenance=provenance,
+            confidence=0.9,
+            complete=True,
+        ),
+        [observation],
+        now=NOW,
+    )
+    assert all(fact.fact.startswith("Observed /") for fact in grounded.facts)
+
+
+def test_canonical_registry_fails_instead_of_silently_truncating() -> None:
+    observation = _observation()
+    with pytest.raises(ValueError, match="limit is 1"):
+        canonical_observation_evidence([observation], now=NOW, max_facts=1)
 
 
 @pytest.mark.parametrize(
