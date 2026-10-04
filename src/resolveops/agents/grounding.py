@@ -8,7 +8,12 @@ import hashlib
 import json
 from datetime import datetime, timedelta
 
-from resolveops.agents.models import InvestigationTurn, PolicyTurn, ResolutionProposal
+from resolveops.agents.models import (
+    EvidenceFact,
+    InvestigationTurn,
+    PolicyTurn,
+    ResolutionProposal,
+)
 from resolveops.agents.tools import AgentToolResult
 
 
@@ -19,6 +24,101 @@ def observation_id(result: AgentToolResult) -> str:
 
 def observation_context(result: AgentToolResult) -> dict[str, object]:
     return {**result.model_dump(mode="json"), "observation_id": observation_id(result)}
+
+
+_DECISION_FIELDS = {
+    "amount",
+    "captured_at",
+    "case_id",
+    "classification_confidence",
+    "completed_at",
+    "created_at",
+    "currency",
+    "finding",
+    "issue_id",
+    "issue_type",
+    "kind",
+    "obligation_amount",
+    "obligation_id",
+    "opened_at",
+    "order_id",
+    "payment_id",
+    "payment_ids",
+    "quantity",
+    "received_at",
+    "refund_id",
+    "refund_ids",
+    "reported_at",
+    "return_id",
+    "return_ids",
+    "status",
+    "total_amount",
+    "updated_at",
+}
+
+
+def canonical_observation_evidence(
+    results: list[AgentToolResult], *, now: datetime, max_facts: int = 50
+) -> tuple[list[EvidenceFact], list[str], list[str]]:
+    """Build a bounded fact registry from exact tool scalars, never model prose.
+
+    This is used only when a provider completed its investigation after collecting the
+    required source coverage but omitted the verbose fact registry. The provider still
+    chooses and performs the reads. ResolveOps owns the final evidence representation so
+    every value remains traceable to a JSON pointer in a scoped observation.
+    """
+    facts: list[EvidenceFact] = []
+    evidence_ids: list[str] = []
+    provenance: list[str] = []
+    for result in results:
+        identifier = observation_id(result)
+        if identifier not in evidence_ids:
+            evidence_ids.append(identifier)
+        if result.source not in provenance:
+            provenance.append(result.source)
+        for pointer, value in _decision_scalars(result.data):
+            facts.append(
+                EvidenceFact(
+                    evidence_id=identifier,
+                    fact=f"Observed {pointer}",
+                    source=result.source,
+                    observed_at=result.observed_at,
+                    fresh=timedelta(0) <= now - result.observed_at <= timedelta(hours=24),
+                    source_field=pointer,
+                    source_value_json=json.dumps(
+                        value, ensure_ascii=False, separators=(",", ":")
+                    ),
+                )
+            )
+    if not facts:
+        raise ValueError("source observations contain no decision-relevant scalar evidence")
+    if len(facts) > max_facts:
+        raise ValueError(
+            f"canonical evidence contains {len(facts)} facts; limit is {max_facts}"
+        )
+    return facts, evidence_ids, provenance
+
+
+def _decision_scalars(data: dict[str, object]) -> list[tuple[str, object]]:
+    values: list[tuple[str, object]] = []
+
+    def visit(value: object, tokens: list[str], selected: bool = False) -> None:
+        if isinstance(value, dict):
+            for key, item in value.items():
+                visit(item, [*tokens, key], key in _DECISION_FIELDS)
+            return
+        if isinstance(value, list):
+            for index, item in enumerate(value):
+                visit(item, [*tokens, str(index)], selected)
+            return
+        if selected and (value is None or type(value) in (str, int, float, bool)):
+            pointer = "/" + "/".join(
+                token.replace("~", "~0").replace("/", "~1") for token in tokens
+            )
+            values.append((pointer, value))
+
+    visit(data, [])
+    return values
 
 
 def ground_investigation(

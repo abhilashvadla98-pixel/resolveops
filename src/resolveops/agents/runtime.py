@@ -5,6 +5,7 @@ from typing import Protocol
 from resolveops.agents.budgets import AgentBudgetExceeded, BudgetLedger
 from resolveops.agents.context import AgentContext, AgentContextBuilder
 from resolveops.agents.grounding import (
+    canonical_observation_evidence,
     ground_investigation,
     ground_policy,
     observation_context,
@@ -371,6 +372,27 @@ class MultiAgentReasoningRuntime:
             runs.append(run_id)
             if turn.complete:
                 try:
+                    if (
+                        not turn.facts
+                        and not turn.evidence_ids
+                        and not turn.source_provenance
+                        and not turn.missing_evidence
+                        and isinstance(self.tools, AgentReadToolRegistry)
+                    ):
+                        # Provider output controls investigation and tool selection. The
+                        # authoritative fact registry is reconstructed only from the exact
+                        # scoped observations after the required coverage contract passes.
+                        self.tools.require_investigation_coverage(results)
+                        facts, evidence_ids, provenance = canonical_observation_evidence(
+                            results, now=self.clock()
+                        )
+                        turn = turn.model_copy(
+                            update={
+                                "facts": facts,
+                                "evidence_ids": evidence_ids,
+                                "source_provenance": provenance,
+                            }
+                        )
                     turn = ground_investigation(turn, results, now=self.clock())
                     if isinstance(self.tools, AgentReadToolRegistry):
                         self.tools.require_investigation_coverage(results)

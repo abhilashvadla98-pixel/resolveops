@@ -128,9 +128,9 @@ class CustomerIssueWorkflow:
             raise ValueError("checkpointer and lifecycle_store must be configured together")
         self.session_factory = session_factory
         self.embedding_provider = embedding_provider
-        self.action_tools = action_tools or ActionTools(session_factory)
-        self.observability_sink = observability_sink or DEFAULT_TRACE_SINK
         self.clock = clock or (lambda: datetime.now(UTC))
+        self.action_tools = action_tools or ActionTools(session_factory, clock=self.clock)
+        self.observability_sink = observability_sink or DEFAULT_TRACE_SINK
         self.agent_runtime = agent_runtime
         self.tenant_id = tenant_id
         self.model_execution_mode = model_execution_mode
