@@ -1,6 +1,8 @@
 from collections.abc import Iterator
 from contextlib import contextmanager
+from math import ceil
 from threading import Lock
+from time import monotonic
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -51,6 +53,9 @@ Principal = Annotated[SecurityPrincipal, Depends(get_principal)]
 
 _sqlite_checkpointers: dict[int, InMemorySaver] = {}
 _checkpointer_lock = Lock()
+_demo_agent_admission_lock = Lock()
+_demo_agent_session_runs: dict[str, int] = {}
+_last_demo_agent_started_at: float | None = None
 
 
 class ComplaintSubmission(DomainModel):
@@ -107,6 +112,48 @@ def _workflow_actor(principal: SecurityPrincipal) -> Actor:
     if principal.authentication_method == "demo_session":
         return Actor(actor_id="DEMO-OPERATOR", role=ActorRole.OPERATOR)
     return principal.actor()
+
+
+def _admit_demo_agent_run(
+    session: Session,
+    body: StartWorkflow,
+    principal: SecurityPrincipal,
+    settings: Settings,
+) -> None:
+    """Bound public live-model usage while leaving ordinary rule paths available."""
+    if principal.authentication_method != "demo_session" or not settings.integrated_agents_enabled:
+        return
+    customer_case = session.scalar(
+        select(CaseRecord)
+        .options(selectinload(CaseRecord.issues))
+        .where(CaseRecord.case_id == body.case_id)
+    )
+    if customer_case is None or len(customer_case.issues) <= 1:
+        return
+    if settings.demo_agent_max_runs_per_session == 0:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Live specialist execution is disabled for public demo sessions.",
+        )
+    global _last_demo_agent_started_at
+    now = monotonic()
+    with _demo_agent_admission_lock:
+        used = _demo_agent_session_runs.get(principal.subject_id, 0)
+        if used >= settings.demo_agent_max_runs_per_session:
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail="This demo session has already used its live specialist run.",
+            )
+        cooldown = settings.demo_agent_global_cooldown_seconds
+        if _last_demo_agent_started_at is not None and now - _last_demo_agent_started_at < cooldown:
+            retry_after = max(1, ceil(cooldown - (now - _last_demo_agent_started_at)))
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail="Another live specialist investigation recently started. Try again shortly.",
+                headers={"Retry-After": str(retry_after)},
+            )
+        _demo_agent_session_runs[principal.subject_id] = used + 1
+        _last_demo_agent_started_at = now
 
 
 def _approval_actor(principal: SecurityPrincipal) -> Actor:
@@ -332,6 +379,11 @@ def start_workflow(
         actor=_workflow_actor(principal), investigation_only=True, **body.model_dump()
     )
     try:
+        engine, _ = _factory(session)
+        settings = Settings(
+            database_url=SecretStr(engine.url.render_as_string(hide_password=False))
+        )
+        _admit_demo_agent_run(session, body, principal, settings)
         with _workflow_service(session, principal) as workflow:
             return workflow.start(request)
     except WorkflowLifecycleError as exc:

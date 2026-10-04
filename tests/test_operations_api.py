@@ -3,14 +3,17 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
+from fastapi import HTTPException
 from fastapi.testclient import TestClient
 from pydantic import SecretStr
 from sqlalchemy import Engine, create_engine, func, select
 from sqlalchemy.orm import Session
 from sqlalchemy.pool import StaticPool
 
+import resolveops.api.operations as operations_module
 from resolveops.api.dependencies import get_principal, get_tenant_session
 from resolveops.api.main import app
+from resolveops.api.operations import StartWorkflow, _admit_demo_agent_run
 from resolveops.config import Settings
 from resolveops.database.base import Base
 from resolveops.database.employee_it_records import EnterpriseIdentityRecord
@@ -24,6 +27,40 @@ from resolveops.knowledge.embeddings import FeatureHashEmbeddingProvider
 from resolveops.knowledge.ingestion import ingest_directory
 from resolveops.operations.models import ActorRole
 from resolveops.security.models import SecurityPrincipal
+
+
+def test_public_demo_live_agent_admission_is_limited_per_session(
+    operations_api: tuple[TestClient, dict[str, ActorRole], Engine],
+) -> None:
+    _client, _role, engine = operations_api
+    settings = Settings(
+        _env_file=None,
+        database_url=SecretStr("sqlite://"),
+        gemini_api_key=SecretStr("synthetic-test-key"),
+        gemini_key_rotated=True,
+        integrated_agents_enabled=True,
+        demo_agent_max_runs_per_session=1,
+        demo_agent_global_cooldown_seconds=0,
+    )
+    principal = SecurityPrincipal(
+        subject_id="DEMO-ADMISSION-1",
+        tenant_id="TENANT-TEST",
+        role=ActorRole.APPROVER,
+        authentication_method="demo_session",
+    )
+    body = StartWorkflow(
+        workflow_id="WF-DEMO-ADMISSION-1",
+        case_id="CASE-1001",
+        issue_id="ISSUE-1001-DUP",
+    )
+    operations_module._demo_agent_session_runs.clear()
+    operations_module._last_demo_agent_started_at = None
+    with Session(engine) as session:
+        _admit_demo_agent_run(session, body, principal, settings)
+        with pytest.raises(HTTPException) as exc_info:
+            _admit_demo_agent_run(session, body, principal, settings)
+    assert exc_info.value.status_code == 429
+    assert "already used" in str(exc_info.value.detail)
 
 
 @pytest.fixture

@@ -36,9 +36,15 @@ services:
       - key: RESOLVEOPS_DEMO_MAX_ISOLATED_SESSIONS
         value: "8"
       - key: RESOLVEOPS_INTEGRATED_AGENTS_ENABLED
-        value: "false"
+        value: "true"
+      - key: RESOLVEOPS_GEMINI_API_KEY
+        sync: false
       - key: RESOLVEOPS_GEMINI_KEY_ROTATED
-        value: "false"
+        value: "true"
+      - key: RESOLVEOPS_DEMO_AGENT_MAX_RUNS_PER_SESSION
+        value: "1"
+      - key: RESOLVEOPS_DEMO_AGENT_GLOBAL_COOLDOWN_SECONDS
+        value: "120"
       - key: RESOLVEOPS_AGENT_QUEUE_ENABLED
         value: "false"
       - key: RESOLVEOPS_RATE_LIMIT_REQUESTS

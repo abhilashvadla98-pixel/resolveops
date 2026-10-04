@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="description" content="ResolveOps operations console">
 <title>ResolveOps | Operations Console</title>
-<link rel="stylesheet" href="/console/app.css?v=20261004a">
-<script src="/console/app.js?v=20261004a" defer>
+<link rel="stylesheet" href="/console/app.css?v=20261004b">
+<script src="/console/app.js?v=20261004b" defer>
 </script>
 <script src="/console/it_intake.js?v=20261004a" defer></script>
 </head>
@@ -69,6 +69,7 @@
 </i>
 <span id="health-label">Checking service</span>
 </span>
+<span class="status-badge neutral" id="inference-mode">AI mode loading</span>
 <button class="secondary-button" id="theme-toggle" type="button">Dark mode</button>
 <button class="secondary-button" id="reset-demo" type="button" hidden>Reset workspace</button>
 <button class="primary-button" id="try-demo" type="button">Open workspace</button>
@@ -82,6 +83,7 @@
 <div>
 <h1>Choose an operations workflow</h1>
 <p>Two complete, synthetic workflows share the same safety and audit controls</p>
+<p id="agent-mode-note">Checking whether live specialist reasoning is available.</p>
 </div>
 <div class="heading-actions">
 <span id="overview-updated">Loading demo data</span>

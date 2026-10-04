@@ -95,7 +95,11 @@ def create_demo_session(
             "data_mode": "synthetic",
             "execution_mode": (
                 "live_model_enabled"
-                if settings.integrated_agents_enabled or settings.agent_queue_enabled
+                if (
+                    settings.integrated_agents_enabled
+                    and settings.demo_agent_max_runs_per_session > 0
+                )
+                or settings.agent_queue_enabled
                 else "rules_only"
             ),
         }

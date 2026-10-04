@@ -157,6 +157,7 @@ def test_demo_session_safety_metadata_matches_configured_mode(
         gemini_api_key="synthetic-test-key",
         gemini_key_rotated=True,
         integrated_agents_enabled=provider_mode == "integrated",
+        demo_agent_max_runs_per_session=1 if provider_mode == "integrated" else 0,
         agent_queue_enabled=provider_mode == "queue",
     )
     monkeypatch.setattr("resolveops.api.demo.get_demo_settings", lambda: configured_demo)
