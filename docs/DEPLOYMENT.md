@@ -13,8 +13,8 @@ old payment rows. Unknown evidence remains manual-review work; new synthetic wor
 fixture obligations. Pending refund submission is no longer a completed case.
 
 Downgrade can be refused after new history exists to prevent data loss. Roll forward with a fix or
-restore a verified backup; do not delete audit history to force downgrade. Source changes are local
-until a release is deployed and verified on Render.
+restore a verified backup; do not delete audit history to force downgrade. A source release alone
+does not establish deployment; use the dated record in [PUBLIC_DEMO.md](PUBLIC_DEMO.md).
 
 For a no-credential local preview, run `python scripts/run_demo.py`; it creates a temporary,
 shared, loopback-only sandbox. It does not read local secrets, call a model, or change existing databases.

@@ -8,8 +8,9 @@ remains reference infrastructure unless an AWS deployment is actually completed.
 The root `render.yaml` provisions one free Docker web service and one dedicated free PostgreSQL 16
 database in the Ohio region. Render generates the session and webhook secrets; no provider key is
 requested or stored. On every service start, the container runs forward migrations, idempotently
-loads the fictional baseline, and starts the API on Render's assigned port. Auto-deployment waits
-for GitHub checks to pass.
+loads the fictional baseline, and starts the API on Render's assigned port. The Blueprint requests
+deployment after GitHub checks pass. For the October 4 release, no automatic deployment appeared;
+the owner authorized a manual deployment after all checks passed. No billing or plan change was made.
 
 Each signed visitor receives a separate PostgreSQL schema populated with the same synthetic
 baseline. Reset changes only that visitor's schema. Expired workspaces are removed before new ones
@@ -43,6 +44,31 @@ rate limits, and absence of secrets in responses and logs.
 Run `scripts/verify_deployment.py --base-url https://your-demo-host` and store its output with the
 deployment date, host, image revision and region. Keep deployed latency separately from local
 measurements.
+
+## Verified deployment — October 4, v1.2.0
+
+- Public URL: [ResolveOps console](https://resolveops-demo.onrender.com/console)
+- Release commit: `020ef9d2ecd6311d7b99f73d9030c6fb0fbe5aac`
+- `/health/build`: version `1.2.0`, schema `0023_refund_lifecycle_states`, exact commit above
+- `/health/ready`: `ready`; Render dashboard showed **Deploy succeeded | Live**
+- Deployment: owner-authorized manual deployment, completed in 2 minutes 10 seconds
+- Verification time: 2026-10-04 at 05:42 UTC; separate signed, isolated synthetic workspace
+- Customer success: new complaint → investigation → approval → pending refund → simulated
+  completed settlement → fresh refund, workflow and resolved-case reads
+- Customer failure: separate new complaint → approval → pending refund → simulated failed
+  settlement → fresh reads report review/escalation, not a resolved case
+- Employee: new request → explicitly simulated manager approval → processing → fresh active
+  repository-access and resolved-case reads
+- Inference: metadata and both customer runs reported `rules_only`; no model-run records appeared
+- Measured total: 13.61 seconds for this sequential API verification run. The first case request
+  took 5.33 seconds, including first access to the isolated workspace. This is a single deployed
+  observation, not an SLO or a local benchmark. Free-instance cold start was not measured.
+- Browser check: the public console loaded seven customer cases, four employee requests and
+  one pending approval, with **Service healthy** visible
+
+The [secret-free deployed report](https://github.com/abhilashvadla98-pixel/resolveops/releases/download/v1.2.0/public-workflow-verification-20261004T054258Z-87f00bed.json)
+records each request status and duration, result identifiers, build identity and synthetic mode.
+No bearer token is stored. It is separate from the local live-model evaluation and rules-only video.
 
 ## Historical deployment record — September 30
 

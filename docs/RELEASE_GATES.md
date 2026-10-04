@@ -39,6 +39,28 @@ the demo URL and old videos do not establish that current changes are deployed o
 | Secret safety | Owner revokes exposed key; replacement local only; no secrets in tracked source or artifacts |
 | GitHub release | Reviewed change, clean checks on release commit, accurate metadata/links/version and no large generated data |
 
+## Recorded result — v1.2.0
+
+Core release commit: `020ef9d2ecd6311d7b99f73d9030c6fb0fbe5aac`.
+
+- **Regression:** 430 local tests passed, including ten real PostgreSQL and six Chromium tests.
+  A separate no-local-configuration run passed 414 non-PostgreSQL/non-browser tests.
+- **CI:** all six jobs passed on the pull request and merged main commit. The initial test-launcher
+  import failure was fixed, not waived. See [PR #7](https://github.com/abhilashvadla98-pixel/resolveops/pull/7).
+- **Live AI:** 30 requested, one correct completion, one quota failure, 28 unrun. Only the first
+  task was attempted. The attached release reports preserve both attempts; reliability is not established.
+- **Presentation:** seven new workflow screenshots and a 63.2-second rules-only recording. The
+  video does not show live agent execution; the separate recorded integrated trace provides that evidence.
+- **Human review:** still 0/24. Only the owner can supply these labels.
+- **Deployment:** exact release build verified on Render with successful customer settlement,
+  failed settlement and employee-access API journeys. The public workspace loaded its data.
+  See the separately measured [deployment record](PUBLIC_DEMO.md); no deployed live AI is claimed.
+- **Credentials:** the repository credential-pattern scan passed. Live tests required the local
+  rotation acknowledgement. No replacement key is shipped; the owner must keep the old key revoked.
+
+The source release does not mean every evidence gate is complete. In particular, public inference
+remains disabled while the live reliability and public abuse-control gates are unmet.
+
 The public configuration deliberately disables provider inference. Enabling it is a separate
 deployment decision requiring safe quota, credentials, per-visitor budgets and abuse controls.
 Do not describe a rules-only public run as live multi-agent execution.
