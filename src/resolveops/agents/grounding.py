@@ -85,17 +85,13 @@ def canonical_observation_evidence(
                     observed_at=result.observed_at,
                     fresh=timedelta(0) <= now - result.observed_at <= timedelta(hours=24),
                     source_field=pointer,
-                    source_value_json=json.dumps(
-                        value, ensure_ascii=False, separators=(",", ":")
-                    ),
+                    source_value_json=json.dumps(value, ensure_ascii=False, separators=(",", ":")),
                 )
             )
     if not facts:
         raise ValueError("source observations contain no decision-relevant scalar evidence")
     if len(facts) > max_facts:
-        raise ValueError(
-            f"canonical evidence contains {len(facts)} facts; limit is {max_facts}"
-        )
+        raise ValueError(f"canonical evidence contains {len(facts)} facts; limit is {max_facts}")
     return facts, evidence_ids, provenance
 
 

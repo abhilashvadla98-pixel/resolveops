@@ -73,9 +73,7 @@ def test_grounded_fact_is_reconstructed_from_the_actual_observation() -> None:
 
 def test_canonical_registry_uses_exact_decision_scalars_without_model_prose() -> None:
     observation = _observation()
-    facts, evidence_ids, provenance = canonical_observation_evidence(
-        [observation], now=NOW
-    )
+    facts, evidence_ids, provenance = canonical_observation_evidence([observation], now=NOW)
     assert evidence_ids == [observation_id(observation)]
     assert provenance == [observation.source]
     assert {fact.source_field for fact in facts} == {
