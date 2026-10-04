@@ -59,6 +59,25 @@ Until a final integrated live report exists, do not claim a passing 30-trial liv
 single-agent comparison and human response-quality labels remain outstanding. These service-level
 runs do not test HTTP authentication or Render deployment and use simulated business providers.
 
+### October 4 frozen-source live sample
+
+The requested ten-task, three-trial batch stopped on free-provider quota after two attempts:
+**one passed, one rate-limited, 28 were not run**. Only IC-01 was attempted. The failed attempt
+created no refund. This sample is too small to establish model reliability or compare architectures.
+
+The successful trial used 13 model calls and seven application-tool reads in 29.17 seconds,
+with 40,796 input and 4,603 output tokens. The critic accepted four grounded evidence references
+and three validated selected policy citations. Synthetic approval and settlement resolved the
+1,499 USD duplicate issue; the separate return issue remained open. Across both attempts, there
+were 16 model calls and eight tool reads. Full-batch tokens and cost are unknown because the
+rate-limited call omitted usage and no pricing was configured.
+
+The [v1.2.0 release](https://github.com/abhilashvadla98-pixel/resolveops/releases/tag/v1.2.0)
+includes the immutable raw report and compact per-role summary. Core commit `466a22f` has the same
+`src/` and `scripts/` Git content as release commit `020ef9d`; the source did not change during
+the batch. Earlier calibration failures remain separate local artifacts, not discarded or mixed
+into this frozen sample. Public inference stays disabled. Owner labels remain **0/24**.
+
 ## Provider-backed orchestration contract smoke
 
 `scripts/run_live_agent_evaluation.py` and `scripts/run_verified_live_trace.py` invoke Gemini but use

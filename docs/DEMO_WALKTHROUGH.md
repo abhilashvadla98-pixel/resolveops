@@ -4,11 +4,11 @@ Two workflows share one console: customer refund complaints and employee reposit
 All business records, money movement, access grants and notices in the sandbox are synthetic.
 No bank, CRM, directory or Git provider is changed.
 
-This guide follows the current source and local browser tests as of **2026-10-04**. This pass did
-not deploy or verify a new cloud release. The
-[public demo](https://resolveops-demo.onrender.com/console) may run an earlier build; a sleeping
-free instance can also take time to start. For the current local build, follow the repository
-quick start, open /console and wait until the workspace is connected.
+This guide describes **version 1.2.0**, tested locally on **2026-10-04**. Check the
+[deployment record](PUBLIC_DEMO.md) and `/health/build` before using the
+[public demo](https://resolveops-demo.onrender.com/console) as release evidence. A sleeping free
+instance can take time to start. The repository quick start also runs the same synthetic workflow
+locally. Open /console and wait until the workspace is connected.
 
 ## Customer Operations: complaint to settled refund
 
@@ -140,12 +140,13 @@ not deploy code or repair a real external system.
 
 ## Media status
 
-The current **63.2-second local workflow recording** is saved as
-`artifacts/resolveops-workflow-repair-20261004.webm`. It starts after the workspace loads and shows
+The [63.2-second local workflow recording](https://github.com/abhilashvadla98-pixel/resolveops/releases/download/v1.2.0/resolveops-workflow-repair-20261004.webm)
+starts after the workspace loads and shows
 new customer intake, approval, pending settlement, success, failed settlement on a separate order,
 employee request/manager approval/verification, an MFA safety stop and audit history. Captions
 explicitly identify rules-only execution and synthetic systems. It contains no live-agent trace
-or external-provider action and has not been uploaded as a new release video.
+or external-provider action. The separate live evaluation report on the release page records
+one real model-backed success and one quota failure; it is not part of this rules-only recording.
 
 The [existing technical recording](https://github.com/abhilashvadla98-pixel/resolveops/releases/download/v1.1.0/resolveops-technical-walkthrough.webm)
 and images outside the dated workflow-repair folder are historical media from an earlier build.

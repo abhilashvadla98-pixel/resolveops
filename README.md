@@ -10,8 +10,8 @@ and verifies the result. An accepted refund request is **not** a completed refun
 [Workflow guide](docs/DEMO_WALKTHROUGH.md) · [Release status](docs/RELEASE_GATES.md)
 
 The public sandbox uses fictional records and local provider simulators. Its configuration disables
-live AI calls. The October 4 repairs described below are local changes until deployment is verified;
-the public link may still show the previous build.
+live AI calls. Check the [deployment record](docs/PUBLIC_DEMO.md) for the last verified build;
+`/health/build` identifies the version actually running. Free hosting can take time to wake.
 
 ## Two bounded workflows
 
@@ -57,7 +57,7 @@ In live mode, the graph has supervisor, investigator, policy, resolution and cri
 roles are skipped after an evidence or policy safety stop. This is a bounded sequence with conditional
 stops, not a general autonomous supervisor. Simple cases do not need model calls.
 
-## Try the repaired flow locally
+## Try the workflow
 
 1. Open **Customer Operations → New case**. Use `CUST-DEMO-A`, `ORD-DEMO-A` and
    “I was charged twice for this order.”
@@ -68,7 +68,9 @@ stops, not a general autonomous supervisor. Simple cases do not need model calls
    workspace with **Simulate settlement failure** to see the recovery path.
 6. Open **Employee IT → New access request** for the requester/manager/provisioning journey.
 
-See the [illustrated guide](docs/DEMO_WALKTHROUGH.md) for both workflows. The existing
+See the [illustrated guide](docs/DEMO_WALKTHROUGH.md) and
+[63-second workflow recording](https://github.com/abhilashvadla98-pixel/resolveops/releases/download/v1.2.0/resolveops-workflow-repair-20261004.webm).
+The recording uses local synthetic systems and rules-only execution. The existing
 [42-second teaser](https://github.com/abhilashvadla98-pixel/resolveops/releases/download/v1.0.0/resolveops-product-demo.webm)
 and [72-second recording](https://github.com/abhilashvadla98-pixel/resolveops/releases/download/v1.1.0/resolveops-technical-walkthrough.webm)
 show an earlier release, not the repaired settlement lifecycle or current live-agent behavior.
@@ -80,6 +82,7 @@ show an earlier release, not the repaired settlement lifecycle or current live-a
 | Customer regression | [24-case v2 report](evals/workflows/settlement-v2-report.json) | Actual workflow and persisted issue/refund state; scripted, not live AI |
 | New-request browser journeys | [Customer tests](tests/test_customer_journey_browser.py), [IT tests](tests/test_employee_it_browser.py) | Intake, approval, pending, settlement/failure and grant verification |
 | Integrated agent evaluation | [Ten tasks](evals/integrated/cases.jsonl), [runner](scripts/run_integrated_agent_evaluation.py) | Application read tools and business outcomes; expectations excluded from model input |
+| Live integrated sample | [Release evidence](https://github.com/abhilashvadla98-pixel/resolveops/releases/tag/v1.2.0) | 30 requested; 1 passed, 1 quota failure, 28 not run. Not a reliability claim |
 | Grounding and control | [Grounding tests](tests/test_agent_grounding.py), [workflow tests](tests/test_workflows.py) | Fabricated observations, altered actions and unsupported recommendations stop safely |
 | Combined complaint | [Two settlement-order tests](tests/test_combined_customer_journey.py) | Duplicate capture plus partial return; no repeat refund; both final events required |
 | Human review | [Evaluation guide](docs/EVALUATION.md) | 24 owner labels remain pending; code does not invent them |
