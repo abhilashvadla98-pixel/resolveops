@@ -49,7 +49,30 @@ Run `scripts/verify_deployment.py --base-url https://your-demo-host` and store i
 deployment date, host, image revision and region. Keep deployed latency separately from local
 measurements.
 
-## Verified deployment — October 4, v1.2.1
+## Verified deployment — October 5, v1.4.0
+
+- Public URL: [ResolveOps console](https://resolveops-demo.onrender.com/console)
+- Current application commit: `34e85689936a4363ae39b97b6c16359efd91a7ab`
+- `/health/build`: version `1.4.0`, schema `0025_employee_it_agent_execution`, exact current commit above
+- `/health/ready`: `ready`; Render reported **Deploy succeeded | Live**
+- Employee IT execution proof: deployed functional commit `57691d027991bbb4c422baa4c3e723fc51ab2e2b`
+  completed one isolated request with 7 real Gemini calls across supervisor,
+  investigation, policy, resolution and critic roles; the critic accepted the typed grant proposal
+- Control-plane proof: the manager decision was stored separately, exact employee/repository/action
+  validation passed, the simulator granted access once and a fresh read returned active access
+- Observed API execution time: 17.07 seconds. This single run is not an SLO or reliability estimate
+- Presentation: [six screenshots and a 79.84-second walkthrough](DEMO_WALKTHROUGH.md)
+- Safety path: a separate missing-MFA request stopped without reporting a successful grant
+- Boundary: all employees, repositories, approvals and access changes are fictional; no credential
+  appears in source, screenshots, video or browser responses
+
+Commit `34e8568` contains only approval-copy and mode-label polish on top of the verified workflow.
+Its six CI gates passed before deployment. A later free-tier provider retry stopped safely with
+`ReasoningProviderError`; it was not substituted for the successful execution record.
+
+The October 4 customer run below remains the matching live-agent refund example.
+
+## Previous verified deployment — October 4, v1.2.1
 
 - Public URL: [ResolveOps console](https://resolveops-demo.onrender.com/console)
 - Application commit: `5179640c495960293a6dfa7ae1165ae351d5c184`

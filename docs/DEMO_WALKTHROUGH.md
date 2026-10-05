@@ -4,7 +4,7 @@ Two workflows share one console: customer refund complaints and employee reposit
 All business records, money movement, access grants and notices in the sandbox are synthetic.
 No bank, CRM, directory or Git provider is changed.
 
-This guide describes **version 1.2.1**, verified on the deployed sandbox on **2026-10-04**. Check the
+This guide describes **version 1.4.0**, verified on the deployed sandbox on **2026-10-05**. Check the
 [deployment record](PUBLIC_DEMO.md) and `/health/build` before using the
 [public demo](https://resolveops-demo.onrender.com/console) as release evidence. A sleeping free
 instance can take time to start. The repository quick start also runs the same synthetic workflow
@@ -12,8 +12,8 @@ locally. Open /console and wait until the workspace is connected.
 
 ## Flagship live-agent walkthrough
 
-This is the shortest honest recruiter demonstration. It uses fictional data but real Gemini role
-calls. The normal **Investigate** action decides whether the specialist graph is needed; there is no
+This is the shortest complete walkthrough. It uses fictional data but real Gemini role calls. The
+normal **Investigate** action decides whether the specialist graph is needed; there is no
 separate toy agent button.
 
 1. Open **Customer Operations** and select `CASE-1001`, a combined duplicate-charge and missing-return-refund complaint.
@@ -150,6 +150,8 @@ events for the old attempt cannot resolve or reopen the replacement attempt.
 This path uses Gemini specialists for evidence-grounded investigation when live mode is enabled;
 deterministic identity, approval, action and verification controls remain authoritative.
 
+![Live v1.4.0 workspace with Employee IT available](assets/employee-it-live-20261005/01-live-overview.png)
+
 1. Return to **Overview**, open **Employee IT Operations**, and select **New access request**.
 2. Choose fictional employee EMP-2001, the ML Platform repository and **Write**. Enter “Implement
    the assigned model-serving endpoint.” The form labels employee selection as a sandbox simulation.
@@ -172,20 +174,24 @@ deterministic identity, approval, action and verification controls remain author
 **Request:** select a fictional employee only in the sandbox. The form states whether the current
 session will use live specialists or rules only.
 
-![Synthetic employee request with repository, access level and business reason](assets/workflow-repair-20261004/employee-it-requester.png)
+![New employee request with repository, access level and business reason](assets/employee-it-live-20261005/02-new-access-request.png)
 
 **Approval:** review the actual target repository, access level and manager before processing.
 
-![Separate manager approval for the synthetic employee request](assets/workflow-repair-20261004/employee-it-approval.png)
+![Separate manager approval for the exact employee access request](assets/employee-it-live-20261005/03-manager-approval.png)
 
-**Verification:** the final view retains the explicit simulated manager, fresh access result
-and newest processing attempt. Notices are saved records, not real email.
+**Verification:** the final view retains the Gemini invocation records, explicit simulated manager,
+fresh access result and newest processing attempt. Notices are saved records, not real email.
 
-![Verified employee access with identity checks and retained attempt history](assets/workflow-repair-20261004/employee-it-verified.png)
+![Verified access result before the persisted role records](assets/employee-it-live-20261005/04-access-verified.png)
+
+![Persisted model, latency, token and run records for all five roles](assets/employee-it-live-20261005/05-live-agent-trace.png)
 
 Select ITCASE-2004 to show missing MFA stopping processing without a grant. A genuine correction to
 source records can permit a new attempt without erasing the failed one. Reset before repeating the
 fresh-request walkthrough.
+
+![Missing MFA stops the request without granting access](assets/employee-it-live-20261005/06-mfa-safety-stop.png)
 
 ## Audit, evidence and limits
 
@@ -205,9 +211,20 @@ label, policy or case outcome.
 **Reset workspace** removes this session’s synthetic activity and restores its baseline. It does
 not deploy code or repair a real external system.
 
-## Media status
+## Media record
 
-The v1.2.1 screenshots above and 85.28-second recording were captured from the deployed Render
+The [79.84-second Employee IT recording](https://github.com/abhilashvadla98-pixel/resolveops/releases/download/v1.4.0/resolveops-employee-it-live-agent-v1.4.0.webm)
+was captured from deployed functional build `57691d027991bbb4c422baa4c3e723fc51ab2e2b` on October 5, 2026.
+It shows one new request, separate manager approval, five Gemini roles, persisted invocation
+telemetry, a deterministic access grant, fresh verification and a missing-MFA safety stop. The
+records and business-system writes are synthetic; the Gemini calls are real.
+
+The current deployment is `34e85689936a4363ae39b97b6c16359efd91a7ab`. That follow-up changed
+approval copy and the mode label only; CI reran all six gates before it was deployed. The setup and
+approval screenshots use the current copy. The execution and safety screenshots retain the
+successful functional run instead of presenting a failed free-tier retry as working evidence.
+
+The v1.2.1 customer screenshots above and 85.28-second recording were captured from the deployed Render
 sandbox after `/health/build` reported commit `5179640c495960293a6dfa7ae1165ae351d5c184`.
 They contain synthetic business records and no credentials. The video shows real Gemini role calls
 and simulated business-system actions; no bank, CRM or Git provider was changed.

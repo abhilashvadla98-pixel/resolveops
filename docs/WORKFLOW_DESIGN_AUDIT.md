@@ -212,7 +212,7 @@ Features earn inclusion as follows:
 - Observability: helps explain bad outcomes and measure cost/latency, not just displays agent names.
 - No new Kubernetes, Kafka, vector databases, fine-tuning, GraphRAG, agents or frontend framework.
 
-## Acceptance tests before recording the recruiter walkthrough
+## Acceptance tests before recording the release walkthrough
 
 Every happy-path test starts from a new intake, not a fixture with a preconfirmed finding. Fixtures
 provide source records; the application must produce the finding, proposal and final state.

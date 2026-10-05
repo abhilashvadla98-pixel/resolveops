@@ -80,11 +80,15 @@ an 80 USD remaining-balance proposal, or scenario **J** to see a cancelled order
 120 USD capture. Both always enter the specialist graph when live mode is configured, then pass
 through the same deterministic approval, action and settlement controls.
 
+![Deployed Employee IT run with persisted Gemini role records](docs/assets/employee-it-live-20261005/05-live-agent-trace.png)
+
 See the [illustrated guide](docs/DEMO_WALKTHROUGH.md) and the
-[85-second live-agent walkthrough](https://github.com/abhilashvadla98-pixel/resolveops/releases/download/v1.2.1/resolveops-live-agent-walkthrough-v1.2.1.webm).
-It was recorded against the deployed v1.2.1 sandbox and shows real Gemini role calls, their grounded
-trace, separate human approval, controlled synthetic refund submission and fresh settlement
-verification. It is one observed successful run, not a reliability benchmark. The existing
+[80-second Employee IT walkthrough](https://github.com/abhilashvadla98-pixel/resolveops/releases/download/v1.4.0/resolveops-employee-it-live-agent-v1.4.0.webm).
+It was recorded against the deployed v1.4.0 sandbox and follows a new access request through
+manager approval, seven Gemini calls across five roles, a typed repository grant, a fresh access
+read and an MFA safety stop. It is one observed run, not a reliability benchmark. The earlier
+[85-second customer walkthrough](https://github.com/abhilashvadla98-pixel/resolveops/releases/download/v1.2.1/resolveops-live-agent-walkthrough-v1.2.1.webm)
+shows the matching refund path. The existing
 [42-second teaser](https://github.com/abhilashvadla98-pixel/resolveops/releases/download/v1.0.0/resolveops-product-demo.webm)
 and [72-second recording](https://github.com/abhilashvadla98-pixel/resolveops/releases/download/v1.1.0/resolveops-technical-walkthrough.webm)
 show an earlier release, not the repaired settlement lifecycle or current live-agent behavior.
@@ -102,6 +106,7 @@ show an earlier release, not the repaired settlement lifecycle or current live-a
 | Combined complaint | [Two settlement-order tests](tests/test_combined_customer_journey.py) | Duplicate capture plus partial return; no repeat refund; both final events required |
 | Expanded customer issues | [End-to-end tests](tests/test_customer_issue_expansion.py), [browser tests](tests/test_customer_issue_expansion_browser.py) | Incorrect refund balance and cancelled-order charge through approval, action, provider event and fresh verification |
 | Employee IT agent controls | [Employee IT tests](tests/test_employee_it.py) | Five-role advisory handoff, exact repository/action validation, manager approval and fresh verification |
+| Deployed Employee IT run | [v1.4.0 evidence](docs/releases/v1.4.0.md) | 7 Gemini calls, 2 scoped tool reads, critic acceptance, deterministic grant and fresh active-access read |
 | Human review | [Evaluation guide](docs/EVALUATION.md) | 24 owner labels remain pending; code does not invent them |
 
 Rules-only repeats are deterministic regressions, not a stochastic benchmark. Historical provider

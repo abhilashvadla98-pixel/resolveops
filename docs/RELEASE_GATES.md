@@ -1,6 +1,6 @@
 # Release gates — workflow repair
 
-Updated 2026-10-04. This supersedes the assertion that only human response review remained.
+Updated 2026-10-05. This supersedes the assertion that only human response review remained.
 The October audit found real lifecycle, authorization and evidence defects. Historical tags,
 the demo URL and old videos do not establish that current changes are deployed or validated.
 
@@ -39,7 +39,24 @@ the demo URL and old videos do not establish that current changes are deployed o
 | Secret safety | Owner revokes exposed key; replacement local only; no secrets in tracked source or artifacts |
 | GitHub release | Reviewed change, clean checks on release commit, accurate metadata/links/version and no large generated data |
 
-## Recorded result — v1.2.1
+## Recorded result — v1.4.0
+
+Current deployed application commit: `34e85689936a4363ae39b97b6c16359efd91a7ab`.
+The measured live execution below ran on functional commit
+`57691d027991bbb4c422baa4c3e723fc51ab2e2b`; the later commit changed only approval copy and the
+mode label.
+
+- **Deployed Employee IT workflow:** one new request completed the normal five-role Gemini path,
+  exact-action validation, separate manager approval, controlled repository grant and fresh active-access
+  read. The measured run made 7 model calls and 2 scoped tool reads in 17.07 seconds.
+- **CI:** all six jobs passed for the integration and validation pull requests.
+- **Presentation:** six deployed screenshots and a 79.84-second walkthrough show request, approval,
+  saved role invocations, verified access and an MFA safety stop.
+- **Boundary:** directory, Git, ticket and notification systems are simulators. No external repository
+  or employee account was changed.
+- **Human review:** still 0/24. Only the owner can supply these labels.
+
+## Previous recorded result — v1.2.1
 
 Application commit: `5179640c495960293a6dfa7ae1165ae351d5c184`.
 
