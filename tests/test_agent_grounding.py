@@ -241,6 +241,50 @@ def test_resolution_references_and_disposition_limit_proposed_actions() -> None:
             investigation,
             _policy_turn(),
         )
+
+
+def test_employee_access_disposition_allows_only_the_typed_access_action() -> None:
+    investigation = _turn(_observation())
+    proposal = ResolutionProposal(
+        issue_resolutions=[
+            IssueResolution(
+                issue_id="ACCESS-REQUEST-1",
+                disposition="access",
+                recommendation="Submit the approved request to deterministic controls.",
+                evidence_ids=investigation.evidence_ids,
+                policy_citations=["CHUNK-1"],
+            )
+        ],
+        proposed_actions=[
+            ProposedAction(
+                action_type="grant_repository_access",
+                issue_id="ACCESS-REQUEST-1",
+                resource_id="REPO-1",
+                requires_approval=True,
+            )
+        ],
+        evidence_support=investigation.evidence_ids,
+        policy_support=["CHUNK-1"],
+        escalation_needed=False,
+    )
+
+    validate_resolution_references(proposal, investigation, _policy_turn())
+    with pytest.raises(ValueError, match="conflicts with"):
+        validate_resolution_references(
+            proposal.model_copy(
+                update={
+                    "proposed_actions": [
+                        ProposedAction(
+                            action_type="issue_refund",
+                            issue_id="ACCESS-REQUEST-1",
+                            requires_approval=True,
+                        )
+                    ]
+                }
+            ),
+            investigation,
+            _policy_turn(),
+        )
     with pytest.raises(ValueError, match="conflicts with"):
         validate_resolution_references(
             proposal.model_copy(

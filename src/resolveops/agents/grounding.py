@@ -253,7 +253,15 @@ def validate_resolution_references(
         if not set(item.policy_citations).issubset(citations):
             raise ValueError("issue resolution cites unsupported policy")
     dispositions = {item.issue_id: item.disposition for item in proposal.issue_resolutions}
-    if any(dispositions.get(action.issue_id) != "refund" for action in proposal.proposed_actions):
+    allowed_action_dispositions = {
+        "issue_refund": "refund",
+        "refund": "refund",
+        "grant_repository_access": "access",
+    }
+    if any(
+        allowed_action_dispositions.get(action.action_type) != dispositions.get(action.issue_id)
+        for action in proposal.proposed_actions
+    ):
         raise ValueError("proposed action conflicts with the issue disposition")
     if proposal.escalation_needed and proposal.proposed_actions:
         raise ValueError("an escalated proposal cannot request an action")
