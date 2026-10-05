@@ -157,8 +157,13 @@ def test_operator_completes_demo_approval_workflow(running_demo: str, tmp_path: 
         )
 
         page.locator('[data-view="approvals"]').click()
-        expect(page.locator(".approval-explainer")).to_contain_text("not a real bank transfer")
-        expect(page.locator(".approval-explainer")).to_contain_text("payment-provider simulator")
+        expect(page.locator(".approval-explainer")).to_contain_text(
+            "one reviewed action—not a blanket permission"
+        )
+        expect(page.locator(".approval-explainer")).to_contain_text(
+            "approved refund or repository grant"
+        )
+        expect(page.locator(".approval-explainer")).to_contain_text("business-system simulator")
         expect(page.locator("#approval-list")).to_contain_text("650.00 USD")
         page.get_by_label("Decision note", exact=True).fill(
             "Evidence and policy support this controlled refund."
