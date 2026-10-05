@@ -405,14 +405,14 @@
 <article class="approval-explainer">
 <div>
 <span class="workflow-card-eyebrow">What happens after approval</span>
-<h2>Approval authorizes a controlled simulator action—not a real bank transfer</h2>
-<p>The workflow records the operator decision, rechecks the action contract, writes the refund to the isolated payment-provider simulator, reads the provider state again, and stores the result in the audit and reliability logs.</p>
+<h2>Approval authorizes one reviewed action—not a blanket permission</h2>
+<p>The workflow records the reviewer and reason, rechecks the exact action contract, applies the change in an isolated business-system simulator, reads the resulting state, and stores the outcome in the audit and reliability logs.</p>
 </div>
 <ol>
 <li><strong>1 · Authorize</strong><span>Record the named operator and reason.</span></li>
-<li><strong>2 · Recheck</strong><span>Validate tenant, role, limit and idempotency.</span></li>
-<li><strong>3 · Execute</strong><span>Create a refund in the local provider simulator.</span></li>
-<li><strong>4 · Verify</strong><span>Read fresh provider state before marking complete.</span></li>
+<li><strong>2 · Recheck</strong><span>Validate tenant, role, target and idempotency.</span></li>
+<li><strong>3 · Execute</strong><span>Submit the approved refund or repository grant.</span></li>
+<li><strong>4 · Verify</strong><span>Read fresh system state before marking complete.</span></li>
 </ol>
 </article>
 <div id="approval-list" class="approval-list">
