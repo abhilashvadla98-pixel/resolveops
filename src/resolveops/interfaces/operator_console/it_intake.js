@@ -22,8 +22,8 @@
       byId("it-intake-repository").innerHTML = options.repositories.map((item) => `<option value="${escapeHtml(item.repository_id)}">${escapeHtml(item.name)}</option>`).join("");
       byId("it-intake-level").innerHTML = options.allowed_levels.map((level) => `<option value="${escapeHtml(level)}">${escapeHtml(titleCase(level))}</option>`).join("");
       setText("it-intake-mode", options.demo_personas_enabled
-        ? "Sandbox: choose a fictional employee. Approval simulates their team manager and records that simulation explicitly. These identity and access checks use rules; no AI model is called."
-        : "Your authenticated identity determines the requester. Only the actual target-team manager can approve. These identity and access checks use rules; no AI model is called.");
+        ? `Sandbox: choose a fictional employee. Approval simulates their team manager and records that simulation explicitly. ${options.execution_mode === "live_model" ? "Gemini specialists investigate the ticket; code controls approval and access." : "This session uses rules only."}`
+        : `Your authenticated identity determines the requester. Only the actual target-team manager can approve. ${options.execution_mode === "live_model" ? "Gemini specialists investigate the ticket; code controls approval and access." : "This session uses rules only."}`);
       if (!sourceMessageId) sourceMessageId = `IT-MSG-${crypto.randomUUID()}`;
       byId("it-intake-error").hidden = true;
       panel.hidden = false;

@@ -147,7 +147,8 @@ events for the old attempt cannot resolve or reopen the replacement attempt.
 
 ## Employee IT Operations: request to verified access
 
-This path uses deterministic identity and access checks. It does not call an AI model.
+This path uses Gemini specialists for evidence-grounded investigation when live mode is enabled;
+deterministic identity, approval, action and verification controls remain authoritative.
 
 1. Return to **Overview**, open **Employee IT Operations**, and select **New access request**.
 2. Choose fictional employee EMP-2001, the ML Platform repository and **Write**. Enter “Implement
@@ -159,15 +160,17 @@ This path uses deterministic identity and access checks. It does not call an AI 
    and select **Approve access**. The sandbox records DEMO-MANAGER:EMP-2000. In a normal session,
    an active, MFA-enabled identity must map to the actual current manager. An unrelated approver
    role or self-approval is not enough.
-5. Select **Run safety checks and process**. The workflow rechecks employment, identity, MFA, team
-   membership, manager approval, policy and existing access. Only read/write access is supported.
+5. Select **Run safety checks and process**. The five roles plan, read the scoped IT snapshot,
+   retrieve policy, propose a typed grant and independently criticize it. The control plane then
+   rechecks employment, identity, MFA, team membership, manager approval, policy and existing access.
+   Only read/write access is supported.
    Conflicting, inactive or partial access stops for reconciliation.
 6. Inspect **Access Verified**, directory membership, repository permission, ticket and saved
    synthetic notice. A fresh read verifies the result. **Processing attempts** retains prior
    attempts and labels the newest result, including after refresh.
 
-**Request:** select a fictional employee only in the sandbox; the form states that no AI model
-is called for this access workflow.
+**Request:** select a fictional employee only in the sandbox. The form states whether the current
+session will use live specialists or rules only.
 
 ![Synthetic employee request with repository, access level and business reason](assets/workflow-repair-20261004/employee-it-requester.png)
 

@@ -33,12 +33,13 @@ audit, security, and observability runtime. Its domain nodes are:
    repository ownership;
 3. inspect existing group and repository access;
 4. retrieve the active repository-access policy with citations;
-5. optionally request one bounded advisory reasoning assessment;
-6. require an actionable case and exact approval from the target-team manager;
-7. call the shared idempotent action layer;
-8. independently read and verify every final record before reporting success.
+5. when live mode is enabled, run the five-role Gemini graph over scoped read tools and policy;
+6. require critic acceptance and validate the exact typed repository-access recommendation;
+7. require an actionable case and exact approval from the target-team manager;
+8. call the shared idempotent action layer;
+9. independently read and verify every final record before reporting success.
 
-The model cannot approve or grant access. Authorization, approval scope, eligibility, exact access
+The agents cannot approve or grant access. Authorization, approval scope, eligibility, exact access
 level, state changes, idempotency, and final verification are deterministic. Partial or conflicting
 existing access is escalated instead of silently repaired or overwritten.
 
@@ -60,7 +61,7 @@ addresses, enterprise usernames, Git usernames, and notification recipients. Rol
 
 ## Evaluation
 
-The versioned dataset at `evals/workflows/employee_it.jsonl` has 14 deterministic cases covering a
+The versioned dataset at `evals/workflows/employee_it.jsonl` has 14 deterministic regression cases covering a
 successful grant, grounded advisory reasoning, authorization denial, employee and identity state,
 MFA, team membership, Git state, approval status and approver identity, partial access conflict,
 idempotent no-action behavior, missing policy, and a manual-review recommendation.

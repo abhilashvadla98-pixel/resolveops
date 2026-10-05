@@ -6,6 +6,7 @@ import pytest
 from sqlalchemy import Engine, create_engine, event, func, select
 from sqlalchemy.orm import Session, sessionmaker
 
+from resolveops.agents.models import MultiAgentReasoningResult
 from resolveops.database.action_records import AuditEventRecord, OperationRecord
 from resolveops.database.base import Base
 from resolveops.database.employee_it_records import (
@@ -103,6 +104,161 @@ def workflow(
         actor=Actor(actor_id=f"USER-{role.value.upper()}", role=role),
     )
     return service, request
+
+
+class RecordingEmployeeAgentRuntime:
+    def __init__(self, *, repository_id: str = "REPO-ML-PLATFORM") -> None:
+        self.repository_id = repository_id
+        self.calls: list[dict[str, object]] = []
+
+    def run(self, **kwargs: object) -> MultiAgentReasoningResult:
+        self.calls.append(kwargs)
+        return MultiAgentReasoningResult.model_validate(
+            {
+                "workflow_id": kwargs["workflow_id"],
+                "case_id": kwargs["case_id"],
+                "tenant_id": kwargs["tenant_id"],
+                "domain": "employee_it",
+                "supervisor": {
+                    "goal": "Investigate the repository access ticket.",
+                    "issues": ["ACCESS-REQUEST-2001"],
+                    "plan_steps": [
+                        {
+                            "step_id": "STEP-1",
+                            "objective": "Read identity and access state.",
+                            "assigned_role": "investigation",
+                        }
+                    ],
+                    "required_evidence": ["IT access snapshot"],
+                    "delegations": ["investigation", "policy", "resolution", "critic"],
+                    "parallelizable_tasks": [],
+                    "missing_information": [],
+                    "next_agent": "investigation",
+                    "stopping_condition": "The critic accepts a grounded recommendation.",
+                },
+                "investigation": {
+                    "facts": [],
+                    "evidence_ids": ["OBS-IT-1"],
+                    "contradictions": [],
+                    "missing_evidence": [],
+                    "confidence": 0.98,
+                    "source_provenance": ["employee IT snapshot"],
+                    "complete": True,
+                },
+                "policy": {
+                    "applicable_policy": "POLICY-REPOSITORY-ACCESS",
+                    "citations": ["POLICY-REPOSITORY-ACCESS"],
+                    "policy_versions": {"POLICY-REPOSITORY-ACCESS": 1},
+                    "supporting_sections": ["Approval and eligibility"],
+                    "conflicts": [],
+                    "missing_policy": False,
+                    "policy_interpretation": "Eligible employees may receive approved least-privilege access.",
+                    "uncertainty": [],
+                    "complete": True,
+                },
+                "resolution": {
+                    "issue_resolutions": [
+                        {
+                            "issue_id": "ACCESS-REQUEST-2001",
+                            "disposition": "access",
+                            "recommendation": "Submit the approved request to deterministic access controls.",
+                            "evidence_ids": ["OBS-IT-1"],
+                            "policy_citations": ["POLICY-REPOSITORY-ACCESS"],
+                        }
+                    ],
+                    "proposed_actions": [
+                        {
+                            "action_type": "grant_repository_access",
+                            "issue_id": "ACCESS-REQUEST-2001",
+                            "resource_id": self.repository_id,
+                            "amount": None,
+                            "requires_approval": True,
+                        }
+                    ],
+                    "evidence_support": ["OBS-IT-1"],
+                    "policy_support": ["POLICY-REPOSITORY-ACCESS"],
+                    "risk_flags": [],
+                    "uncertainty": [],
+                    "escalation_needed": False,
+                },
+                "critic": {
+                    "decision": "accept",
+                    "unsupported_claims": [],
+                    "missing_evidence": [],
+                    "contradictions": [],
+                    "unsafe_actions": [],
+                    "citation_issues": [],
+                    "partial_completion": [],
+                    "summary": "Grounded recommendation; deterministic controls remain authoritative.",
+                },
+                "status": "ready_for_control_plane",
+                "replan_count": 0,
+                "agent_call_count": 5,
+                "tool_call_count": 2,
+                "usage": {
+                    "agent_steps": 5,
+                    "model_calls": 5,
+                    "tool_calls": 2,
+                    "input_tokens": 900,
+                    "output_tokens": 250,
+                },
+                "agent_run_ids": [f"ARUN-IT-{index}" for index in range(1, 6)],
+            }
+        )
+
+
+def test_employee_access_uses_agents_then_deterministic_controls(
+    employee_database: tuple[Engine, sessionmaker[Session]],
+) -> None:
+    _, factory = employee_database
+    agents = RecordingEmployeeAgentRuntime()
+    service = EmployeeAccessWorkflow(
+        factory,
+        FeatureHashEmbeddingProvider(dimensions=128),
+        action_tools=ActionTools(factory, clock=lambda: NOW, id_generator=ids()),
+        agent_runtime=agents,
+        tenant_id="TENANT-TEST",
+        clock=lambda: NOW,
+    )
+    result = service.run(
+        EmployeeAccessWorkflowRequest(
+            workflow_id="IT-WORKFLOW-AGENTS",
+            case_id="ITCASE-2001",
+            actor=Actor(actor_id="USER-OPERATOR", role=ActorRole.OPERATOR),
+        )
+    )
+
+    assert result.outcome == EmployeeWorkflowOutcome.ACCESS_VERIFIED
+    assert result.execution_mode == "live_model"
+    assert result.agent_assessment is not None
+    assert agents.calls[0]["domain"].value == "employee_it"
+
+
+def test_employee_agent_cannot_redirect_access_to_another_repository(
+    employee_database: tuple[Engine, sessionmaker[Session]],
+) -> None:
+    _, factory = employee_database
+    agents = RecordingEmployeeAgentRuntime(repository_id="REPO-OTHER")
+    service = EmployeeAccessWorkflow(
+        factory,
+        FeatureHashEmbeddingProvider(dimensions=128),
+        action_tools=ActionTools(factory, clock=lambda: NOW, id_generator=ids()),
+        agent_runtime=agents,
+        tenant_id="TENANT-TEST",
+        clock=lambda: NOW,
+    )
+    result = service.run(
+        EmployeeAccessWorkflowRequest(
+            workflow_id="IT-WORKFLOW-MISMATCH",
+            case_id="ITCASE-2001",
+            actor=Actor(actor_id="USER-OPERATOR", role=ActorRole.OPERATOR),
+        )
+    )
+
+    assert result.outcome == EmployeeWorkflowOutcome.NEEDS_REVIEW
+    assert result.error_code == "agent_action_mismatch"
+    with factory() as session:
+        assert session.scalar(select(func.count(GitRepositoryAccessRecord.access_id))) == 0
 
 
 class ScriptedAccessReasoner:

@@ -1,11 +1,10 @@
 # Hierarchical multi-agent analysis
 
-ResolveOps integrates guarded hierarchical analysis into the normal customer workflow. Opening a
-case does not spend model tokens. When an operator starts an investigation, deterministic routing
-selects the bounded graph for multiple issues or an investigation-evidence error. Refund amount
-alone does not trigger agents. Simple supported cases remain rules-only. Both paths enter the same
-deterministic control plane. The employee repository-access workflow is deterministic; a separate
-IT reasoning contract is not proof that the employee API invokes agents.
+ResolveOps integrates guarded hierarchical analysis into normal customer and Employee IT workflows.
+Opening a case does not spend model tokens. Customer routing selects the bounded graph for complex
+issues; simple supported cases remain rules-only. An approved Employee IT access ticket enters the
+same five-role graph when the operator starts processing. Both domains then enter deterministic
+control planes that validate the recommendation before any action.
 
 ## Roles and authority
 
@@ -51,8 +50,10 @@ Critic acceptance means only “ready for the deterministic control plane.” It
 was authorized or executed. A Critic revision routes back to the Supervisor within the configured
 replan and model-call budgets; a rejection or exhausted budget escalates safely.
 
-Per-issue recommendations explicitly say `refund`, `wait`, `no_action`, `request_information` or
-`escalate`. A refund action must match the server-derived eligible payment and amount. A missing
+Per-issue recommendations explicitly say `refund`, `access`, `wait`, `no_action`,
+`request_information` or `escalate`. A refund action must match the server-derived eligible payment
+and amount. An access action must match the persisted access-request ID and approved repository,
+contain no amount, and declare approval required. A missing
 matching issue, refusal, uncertainty, or unsupported action stops execution. Investigation never
 writes a refund. Approval and verified submission are separate from settlement: a pending refund
 remains open until the provider event confirms the final state. Demo provider events are synthetic.

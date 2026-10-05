@@ -1,6 +1,7 @@
 import operator
 from typing import Annotated, NotRequired, TypedDict
 
+from resolveops.agents.models import MultiAgentReasoningResult
 from resolveops.employee_it.models import (
     EmployeeAccessSnapshot,
     GrantRepositoryAccessRequest,
@@ -30,6 +31,8 @@ class EmployeeAccessWorkflowState(TypedDict):
     access_request: NotRequired[GrantRepositoryAccessRequest]
     decision: NotRequired[EmployeeWorkflowDecision]
     reasoning: NotRequired[ReasoningTrace | None]
+    agent_assessment: NotRequired[MultiAgentReasoningResult | None]
+    agent_attempted: NotRequired[bool]
     operation: NotRequired[OperationResult | None]
     verified_access_id: NotRequired[str | None]
     outcome: NotRequired[EmployeeWorkflowOutcome]

@@ -212,6 +212,8 @@ class ITWorkflowExecutionRecord(Base):
     error_code: Mapped[str | None] = mapped_column(String(100))
     error_message: Mapped[str | None] = mapped_column(Text)
     node_history: Mapped[list[str]] = mapped_column(JSON)
+    execution_mode: Mapped[str] = mapped_column(String(30), default="rules_only")
+    agent_run_ids: Mapped[list[str]] = mapped_column(JSON, default=list)
     created_at: Mapped[datetime] = mapped_column(UTCDateTime())
     completed_at: Mapped[datetime] = mapped_column(UTCDateTime())
 
