@@ -67,7 +67,7 @@ def refund_state_projection(session: Session, refund: RefundRecord) -> RefundSta
             "An operator must review the provider result before requesting a replacement refund.",
             f"refund_{refund.status.value}",
         )
-    if refund.kind == RefundKind.DUPLICATE_CHARGE:
+    if refund.kind in {RefundKind.DUPLICATE_CHARGE, RefundKind.CANCELLED_ORDER}:
         payment = session.get(PaymentRecord, refund.payment_id)
         required = (
             payment.amount if payment is not None and payment.currency == refund.currency else None
@@ -294,8 +294,16 @@ def _refund_matches_issue(refund: RefundRecord, issue: CaseIssueRecord) -> bool:
         return False
     if refund.kind == RefundKind.RETURN:
         return (
-            issue.issue_type == CaseIssueType.MISSING_RETURN_REFUND
+            issue.issue_type
+            in {
+                CaseIssueType.MISSING_RETURN_REFUND,
+                CaseIssueType.INCORRECT_REFUND_AMOUNT,
+            }
             and issue.return_id == refund.return_id
+        )
+    if refund.kind == RefundKind.CANCELLED_ORDER:
+        return issue.issue_type == CaseIssueType.CANCELLED_ORDER_CHARGE and any(
+            link.payment_id == refund.payment_id for link in issue.payment_links
         )
     return (
         refund.kind == RefundKind.DUPLICATE_CHARGE

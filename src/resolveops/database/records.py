@@ -422,7 +422,7 @@ class RefundRecord(Base):
         ),
         CheckConstraint(
             "(kind != 'return' OR return_id IS NOT NULL) "
-            "AND (kind != 'duplicate_charge' OR return_id IS NULL)",
+            "AND (kind NOT IN ('duplicate_charge', 'cancelled_order') OR return_id IS NULL)",
             name="ck_refunds_kind_context",
         ),
         CheckConstraint(

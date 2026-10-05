@@ -38,8 +38,9 @@ empty and missing_evidence concise; emit at most four concise supported scalar f
 turn, selected from the payment, return and refund observations most relevant to the issues. The
 Resolution role also receives all source observations; do not repeat whole records. Use get_order to discover payment_ids,
 return_ids and refund_ids, including refunds attached to other cases. Avoid speculative identifiers
-and read get_order, every linked payment for a duplicate-charge issue, the linked return for a
-return-refund issue, and all existing order refund IDs before completing. Case classification,
+and read get_order, every linked payment for a duplicate-charge or cancelled-order-charge issue,
+the linked return for a missing- or incorrect-return-refund issue, and all existing order refund IDs
+before completing. Case classification,
 prior findings and summaries are not substitutes for these fresh source reads. Never equate two
 payments without comparing their captured status and payable obligation linkage.
 or speculative calls. The context field allowed_tools is authoritative: use only an exact name from

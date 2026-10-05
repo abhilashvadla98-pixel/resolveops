@@ -9,12 +9,14 @@ from resolveops.database.records import (
     CaseIssueRecord,
     CaseRecord,
     OrderItemRecord,
+    OrderRecord,
     PaymentRecord,
     RefundRecord,
     ReturnItemRecord,
     ReturnRecord,
 )
 from resolveops.models.case import CaseIssueStatus, CaseIssueType, IssueFinding
+from resolveops.models.order import OrderStatus
 from resolveops.models.payment import PaymentStatus
 from resolveops.models.refund import RefundKind, RefundStatus
 from resolveops.models.returns import ReturnStatus
@@ -83,10 +85,12 @@ def execute_refund(
         _validate_duplicate_refund(session, issue, payment, request)
     elif request.kind == RefundKind.RETURN:
         _validate_return_refund(session, issue, payment, request)
+    elif request.kind == RefundKind.CANCELLED_ORDER:
+        _validate_cancelled_order_refund(session, issue, payment, request)
     else:
         raise BusinessRuleError(
             "unsupported_refund_kind",
-            "only confirmed duplicate-charge and return refunds are supported",
+            "only confirmed duplicate-charge, return, and cancelled-order refunds are supported",
         )
 
     active_statuses = [
@@ -197,9 +201,13 @@ def _validate_return_refund(
     payment: PaymentRecord,
     request: IssueRefundRequest,
 ) -> None:
-    if issue.issue_type != CaseIssueType.MISSING_RETURN_REFUND:
+    if issue.issue_type not in {
+        CaseIssueType.MISSING_RETURN_REFUND,
+        CaseIssueType.INCORRECT_REFUND_AMOUNT,
+    }:
         raise BusinessRuleError(
-            "issue_type_mismatch", "return refund requires a missing-return-refund issue"
+            "issue_type_mismatch",
+            "return refund requires a missing or incorrect return-refund issue",
         )
     if request.return_id is None or issue.return_id != request.return_id:
         raise BusinessRuleError(
@@ -252,4 +260,48 @@ def _validate_return_refund(
         raise BusinessRuleError(
             "return_refund_limit_exceeded",
             "active return refunds plus this refund exceed the returned items' value",
+        )
+
+
+def _validate_cancelled_order_refund(
+    session: Session,
+    issue: CaseIssueRecord,
+    payment: PaymentRecord,
+    request: IssueRefundRequest,
+) -> None:
+    if issue.issue_type != CaseIssueType.CANCELLED_ORDER_CHARGE:
+        raise BusinessRuleError(
+            "issue_type_mismatch",
+            "cancelled-order refund requires a cancelled-order-charge issue",
+        )
+    if request.return_id is not None:
+        raise BusinessRuleError(
+            "unexpected_return", "cancelled-order refund cannot reference a return"
+        )
+    linked_payment_ids = set(
+        session.scalars(
+            select(CaseIssuePaymentRecord.payment_id).where(
+                CaseIssuePaymentRecord.issue_id == issue.issue_id
+            )
+        )
+    )
+    if payment.payment_id not in linked_payment_ids:
+        raise BusinessRuleError(
+            "payment_not_in_issue",
+            "payment is not evidence for the cancelled-order-charge issue",
+        )
+    order = session.get(OrderRecord, payment.order_id)
+    if order is None or order.status != OrderStatus.CANCELLED:
+        raise BusinessRuleError(
+            "order_not_cancelled", "cancelled-order refund requires a cancelled order"
+        )
+    if (
+        not payment.obligation_id
+        or payment.obligation_amount != payment.amount
+        or payment.amount != order.total_amount
+        or payment.currency != order.currency
+    ):
+        raise BusinessRuleError(
+            "capture_allocation_unclear",
+            "cancelled-order refund requires one verified full-order capture",
         )

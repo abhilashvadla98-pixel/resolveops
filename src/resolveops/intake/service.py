@@ -83,10 +83,22 @@ class CaseIntakeService:
                 order_id=request.order_id,
                 issue_type=issue_type,
                 status=CaseIssueStatus.REPORTED,
-                payment_ids=(payment_ids if issue_type == CaseIssueType.DUPLICATE_CHARGE else []),
+                payment_ids=(
+                    payment_ids
+                    if issue_type
+                    in {
+                        CaseIssueType.DUPLICATE_CHARGE,
+                        CaseIssueType.CANCELLED_ORDER_CHARGE,
+                    }
+                    else []
+                ),
                 return_id=(
                     latest_return.return_id
-                    if issue_type == CaseIssueType.MISSING_RETURN_REFUND
+                    if issue_type
+                    in {
+                        CaseIssueType.MISSING_RETURN_REFUND,
+                        CaseIssueType.INCORRECT_REFUND_AMOUNT,
+                    }
                     and latest_return is not None
                     else None
                 ),
@@ -178,17 +190,33 @@ class CaseIntakeService:
                     issue_type=issue_type,
                     status=CaseIssueStatus.REPORTED,
                     payment_ids=[p.payment_id for p in self.store.list_payments(record.order_id)]
-                    if issue_type == CaseIssueType.DUPLICATE_CHARGE
+                    if issue_type
+                    in {
+                        CaseIssueType.DUPLICATE_CHARGE,
+                        CaseIssueType.CANCELLED_ORDER_CHARGE,
+                    }
                     else [],
                     return_id=selected_return.return_id
-                    if selected_return and issue_type == CaseIssueType.MISSING_RETURN_REFUND
+                    if selected_return
+                    and issue_type
+                    in {
+                        CaseIssueType.MISSING_RETURN_REFUND,
+                        CaseIssueType.INCORRECT_REFUND_AMOUNT,
+                    }
                     else None,
                     reported_at=now,
                     classification_confidence=None,
                 )
                 self.session.add(self.store._issue_record(new_issue))
         for issue in record.issues:
-            if issue.issue_type == CaseIssueType.MISSING_RETURN_REFUND and selected_return:
+            if (
+                issue.issue_type
+                in {
+                    CaseIssueType.MISSING_RETURN_REFUND,
+                    CaseIssueType.INCORRECT_REFUND_AMOUNT,
+                }
+                and selected_return
+            ):
                 active = (
                     self.session.query(CaseIssueRecord).filter_by(issue_id=issue.issue_id).one()
                 )

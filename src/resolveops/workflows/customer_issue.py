@@ -85,11 +85,19 @@ POLICY_QUERY = {
     CaseIssueType.MISSING_RETURN_REFUND: (
         "received return item paid amount existing return refund status verification"
     ),
+    CaseIssueType.INCORRECT_REFUND_AMOUNT: (
+        "received return item expected value completed partial refunds remaining amount verification"
+    ),
+    CaseIssueType.CANCELLED_ORDER_CHARGE: (
+        "cancelled order captured payment existing refunds remaining refundable amount verification"
+    ),
 }
 
 REQUIRED_POLICY = {
     CaseIssueType.DUPLICATE_CHARGE: "POLICY-DUPLICATE-CHARGE",
     CaseIssueType.MISSING_RETURN_REFUND: "POLICY-RETURN-REFUND",
+    CaseIssueType.INCORRECT_REFUND_AMOUNT: "POLICY-REFUND-AMOUNT",
+    CaseIssueType.CANCELLED_ORDER_CHARGE: "POLICY-CANCELLED-ORDER-CHARGE",
 }
 
 
@@ -361,6 +369,8 @@ class CustomerIssueWorkflow:
             {
                 CaseIssueType.DUPLICATE_CHARGE.value: "investigate_duplicate",
                 CaseIssueType.MISSING_RETURN_REFUND.value: "investigate_return",
+                CaseIssueType.INCORRECT_REFUND_AMOUNT.value: "investigate_return",
+                CaseIssueType.CANCELLED_ORDER_CHARGE.value: "investigate_duplicate",
             },
         )
         builder.add_edge("investigate_duplicate", "retrieve_policy")
@@ -674,7 +684,15 @@ class CustomerIssueWorkflow:
     @staticmethod
     def _requires_multi_agent(state: WorkflowState) -> bool:
         """Route complex cases through specialists without granting them action authority."""
-        return state.get("case_issue_count", 1) > 1 or bool(state.get("investigation_error"))
+        return (
+            state.get("case_issue_count", 1) > 1
+            or state.get("issue_type")
+            in {
+                CaseIssueType.INCORRECT_REFUND_AMOUNT,
+                CaseIssueType.CANCELLED_ORDER_CHARGE,
+            }
+            or bool(state.get("investigation_error"))
+        )
 
     @staticmethod
     def _route_reasoning(state: WorkflowState) -> str:

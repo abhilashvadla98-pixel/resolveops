@@ -109,7 +109,7 @@ def test_operator_completes_demo_approval_workflow(running_demo: str, tmp_path: 
         page.goto(f"{running_demo}/console")
         expect(page.locator("#sidebar-connection")).to_have_text("Connected")
         expect(page.locator("#case-table")).to_contain_text("CASE-1001")
-        expect(page.locator("#overview-cases")).to_have_text("7")
+        expect(page.locator("#overview-cases")).to_have_text("9")
         expect(page.locator("#overview-attention")).to_contain_text("Evidence review")
         expect(page.get_by_role("heading", name="Customer Operations")).to_be_visible()
         expect(page.get_by_role("heading", name="Employee IT Operations")).to_be_visible()

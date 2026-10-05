@@ -134,9 +134,12 @@ class AgentReadToolRegistry:
         for issue in issues if isinstance(issues, list) else []:
             if not isinstance(issue, dict):
                 continue
-            if issue.get("issue_type") == "duplicate_charge":
+            if issue.get("issue_type") in {"duplicate_charge", "cancelled_order_charge"}:
                 required.extend(("get_payment", str(identifier)) for identifier in payments)
-            if issue.get("issue_type") == "missing_return_refund" and issue.get("return_id"):
+            if issue.get("issue_type") in {
+                "missing_return_refund",
+                "incorrect_refund_amount",
+            } and issue.get("return_id"):
                 required.append(("get_return", str(issue["return_id"])))
         required.extend(("get_refund", str(identifier)) for identifier in refunds)
         observed = {
