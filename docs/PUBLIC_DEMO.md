@@ -39,7 +39,8 @@ infrastructure.
 - no real customer, employee, payment, identity or repository data
 - `RESOLVEOPS_INTEGRATED_AGENTS_ENABLED=true`
 - `RESOLVEOPS_GEMINI_KEY_ROTATED=true` and the rotated key stored only in Render's secret environment
-- strict per-run call, token and time budgets; page load and Employee IT do not spend model quota
+- strict per-run call, token and time budgets; page load does not spend model quota, while Employee
+  IT spends quota only when an operator processes an approved access ticket
 
 The Blueprint runs migrations and the synthetic seed automatically. After Render reports the deploy
 as live, verify `/health/live`, `/health/ready`, `/console`, demo-session isolation, reset behavior,

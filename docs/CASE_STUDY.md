@@ -36,7 +36,9 @@ When enabled, complex customer investigations enter the existing specialist grap
 workflow. Five roles plan, select allowlisted reads, retrieve policy, propose an issue-separated
 resolution, and criticize it. Evidence or policy failures can stop later roles. This is a bounded
 sequence with conditional stops, not an unrestricted autonomous supervisor. Validated advice cannot
-approve or execute. The employee-access workflow is deterministic and does not invoke this graph.
+approve or execute. Employee-access processing invokes the same bounded graph in live mode, then
+validates its typed proposal against manager approval and the requested repository before the
+deterministic grant.
 PostgreSQL owns queued work; Redis/Valkey only wakes workers and coordinates shared rate limits.
 
 The operator console has five working areas:

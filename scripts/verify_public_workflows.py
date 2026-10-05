@@ -220,7 +220,8 @@ class DemoVerifier:
     def employee(self) -> dict[str, Any]:
         options = self.call("employee_request_options", "GET", "/api/v1/it/request-options")
         require(
-            options["execution_mode"] == "deterministic" and options["demo_personas_enabled"],
+            options["execution_mode"] in {"rules_only", "live_model"}
+            and options["demo_personas_enabled"],
             "synthetic_employee_mode_not_confirmed",
         )
         employee_ids = {item["employee_id"] for item in options["employees"]}
@@ -278,7 +279,7 @@ class DemoVerifier:
             "workflow_id": identifier(completed["workflow_id"]),
             "access_id": access_id,
             "outcome": "access_verified",
-            "execution_mode": "deterministic",
+            "execution_mode": options["execution_mode"],
             "decision_mode": "demo_manager_simulation",
         }
 

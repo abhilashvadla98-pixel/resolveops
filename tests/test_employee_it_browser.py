@@ -21,7 +21,7 @@ def test_new_employee_request_approval_and_attempt_history(
         expect(page.locator("#sidebar-connection")).to_have_text("Connected")
         page.locator('[data-view="it"]').click()
         page.locator("#new-it-request").click()
-        expect(page.locator("#it-intake-mode")).to_contain_text("no AI model is called")
+        expect(page.locator("#it-intake-mode")).to_contain_text("This session uses rules only")
         page.locator("#it-intake-employee").select_option("EMP-2001")
         page.locator("#it-intake-level").select_option("write")
         page.locator("#it-intake-reason").fill("Implement the assigned model-serving endpoint.")

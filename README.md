@@ -10,7 +10,8 @@ and verifies the result. An accepted refund request is **not** a completed refun
 [Workflow guide](docs/DEMO_WALKTHROUGH.md) · [Release status](docs/RELEASE_GATES.md)
 
 The public sandbox uses fictional records and local business-system simulators. Complex customer
-cases run a bounded Gemini-backed specialist graph; simple cases and Employee IT stay deterministic.
+cases and Employee IT access tickets run a bounded Gemini-backed specialist graph when live mode is
+enabled. Simple customer cases remain rules-only.
 No model can approve or execute a sensitive action. Check the
 [deployment record](docs/PUBLIC_DEMO.md) for the exact verified build; `/health/build` identifies
 the version actually running. Free hosting can take time to wake.
@@ -23,10 +24,11 @@ return state, returned items and prior refunds. It proposes only the verified re
 tracks an existing refund, explains a no-action result, or stops for review. Approval submits one
 simulated refund. A later provider event determines settlement or failure.
 
-**Employee IT:** submit a repository and permission request. Rules check employment, identity, MFA,
-team, the actual manager's approval and current access. The service applies the allowed grant and
-reads back directory membership and repository permission. This path is not an LLM agent.
-Demo manager decisions are explicitly labeled simulations.
+**Employee IT:** submit a repository and permission request. Five read-only specialists investigate
+identity, MFA, team, repository, policy and current access, then an independent critic checks the
+typed recommendation. Deterministic code still requires the actual manager's approval, applies only
+the approved grant, and reads back directory membership and repository permission. Demo manager
+decisions are explicitly labeled simulations.
 
 ## Flagship: keep the case open until settlement
 
@@ -70,7 +72,8 @@ stops, not a general autonomous supervisor. Simple cases do not need model calls
 4. Expect **Refund submitted; settlement pending**. The case remains open.
 5. Select **Simulate settlement success**. Only then should the issue resolve. Repeat in a fresh
    workspace with **Simulate settlement failure** to see the recovery path.
-6. Open **Employee IT → New access request** for the requester/manager/provisioning journey.
+6. Open **Employee IT → New access request**. After approval, processing shows the persisted Gemini
+   specialist trace before deterministic provisioning and fresh verification.
 
 For the expanded customer paths, select demo scenario **I** to see a 40 USD partial refund produce
 an 80 USD remaining-balance proposal, or scenario **J** to see a cancelled order with one verified
@@ -98,6 +101,7 @@ show an earlier release, not the repaired settlement lifecycle or current live-a
 | Grounding and control | [Grounding tests](tests/test_agent_grounding.py), [workflow tests](tests/test_workflows.py) | Fabricated observations, altered actions and unsupported recommendations stop safely |
 | Combined complaint | [Two settlement-order tests](tests/test_combined_customer_journey.py) | Duplicate capture plus partial return; no repeat refund; both final events required |
 | Expanded customer issues | [End-to-end tests](tests/test_customer_issue_expansion.py), [browser tests](tests/test_customer_issue_expansion_browser.py) | Incorrect refund balance and cancelled-order charge through approval, action, provider event and fresh verification |
+| Employee IT agent controls | [Employee IT tests](tests/test_employee_it.py) | Five-role advisory handoff, exact repository/action validation, manager approval and fresh verification |
 | Human review | [Evaluation guide](docs/EVALUATION.md) | 24 owner labels remain pending; code does not invent them |
 
 Rules-only repeats are deterministic regressions, not a stochastic benchmark. Historical provider

@@ -1,12 +1,16 @@
+import logging
 from collections.abc import Callable
 from datetime import UTC, datetime
-from typing import cast
+from typing import Protocol, cast
 
 from langchain_core.runnables import RunnableLambda
 from langgraph.graph import END, START, StateGraph
 from langgraph.graph.state import CompiledStateGraph
+from pydantic import ValidationError
 from sqlalchemy.orm import Session, sessionmaker
 
+from resolveops.agents.budgets import AgentBudgetExceeded
+from resolveops.agents.models import AgentDomain, CriticDecision, MultiAgentReasoningResult
 from resolveops.database.employee_it_records import (
     ITAccessCaseRecord,
     ITAccessRequestRecord,
@@ -37,12 +41,12 @@ from resolveops.knowledge.retrieval import HybridPolicyRetriever
 from resolveops.models.case import CaseIssueType
 from resolveops.observability.models import TraceComponent
 from resolveops.observability.sinks import DEFAULT_TRACE_SINK, TraceSink
-from resolveops.observability.tracing import observed_span, trace_context
+from resolveops.observability.tracing import current_trace_id, observed_span, trace_context
 from resolveops.operations.actions import ActionTools
 from resolveops.operations.errors import OperationError
 from resolveops.operations.models import OperationStatus
 from resolveops.reasoning.agent import CaseReasoner
-from resolveops.reasoning.errors import ReasoningError
+from resolveops.reasoning.errors import ReasoningError, ReasoningProviderError
 from resolveops.reasoning.models import ReasoningDisposition, ReasoningPolicyExcerpt
 from resolveops.reasoning.providers import ReasoningProvider
 from resolveops.workflows.models import PolicyCitation, WorkflowStatus
@@ -52,6 +56,20 @@ POLICY_QUERY = (
     "directory group least privilege repository access verification"
 )
 REQUIRED_POLICY = "POLICY-REPOSITORY-ACCESS"
+LOGGER = logging.getLogger(__name__)
+
+
+class IntegratedAgentRuntime(Protocol):
+    def run(
+        self,
+        *,
+        workflow_id: str,
+        case_id: str,
+        tenant_id: str,
+        domain: AgentDomain,
+        objective: str,
+        trace_id: str,
+    ) -> MultiAgentReasoningResult: ...
 
 
 class EmployeeAccessWorkflow:
@@ -64,12 +82,18 @@ class EmployeeAccessWorkflow:
         *,
         action_tools: ActionTools | None = None,
         reasoning_provider: ReasoningProvider | None = None,
+        agent_runtime: IntegratedAgentRuntime | None = None,
+        tenant_id: str = "TENANT-LOCAL",
+        model_execution_mode: str = "live_model",
         observability_sink: TraceSink | None = None,
         clock: Callable[[], datetime] | None = None,
     ) -> None:
         self.session_factory = session_factory
         self.embedding_provider = embedding_provider
         self.observability_sink = observability_sink or DEFAULT_TRACE_SINK
+        self.agent_runtime = agent_runtime
+        self.tenant_id = tenant_id
+        self.model_execution_mode = model_execution_mode
         self.action_tools = action_tools or ActionTools(
             session_factory, observability_sink=self.observability_sink
         )
@@ -91,6 +115,7 @@ class EmployeeAccessWorkflow:
             "policy_citations": [],
             "policy_excerpts": [],
             "node_history": [],
+            "agent_assessment": None,
         }
         with (
             trace_context(
@@ -337,9 +362,75 @@ class EmployeeAccessWorkflow:
         }
 
     def _reason_case(self, state: EmployeeAccessWorkflowState) -> dict[str, object]:
+        snapshot = state["snapshot"]
+        request = snapshot.access_request
+        approved = (
+            request.status in {AccessRequestStatus.APPROVED, AccessRequestStatus.FULFILLED}
+            and request.approved_by == snapshot.team.manager_employee_id
+            and request.approved_at is not None
+            and request.approved_by != snapshot.employee.employee_id
+        )
+        # Avoid model spend when deterministic state already decides the case.
+        if state.get("already_satisfied") or not approved:
+            return {"reasoning": None, "node_history": ["reason_case"]}
+        if self.agent_runtime is not None:
+            try:
+                assessment = self.agent_runtime.run(
+                    workflow_id=state["workflow_id"],
+                    case_id=state["case_id"],
+                    tenant_id=self.tenant_id,
+                    domain=AgentDomain.EMPLOYEE_IT,
+                    objective=(
+                        f"Investigate repository access request "
+                        f"{snapshot.access_request.access_request_id} for "
+                        f"{snapshot.repository.repository_id}. "
+                        f"Requested level: {snapshot.access_request.requested_level.value}. "
+                        f"Justification: {snapshot.access_request.justification}"
+                    ),
+                    trace_id=current_trace_id() or state["workflow_id"],
+                )
+            except (AgentBudgetExceeded, ReasoningProviderError, ValueError) as exc:
+                diagnostic = (
+                    exc.errors(include_input=False, include_context=False)
+                    if isinstance(exc, ValidationError)
+                    else str(exc)
+                )
+                LOGGER.warning(
+                    "Employee IT agent assessment stopped for workflow %s (%s): %s",
+                    state["workflow_id"],
+                    type(exc).__name__,
+                    diagnostic,
+                )
+                return {
+                    "status": WorkflowStatus.ESCALATED,
+                    "agent_assessment": None,
+                    "agent_attempted": True,
+                    "error_code": "multi_agent_analysis_failed",
+                    "error_message": (
+                        "The specialist assessment stopped safely before access controls: "
+                        f"{type(exc).__name__}."
+                    ),
+                    "node_history": ["reason_case"],
+                }
+            if assessment.status != "ready_for_control_plane":
+                return {
+                    "status": WorkflowStatus.ESCALATED,
+                    "agent_assessment": assessment,
+                    "agent_attempted": True,
+                    "error_code": "multi_agent_review_required",
+                    "error_message": (
+                        "The independent critic did not clear the access recommendation."
+                    ),
+                    "node_history": ["reason_case"],
+                }
+            return {
+                "agent_assessment": assessment,
+                "agent_attempted": True,
+                "reasoning": None,
+                "node_history": ["reason_case"],
+            }
         if self.reasoner is None or not state["policy_excerpts"]:
             return {"reasoning": None, "node_history": ["reason_case"]}
-        snapshot = state["snapshot"]
         try:
             reasoning = self.reasoner.reason(
                 case_id=state["case_id"],
@@ -397,6 +488,59 @@ class EmployeeAccessWorkflow:
             return self._review(
                 "case_not_actionable", "IT case must be approved or awaiting recovery."
             )
+        assessment = state.get("agent_assessment")
+        if assessment is not None:
+            resolution = assessment.resolution
+            recommendation = (
+                next(
+                    (
+                        item
+                        for item in resolution.issue_resolutions
+                        if item.issue_id == request.access_request_id
+                    ),
+                    None,
+                )
+                if resolution is not None
+                else None
+            )
+            if (
+                assessment.case_id != state["case_id"]
+                or assessment.tenant_id != self.tenant_id
+                or assessment.domain != AgentDomain.EMPLOYEE_IT
+                or assessment.critic is None
+                or assessment.critic.decision != CriticDecision.ACCEPT
+                or resolution is None
+                or resolution.escalation_needed
+                or resolution.uncertainty
+                or recommendation is None
+            ):
+                return self._review(
+                    "agent_proposal_requires_review",
+                    "The specialist recommendation is incomplete, uncertain or requires review.",
+                )
+            if recommendation.disposition in {"escalate", "request_information"}:
+                return self._review(
+                    "agent_requires_information",
+                    recommendation.clarification_question or recommendation.recommendation,
+                )
+            proposed = [
+                item
+                for item in resolution.proposed_actions
+                if item.issue_id == request.access_request_id
+            ]
+            supported = (
+                recommendation.disposition == "access"
+                and len(proposed) == 1
+                and proposed[0].action_type == "grant_repository_access"
+                and proposed[0].resource_id == snapshot.repository.repository_id
+                and proposed[0].amount is None
+                and proposed[0].requires_approval
+            )
+            if not supported:
+                return self._review(
+                    "agent_action_mismatch",
+                    "The specialist action did not exactly match the approved access request.",
+                )
         reasoning = state.get("reasoning")
         if reasoning is not None and (
             reasoning.assessment.recommended_disposition != ReasoningDisposition.ACCESS_CANDIDATE
@@ -532,8 +676,7 @@ class EmployeeAccessWorkflow:
             "node_history": ["escalate"],
         }
 
-    @staticmethod
-    def _result(state: EmployeeAccessWorkflowState) -> EmployeeAccessWorkflowResult:
+    def _result(self, state: EmployeeAccessWorkflowState) -> EmployeeAccessWorkflowResult:
         return EmployeeAccessWorkflowResult(
             workflow_id=state["workflow_id"],
             case_id=state["case_id"],
@@ -543,10 +686,14 @@ class EmployeeAccessWorkflow:
             evidence=state["evidence"],
             policy_citations=state["policy_citations"],
             reasoning=state.get("reasoning"),
+            agent_assessment=state.get("agent_assessment"),
             operation=state.get("operation"),
             verified_access_id=state.get("verified_access_id"),
             resolution_summary=state["resolution_summary"],
             error_code=state.get("error_code"),
             error_message=state.get("error_message"),
             node_history=state["node_history"],
+            execution_mode=(
+                "rules_only" if not state.get("agent_attempted") else self.model_execution_mode
+            ),
         )

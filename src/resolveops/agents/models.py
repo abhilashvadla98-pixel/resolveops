@@ -160,9 +160,14 @@ class ProposedAction(DomainModel):
 
 class IssueResolution(DomainModel):
     issue_id: Identifier
-    disposition: Literal["refund", "wait", "no_action", "request_information", "escalate"] = (
-        "escalate"
-    )
+    disposition: Literal[
+        "refund",
+        "access",
+        "wait",
+        "no_action",
+        "request_information",
+        "escalate",
+    ] = "escalate"
     recommendation: NonEmptyText
     clarification_question: NonEmptyText | None = None
     evidence_ids: list[Identifier] = Field(min_length=1, max_length=30)

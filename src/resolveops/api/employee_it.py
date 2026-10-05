@@ -3,12 +3,14 @@ from typing import Annotated, Literal, NoReturn
 from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from pydantic import Field
+from pydantic import Field, SecretStr
 from sqlalchemy import Engine, func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from resolveops.agents.factory import build_agent_runtime
 from resolveops.api.dependencies import get_principal, get_tenant_session
+from resolveops.config import Settings
 from resolveops.database.employee_it_records import (
     EmployeeRecord,
     EnterpriseIdentityRecord,
@@ -50,6 +52,7 @@ from resolveops.operations.errors import (
     ResourceNotFoundError,
 )
 from resolveops.operations.models import Actor, ActorRole, Permission
+from resolveops.orchestration.graph import HierarchicalAgentOrchestrator
 from resolveops.security.models import SecurityPrincipal
 from resolveops.security.pii import redact_employee, redact_employee_access_snapshot
 from resolveops.workflows.models import ApprovalDecisionType, ApprovalStatus, WorkflowStatus
@@ -112,7 +115,7 @@ class ITRepositoryOption(DomainModel):
 
 
 class ITRequestOptions(DomainModel):
-    execution_mode: Literal["deterministic"] = "deterministic"
+    execution_mode: Literal["rules_only", "live_model"] = "rules_only"
     demo_personas_enabled: bool
     employees: list[ITEmployeeOption]
     repositories: list[ITRepositoryOption]
@@ -130,6 +133,8 @@ class ITWorkflowSummary(DomainModel):
     error_code: Identifier | None = None
     error_message: NonEmptyText | None = None
     node_history: list[Identifier]
+    execution_mode: str = "rules_only"
+    agent_run_ids: list[Identifier] = Field(default_factory=list)
     created_at: AwareDatetime
     completed_at: AwareDatetime
 
@@ -180,7 +185,17 @@ def request_options(session: DatabaseSession, principal: Principal) -> ITRequest
     else:
         employee, _identity = _employee_identity(session, principal)
         employees = [employee]
+    engine = session.get_bind()
+    live_agents = False
+    if isinstance(engine, Engine):
+        settings = Settings(
+            database_url=SecretStr(engine.url.render_as_string(hide_password=False))
+        )
+        live_agents = settings.integrated_agents_enabled and (
+            not is_demo or settings.demo_agent_max_runs_per_session > 0
+        )
     return ITRequestOptions(
+        execution_mode="live_model" if live_agents else "rules_only",
         demo_personas_enabled=is_demo,
         employees=[
             ITEmployeeOption(employee_id=item.employee_id, name=item.name) for item in employees
@@ -536,9 +551,25 @@ def execute_access_case(
         EmployeeITStore(session).get_snapshot(case_id)
     except ResourceNotFoundError:
         not_found("IT access case", case_id)
+    factory = create_session_factory(engine)
+    settings = Settings(database_url=SecretStr(engine.url.render_as_string(hide_password=False)))
+    live_agents = settings.integrated_agents_enabled and (
+        principal.authentication_method != "demo_session"
+        or settings.demo_agent_max_runs_per_session > 0
+    )
+    agent_runtime = (
+        HierarchicalAgentOrchestrator(
+            build_agent_runtime(factory, settings, tenant_id=principal.tenant_id)
+        )
+        if live_agents
+        else None
+    )
     workflow = EmployeeAccessWorkflow(
-        create_session_factory(engine),
+        factory,
         FeatureHashEmbeddingProvider(dimensions=128),
+        agent_runtime=agent_runtime,
+        tenant_id=principal.tenant_id,
+        model_execution_mode="live_model",
     )
     started_at = datetime.now(UTC)
     result = workflow.run(
@@ -560,6 +591,10 @@ def execute_access_case(
             error_code=result.error_code,
             error_message=result.error_message,
             node_history=result.node_history,
+            execution_mode=result.execution_mode,
+            agent_run_ids=(
+                result.agent_assessment.agent_run_ids if result.agent_assessment else []
+            ),
             created_at=started_at,
             completed_at=datetime.now(UTC),
         )
@@ -626,6 +661,8 @@ def _workflow_summary(record: ITWorkflowExecutionRecord) -> ITWorkflowSummary:
         error_code=record.error_code,
         error_message=record.error_message,
         node_history=record.node_history,
+        execution_mode=record.execution_mode,
+        agent_run_ids=record.agent_run_ids,
         created_at=record.created_at,
         completed_at=record.completed_at,
     )

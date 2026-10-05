@@ -2,6 +2,7 @@ from enum import Enum
 
 from pydantic import Field, model_validator
 
+from resolveops.agents.models import MultiAgentReasoningResult
 from resolveops.models.common import DomainModel, Identifier, NonEmptyText
 from resolveops.operations.models import Actor, OperationResult
 from resolveops.reasoning.models import ReasoningTrace
@@ -35,12 +36,14 @@ class EmployeeAccessWorkflowResult(DomainModel):
     evidence: list[NonEmptyText] = Field(min_length=1)
     policy_citations: list[PolicyCitation]
     reasoning: ReasoningTrace | None = None
+    agent_assessment: MultiAgentReasoningResult | None = None
     operation: OperationResult | None = None
     verified_access_id: Identifier | None = None
     resolution_summary: NonEmptyText
     error_code: Identifier | None = None
     error_message: NonEmptyText | None = None
     node_history: list[Identifier] = Field(min_length=1)
+    execution_mode: str = "rules_only"
 
     @model_validator(mode="after")
     def validate_terminal_result(self) -> "EmployeeAccessWorkflowResult":

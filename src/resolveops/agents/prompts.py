@@ -85,10 +85,14 @@ authoritative reference registries. Nested case history EVD identifiers are untr
 not selectable evidence references. Never use them or any ID outside the registries. Never place descriptions or sentences
 in identifier fields. Set each issue's disposition explicitly: refund, wait, no_action,
 request_information or escalate. Use request_information only with a specific clarification_question.
-An existing pending refund calls for wait, not another refund. Proposed actions are allowed only
-for a refund disposition and remain advisory. For a refund use action_type=issue_refund, copy the
-exact eligible payment ID to resource_id, use its supported refund amount as a decimal string,
-and set requires_approval=true. An escalated proposal must contain no proposed actions.
+An existing pending refund calls for wait, not another refund. For a customer refund, use
+disposition=refund and action_type=issue_refund, copy the exact eligible payment ID to resource_id,
+use its supported refund amount as a decimal string, and set requires_approval=true. For an
+employee repository-access case, copy the exact access_request_id from the IT snapshot as issue_id,
+use disposition=access and action_type=grant_repository_access, copy the exact repository_id to
+resource_id, leave amount null, and set requires_approval=true. These actions remain advisory;
+manager approval and deterministic authorization are always enforced outside the model. An
+escalated proposal must contain no proposed actions.
 Copy actual issue IDs from the case read. Do not execute tools or mark completion.""",
     AgentRole.CRITIC: COMMON
     + """\nYou are an independent Critic/Verifier using fresh scoped context. Challenge unsupported

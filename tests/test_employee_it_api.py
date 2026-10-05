@@ -94,7 +94,7 @@ def test_new_request_binds_identity_deduplicates_and_finishes(
     client, current, engine = it_api
     options = client.get("/api/v1/it/request-options").json()
     assert [item["employee_id"] for item in options["employees"]] == ["EMP-2001"]
-    assert options["execution_mode"] == "deterministic"
+    assert options["execution_mode"] == "rules_only"
     first = client.post("/api/v1/it/requests", json=request_body())
     assert first.status_code == 201
     case_id = first.json()["access_case"]["case_id"]
