@@ -7,6 +7,7 @@ import re
 import shutil
 import subprocess
 import tempfile
+import time
 from pathlib import Path
 
 from playwright.sync_api import Page, expect, sync_playwright
@@ -57,7 +58,7 @@ def capture(page: Page, filename: str) -> None:
     page.screenshot(path=ASSET_DIR / filename, full_page=False)
 
 
-def run_walkthrough(page: Page, base_url: str) -> None:
+def run_walkthrough(page: Page, base_url: str) -> float:
     page.set_default_timeout(180_000)
     expect.set_options(timeout=180_000)
     page.goto(f"{base_url.rstrip('/')}/console", wait_until="networkidle")
@@ -119,11 +120,22 @@ def run_walkthrough(page: Page, base_url: str) -> None:
         "Supervisor, investigation, policy, resolution and critic roles run through Gemini. They cannot grant access themselves.",
         3600,
     )
+    model_started = time.monotonic()
     page.locator("#run-it-workflow").click()
+    page.wait_for_function(
+        """() => {
+            const text = document.querySelector('#it-attempt-history')?.textContent || '';
+            return text.includes('Access Verified') || text.includes('Needs Review');
+        }""",
+        timeout=90_000,
+    )
+    attempt_text = page.locator("#it-attempt-history").inner_text()
+    if "Access Verified" not in attempt_text:
+        raise RuntimeError(f"Live provider run stopped safely: {attempt_text.strip()}")
     expect(page.locator("#it-result")).to_contain_text("Gemini specialist trace")
     expect(page.locator("#it-result")).to_contain_text("Live multi-agent")
     expect(page.locator("#it-result")).to_contain_text("Authority boundary")
-    expect(page.locator("#it-attempt-history")).to_contain_text("Access Verified")
+    model_elapsed = time.monotonic() - model_started
 
     page.evaluate(
         """() => {
@@ -159,6 +171,7 @@ def run_walkthrough(page: Page, base_url: str) -> None:
         "A failed prerequisite cannot be repaired by model text. No directory membership or repository permission is created.",
         5200,
     )
+    return model_elapsed
 
 
 def video_duration(ffmpeg: str, path: Path) -> float:
@@ -190,7 +203,7 @@ def main() -> None:
                 record_video_size={"width": 1280, "height": 800},
             )
             page = context.new_page()
-            run_walkthrough(page, args.base_url)
+            model_elapsed = run_walkthrough(page, args.base_url)
             video = page.video
             page.close()
             context.close()
@@ -214,6 +227,7 @@ def main() -> None:
         raise RuntimeError(f"Recording duration {duration:.2f}s is outside the 60-90s target")
     print(f"Employee IT walkthrough recorded: {OUTPUT}")
     print(f"Duration: {duration:.2f}s; deployed synthetic workflow; real Gemini role calls.")
+    print(f"Measured live-agent request: {model_elapsed:.2f}s.")
 
 
 if __name__ == "__main__":
