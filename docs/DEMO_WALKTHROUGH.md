@@ -87,6 +87,26 @@ the demonstration busier.
 The seeded **D · High-value refund approval** scenario shows the same approval boundary with a
 650 USD proposal, without creating a new case.
 
+### Two additional customer workflows
+
+These are separate business problems, not renamed duplicate-charge examples:
+
+- **I · Partial refund amount is wrong:** the returned items are worth 120 USD and provider records
+  show a completed 40 USD refund. Investigation cites the received return and prior refund, then
+  proposes only the verified 80 USD balance. Human approval, idempotent submission and a final
+  provider event are still required.
+- **J · Cancelled order still charged:** the order is cancelled, one full 120 USD payment is
+  captured against its explicit obligation, and no covering refund exists. Investigation proposes
+  that remaining captured value. A non-cancelled order, partial allocation, multiple captures or
+  uncertain obligation stops for review.
+
+Open **Customer Operations**, choose scenario **I** or **J** from **Demo scenarios**, select
+**Investigate**, inspect the specialist trace when live mode is available, review the exact proposal,
+approve it, and simulate settlement. The case must remain open after submission and resolve only
+after fresh completed-provider state. These two issue types deliberately request the bounded
+specialist graph in live mode; deterministic code still owns eligibility, amount, authorization,
+the write and final verification.
+
 ### Compare the three checkpoints
 
 **Approval:** the target is PAY-DEMO-A-2 for 120 USD, not an amount chosen by the browser.

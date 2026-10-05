@@ -17,10 +17,11 @@ the version actually running. Free hosting can take time to wake.
 
 ## Two bounded workflows
 
-**Customer Operations:** enter a duplicate-charge or missing-return-refund complaint. ResolveOps
-reads payment obligations, captures, returned items and prior refunds. It proposes an eligible
-refund, tracks an existing refund, explains a no-action result, or stops for review. Approval submits
-one simulated refund. A later provider event determines settlement or failure.
+**Customer Operations:** enter a duplicate charge, missing return refund, incorrect refund amount,
+or charged-after-cancellation complaint. ResolveOps reads payment obligations, captures, order and
+return state, returned items and prior refunds. It proposes only the verified remaining amount,
+tracks an existing refund, explains a no-action result, or stops for review. Approval submits one
+simulated refund. A later provider event determines settlement or failure.
 
 **Employee IT:** submit a repository and permission request. Rules check employment, identity, MFA,
 team, the actual manager's approval and current access. The service applies the allowed grant and
@@ -71,6 +72,11 @@ stops, not a general autonomous supervisor. Simple cases do not need model calls
    workspace with **Simulate settlement failure** to see the recovery path.
 6. Open **Employee IT → New access request** for the requester/manager/provisioning journey.
 
+For the expanded customer paths, select demo scenario **I** to see a 40 USD partial refund produce
+an 80 USD remaining-balance proposal, or scenario **J** to see a cancelled order with one verified
+120 USD capture. Both always enter the specialist graph when live mode is configured, then pass
+through the same deterministic approval, action and settlement controls.
+
 See the [illustrated guide](docs/DEMO_WALKTHROUGH.md) and the
 [85-second live-agent walkthrough](https://github.com/abhilashvadla98-pixel/resolveops/releases/download/v1.2.1/resolveops-live-agent-walkthrough-v1.2.1.webm).
 It was recorded against the deployed v1.2.1 sandbox and shows real Gemini role calls, their grounded
@@ -91,6 +97,7 @@ show an earlier release, not the repaired settlement lifecycle or current live-a
 | Deployed live-agent walkthrough | [v1.2.1 release](https://github.com/abhilashvadla98-pixel/resolveops/releases/tag/v1.2.1) | One successful CASE-1001 run through real model roles, human approval, action and fresh verification; not an SLO |
 | Grounding and control | [Grounding tests](tests/test_agent_grounding.py), [workflow tests](tests/test_workflows.py) | Fabricated observations, altered actions and unsupported recommendations stop safely |
 | Combined complaint | [Two settlement-order tests](tests/test_combined_customer_journey.py) | Duplicate capture plus partial return; no repeat refund; both final events required |
+| Expanded customer issues | [End-to-end tests](tests/test_customer_issue_expansion.py), [browser tests](tests/test_customer_issue_expansion_browser.py) | Incorrect refund balance and cancelled-order charge through approval, action, provider event and fresh verification |
 | Human review | [Evaluation guide](docs/EVALUATION.md) | 24 owner labels remain pending; code does not invent them |
 
 Rules-only repeats are deterministic regressions, not a stochastic benchmark. Historical provider
@@ -125,8 +132,9 @@ replace unknown payment obligations with guesses.
 
 - No live bank, CRM, identity-provider or Git-host write is connected. An operator enters customer
   messages through an authenticated API. Customer authentication and email/CRM delivery are not implemented.
-- Supported complaints are duplicate charges and missing return refunds. Arbitrary disputes and
-  complex capture allocations require manual review.
+- Supported complaints are duplicate charges, missing return refunds, incorrect return-refund
+  amounts and captured charges on cancelled orders. Arbitrary disputes and complex capture
+  allocations require manual review.
 - Separate human roles are enforced outside the sandbox. Demo role switching is not a real manager
   decision. Delegated manager authority is not supported.
 - Reviewed memory is typed, tenant/policy scoped and expiring. Neither its quality benefit nor

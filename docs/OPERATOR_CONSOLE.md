@@ -15,9 +15,9 @@ unconfirmed until investigation. A source-message receipt detects duplicate deli
 content with the same receipt is rejected. Follow-up messages remain attached to the same case.
 
 A support portal or help-desk adapter could use this authenticated API. No live CRM or public
-customer portal is connected. Supported complaints are duplicate charges, missing return refunds
-and combined complaints. Insufficient details require clarification or review, not invented
-payment evidence.
+customer portal is connected. Supported complaints are duplicate charges, missing return refunds,
+incorrect return-refund amounts, captured charges on cancelled orders and combined complaints.
+Insufficient details require clarification or review, not invented payment evidence.
 
 **Investigate** rereads operational and current policy records. Similar amounts and nearby capture
 times alone do not establish a duplicate: the action candidate must satisfy the trusted
@@ -108,6 +108,8 @@ execution or an external provider connection.
   refund to completed or failed synthetic provider outcomes.
 - tests/test_employee_it_browser.py: new fictional requester, separate manager simulation,
   processing and newest-attempt verification.
+- tests/test_customer_issue_expansion_browser.py: incorrect refund balance and cancelled-order
+  charge through approval, pending settlement and verified completion.
 
 From the repository root, with Chromium installed in the test environment:
 

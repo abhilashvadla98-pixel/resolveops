@@ -24,6 +24,8 @@ class CaseIntakeStatus(str, Enum):
 class CaseIssueType(str, Enum):
     DUPLICATE_CHARGE = "duplicate_charge"
     MISSING_RETURN_REFUND = "missing_return_refund"
+    INCORRECT_REFUND_AMOUNT = "incorrect_refund_amount"
+    CANCELLED_ORDER_CHARGE = "cancelled_order_charge"
     REPOSITORY_ACCESS = "repository_access"
 
 

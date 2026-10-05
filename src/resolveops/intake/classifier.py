@@ -28,6 +28,18 @@ class ComplaintClassifier:
         r"\bmissing (?:my )?refund\b",
         r"\bstill (?:have not|haven't) received (?:my )?refund\b",
     )
+    _incorrect_refund_patterns = (
+        r"\b(?:partial|part of (?:my |the )?)refund\b",
+        r"\brefund (?:amount )?(?:is|was) (?:wrong|incorrect|short)\b",
+        r"\bonly (?:received|got) (?:part|some) of (?:my |the )?refund\b",
+        r"\brefunded less than\b",
+        r"\bmissing (?:part|portion) of (?:my |the )?refund\b",
+    )
+    _cancelled_order_patterns = (
+        r"\bcancel(?:led|ed) (?:my |the )?order\b.*\bcharg(?:e|ed)\b",
+        r"\bcharg(?:e|ed)\b.*\bcancel(?:led|ed) (?:my |the )?order\b",
+        r"\bcharged after (?:I |we )?cancel(?:led|ed)\b",
+    )
     _injection_patterns = (
         r"(?:ignore|disregard|override|forget) (?:all |the )?(?:previous|prior|system|developer) instructions",
         r"reveal (?:the )?(?:system prompt|secret|api key)",
@@ -53,10 +65,17 @@ class ComplaintClassifier:
             )
 
         issue_types: list[CaseIssueType] = []
+        incorrect_refund = any(
+            re.search(pattern, normalized) for pattern in self._incorrect_refund_patterns
+        )
         if any(re.search(pattern, normalized) for pattern in self._duplicate_patterns):
             issue_types.append(CaseIssueType.DUPLICATE_CHARGE)
-        if any(re.search(pattern, normalized) for pattern in self._return_patterns):
+        if incorrect_refund:
+            issue_types.append(CaseIssueType.INCORRECT_REFUND_AMOUNT)
+        elif any(re.search(pattern, normalized) for pattern in self._return_patterns):
             issue_types.append(CaseIssueType.MISSING_RETURN_REFUND)
+        if any(re.search(pattern, normalized) for pattern in self._cancelled_order_patterns):
+            issue_types.append(CaseIssueType.CANCELLED_ORDER_CHARGE)
         if issue_types:
             return ComplaintClassification(
                 status=CaseIntakeStatus.CLASSIFIED,

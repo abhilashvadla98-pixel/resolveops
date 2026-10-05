@@ -130,14 +130,14 @@ def test_demo_endpoint_opens_only_the_synthetic_tenant(demo_api: TestClient) -> 
         headers={"Authorization": f"Bearer {token}"},
     )
     assert scenarios.status_code == 200
-    assert [item["scenario_id"] for item in scenarios.json()] == list("ABCDEFGH")
+    assert [item["scenario_id"] for item in scenarios.json()] == list("ABCDEFGHIJ")
 
     reset = demo_api.post(
         "/api/v1/demo/reset",
         headers={"Authorization": f"Bearer {token}"},
     )
     assert reset.status_code == 200
-    assert len(reset.json()) == 8
+    assert len(reset.json()) == 10
 
 
 @pytest.mark.parametrize("isolated", [False, True])

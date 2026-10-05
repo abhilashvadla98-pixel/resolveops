@@ -275,6 +275,32 @@ def seed_simulator_resources(session: Session) -> bool:
             source="Customer Operations policy simulator",
             effective_at=datetime(2026, 6, 1, tzinfo=UTC),
         ),
+        Policy(
+            policy_id="POLICY-REFUND-AMOUNT-V1",
+            title="Incorrect return refund amount",
+            version=1,
+            status=PolicyStatus.ACTIVE,
+            issue_types=[CaseIssueType.INCORRECT_REFUND_AMOUNT],
+            content=(
+                "Verify the received return, item value, currency and completed refunds. "
+                "Subtract completed amounts and propose only the remaining eligible balance."
+            ),
+            source="Customer Operations policy simulator",
+            effective_at=datetime(2026, 6, 1, tzinfo=UTC),
+        ),
+        Policy(
+            policy_id="POLICY-CANCELLED-ORDER-CHARGE-V1",
+            title="Cancelled order captured charge",
+            version=1,
+            status=PolicyStatus.ACTIVE,
+            issue_types=[CaseIssueType.CANCELLED_ORDER_CHARGE],
+            content=(
+                "Verify cancelled order state, a full captured obligation and all existing refunds. "
+                "Only the remaining captured value may be proposed."
+            ),
+            source="Customer Operations policy simulator",
+            effective_at=datetime(2026, 6, 1, tzinfo=UTC),
+        ),
     ]
     for policy in policies:
         if store.get_policy(policy.policy_id) is None:

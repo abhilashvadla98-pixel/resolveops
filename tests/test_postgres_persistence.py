@@ -86,7 +86,7 @@ def test_postgres_migration_and_seed() -> None:
             policies = SimulatorStore(session).list_effective_policies(
                 as_of=customer_case.opened_at
             )
-            assert len(policies) == 2
+            assert len(policies) == 4
 
         session_factory = create_session_factory(engine)
         event_receipt = RefundEventProcessor(
@@ -127,7 +127,7 @@ def test_postgres_migration_and_seed() -> None:
                 embedding_provider,
                 ingested_at=datetime(2026, 9, 24, 12, 0, tzinfo=UTC),
             )
-            assert report.created_documents == 6
+            assert report.created_documents == 8
             employee_report = ingest_directory(
                 session,
                 Path("domain_packs/employee_it/policies"),

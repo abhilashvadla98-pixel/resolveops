@@ -51,8 +51,8 @@ def test_policy_documents_have_valid_versioned_metadata() -> None:
         for path in sorted(POLICY_DIRECTORY.glob("*.md"))
     ]
 
-    assert len(documents) == 6
-    assert len({document.version_id for document in documents}) == 6
+    assert len(documents) == 8
+    assert len({document.version_id for document in documents}) == 8
     assert all(document.status.value == "active" for document in documents)
     assert all(document.effective_at.tzinfo is not None for document in documents)
 
@@ -105,11 +105,11 @@ def test_ingestion_is_repeatable_and_preserves_separate_embeddings() -> None:
 
         chunk_count = session.scalar(select(func.count()).select_from(KnowledgeChunkRecord))
         embedding_count = session.scalar(select(func.count()).select_from(KnowledgeEmbeddingRecord))
-        assert first.created_documents == 6
+        assert first.created_documents == 8
         assert first.created_chunks == chunk_count
         assert first.created_embeddings == embedding_count
         assert second.created_documents == 0
-        assert second.skipped_documents == 6
+        assert second.skipped_documents == 8
         assert second.created_embeddings == 0
         assert second.skipped_embeddings == embedding_count
     engine.dispose()
@@ -147,6 +147,16 @@ def test_same_document_version_cannot_silently_change() -> None:
             "received return item quantity original unit price active refunds",
             CaseIssueType.MISSING_RETURN_REFUND,
             "POLICY-RETURN-REFUND",
+        ),
+        (
+            "completed partial refund expected returned item value remaining balance",
+            CaseIssueType.INCORRECT_REFUND_AMOUNT,
+            "POLICY-REFUND-AMOUNT",
+        ),
+        (
+            "cancelled order full captured payment remaining refundable amount",
+            CaseIssueType.CANCELLED_ORDER_CHARGE,
+            "POLICY-CANCELLED-ORDER-CHARGE",
         ),
         (
             "verified customer email recipient notification delivery",
@@ -214,10 +224,12 @@ def test_ingested_documents_are_queryable_by_version() -> None:
             )
         )
         assert [(record.document_id, record.version) for record in records] == [
+            ("POLICY-CANCELLED-ORDER-CHARGE", 1),
             ("POLICY-CASE-ESCALATION", 1),
             ("POLICY-CUSTOMER-COMMUNICATION", 1),
             ("POLICY-DUPLICATE-CHARGE", 1),
             ("POLICY-PAYMENT-STATUS", 1),
+            ("POLICY-REFUND-AMOUNT", 1),
             ("POLICY-RETURN-ELIGIBILITY", 1),
             ("POLICY-RETURN-REFUND", 1),
         ]

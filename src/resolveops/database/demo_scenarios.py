@@ -134,6 +134,20 @@ SCENARIO_ROWS = (
         "CASE-DEMO-H",
         "The refund was submitted, but its independent status check timed out.",
     ),
+    (
+        "I",
+        "Partial refund amount is wrong",
+        "customer",
+        "CASE-DEMO-I",
+        "A received return was refunded only in part, so the remaining value must be calculated.",
+    ),
+    (
+        "J",
+        "Cancelled order still charged",
+        "customer",
+        "CASE-DEMO-J",
+        "A cancelled order has a completed capture and no covering refund.",
+    ),
 )
 
 
@@ -144,6 +158,8 @@ SCENARIO_CUSTOMERS = {
     "E": ("Nina Shah", "nina.shah@example.com", "Mechanical keyboard"),
     "F": ("Marcus Thompson", "marcus.thompson@example.com", "Ultrawide monitor"),
     "H": ("Grace Kim", "grace.kim@example.com", "Smart speaker pair"),
+    "I": ("Riley Brooks", "riley.brooks@example.com", "Fitness tracker"),
+    "J": ("Amara Okafor", "amara.okafor@example.com", "Portable projector"),
 }
 
 
@@ -197,6 +213,22 @@ def seed_demo_scenarios(session: Session) -> bool:
             IssueFinding.CONFIRMED,
             False,
             True,
+        ),
+        (
+            "I",
+            CaseIssueType.INCORRECT_REFUND_AMOUNT,
+            CaseIssueStatus.INVESTIGATING,
+            IssueFinding.UNDETERMINED,
+            True,
+            False,
+        ),
+        (
+            "J",
+            CaseIssueType.CANCELLED_ORDER_CHARGE,
+            CaseIssueStatus.INVESTIGATING,
+            IssueFinding.UNDETERMINED,
+            False,
+            False,
         ),
     )
     for scenario_id, issue_type, issue_status, finding, with_return, with_refund in definitions:
@@ -318,7 +350,13 @@ def _seed_customer_scenario(
         Order(
             order_id=order_id,
             customer_id=customer_id,
-            status=OrderStatus.PAID if scenario_id == "A" else OrderStatus.DELIVERED,
+            status=(
+                OrderStatus.PAID
+                if scenario_id == "A"
+                else OrderStatus.CANCELLED
+                if scenario_id == "J"
+                else OrderStatus.DELIVERED
+            ),
             total_amount=amount,
             currency="USD",
             items=[
@@ -410,9 +448,13 @@ def _seed_customer_scenario(
         issue_type=issue_type,
         status=issue_status,
         finding=finding,
-        payment_ids=[f"PAY-DEMO-{scenario_id}-1", f"PAY-DEMO-{scenario_id}-2"]
-        if issue_type == CaseIssueType.DUPLICATE_CHARGE
-        else [],
+        payment_ids=(
+            [f"PAY-DEMO-{scenario_id}-1", f"PAY-DEMO-{scenario_id}-2"]
+            if issue_type == CaseIssueType.DUPLICATE_CHARGE
+            else [f"PAY-DEMO-{scenario_id}-1"]
+            if issue_type == CaseIssueType.CANCELLED_ORDER_CHARGE
+            else []
+        ),
         return_id=return_id,
         actions=actions,
         verification=verification,
@@ -451,6 +493,23 @@ def _seed_customer_scenario(
                 created_at=base + timedelta(days=7, minutes=1),
             )
         )
+    elif scenario_id == "I":
+        store.add_refund(
+            Refund(
+                refund_id="REF-DEMO-I-PARTIAL",
+                payment_id="PAY-DEMO-I-1",
+                order_id=order_id,
+                issue_id=issue_id,
+                return_id="RET-DEMO-I",
+                amount=Decimal("40.00"),
+                currency="USD",
+                status=RefundStatus.COMPLETED,
+                kind=RefundKind.RETURN,
+                reason="Partial refund recorded by the provider",
+                created_at=base + timedelta(days=6),
+                completed_at=base + timedelta(days=6, minutes=5),
+            )
+        )
 
 
 def _complaint_for(scenario_id: str) -> str:
@@ -478,5 +537,13 @@ def _complaint_for(scenario_id: str) -> str:
         "H": (
             "I was told the duplicate charge was refunded, but nobody could confirm its current "
             "status. Please verify the existing refund instead of submitting another one."
+        ),
+        "I": (
+            "My return was received, but I received only part of my refund. The refund amount is "
+            "wrong and the remaining balance is still missing."
+        ),
+        "J": (
+            "I cancelled my order before shipment, but the full payment was still charged to my "
+            "card. Please review the captured charge."
         ),
     }[scenario_id]

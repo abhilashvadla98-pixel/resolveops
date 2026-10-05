@@ -11,6 +11,7 @@ from resolveops.database.records import RefundRecord, ReturnItemRecord, ReturnRe
 from resolveops.database.store import CustomerOperationsStore
 from resolveops.domain.billing import find_possible_duplicate_charges
 from resolveops.models.case import CaseIssueType, IssueFinding
+from resolveops.models.order import OrderStatus
 from resolveops.models.payment import PaymentStatus
 from resolveops.models.refund import RefundKind, RefundStatus
 from resolveops.models.returns import ReturnStatus
@@ -155,7 +156,10 @@ def investigate_issue(session: Session, case_id: str, issue_id: str) -> Investig
                 ),
             )
         )
-    elif issue.issue_type == CaseIssueType.MISSING_RETURN_REFUND:
+    elif issue.issue_type in {
+        CaseIssueType.MISSING_RETURN_REFUND,
+        CaseIssueType.INCORRECT_REFUND_AMOUNT,
+    }:
         customer_return = store.get_return(issue.return_id) if issue.return_id else None
         if customer_return is None:
             return Investigation(
@@ -222,8 +226,26 @@ def investigate_issue(session: Session, case_id: str, issue_id: str) -> Investig
             return Investigation(
                 IssueFinding.CONFIRMED, evidence, existing_refund_id=pending.refund_id
             )
+        if issue.issue_type == CaseIssueType.INCORRECT_REFUND_AMOUNT and not prior_returns:
+            return Investigation(
+                IssueFinding.UNDETERMINED,
+                evidence,
+                error=(
+                    "No completed return refund exists to compare with the expected item value; "
+                    "review whether this is a missing-refund complaint instead."
+                ),
+            )
         amount = value - sum((r.amount for r in prior_returns), Decimal(0))
         if amount <= 0:
+            evidence.append(
+                (
+                    "refunds",
+                    prior_returns[-1].refund_id if prior_returns else customer_return.return_id,
+                    "Completed return refunds already cover the verified returned-item value.",
+                )
+            )
+            if issue.issue_type == CaseIssueType.INCORRECT_REFUND_AMOUNT:
+                return Investigation(IssueFinding.REJECTED, evidence)
             return Investigation(
                 IssueFinding.CONFIRMED,
                 evidence,
@@ -260,6 +282,80 @@ def investigate_issue(session: Session, case_id: str, issue_id: str) -> Investig
             f"Received items in {return_id}; remaining eligible value {amount} {order.currency}"
         )
         evidence.append(("returns", return_id, reason))
+    elif issue.issue_type == CaseIssueType.CANCELLED_ORDER_CHARGE:
+        if order.status != OrderStatus.CANCELLED:
+            evidence.append(
+                (
+                    "orders",
+                    order.order_id,
+                    f"Order status is {order.status.value}, not cancelled; no cancellation refund is justified.",
+                )
+            )
+            return Investigation(IssueFinding.REJECTED, evidence)
+        linked_payment_ids = set(issue.payment_ids)
+        eligible = [
+            payment
+            for payment in captured
+            if payment.payment_id in linked_payment_ids
+            and payment.obligation_id
+            and payment.obligation_amount == payment.amount == order.total_amount
+            and payment.currency == order.currency
+        ]
+        if len(eligible) != 1:
+            return Investigation(
+                IssueFinding.UNDETERMINED,
+                evidence,
+                error=(
+                    "A cancelled-order refund requires exactly one verified full-order capture; "
+                    "partial or multiple capture allocations require review."
+                ),
+            )
+        payment = eligible[0]
+        payment_refunds = [r for r in refunds if r.payment_id == payment.payment_id]
+        pending = next(
+            (
+                r
+                for r in payment_refunds
+                if r.status in {RefundStatus.PENDING, RefundStatus.PROCESSING}
+            ),
+            None,
+        )
+        if pending is not None:
+            evidence.append(
+                (
+                    "refunds",
+                    pending.refund_id,
+                    f"Existing cancellation refund {pending.refund_id} is {pending.status.value}.",
+                )
+            )
+            return Investigation(
+                IssueFinding.CONFIRMED, evidence, existing_refund_id=pending.refund_id
+            )
+        completed_amount = sum(
+            (r.amount for r in payment_refunds if r.status == RefundStatus.COMPLETED),
+            Decimal(0),
+        )
+        amount = payment.amount - completed_amount
+        if amount <= 0:
+            evidence.append(
+                (
+                    "refunds",
+                    payment_refunds[-1].refund_id if payment_refunds else payment.payment_id,
+                    "Completed refunds already cover the cancelled order charge.",
+                )
+            )
+            return Investigation(IssueFinding.REJECTED, evidence)
+        kind, return_id = RefundKind.CANCELLED_ORDER, None
+        reason = (
+            f"Cancelled order {order.order_id}; remaining captured value {amount} {order.currency}"
+        )
+        evidence.append(
+            (
+                "orders",
+                order.order_id,
+                f"Order is cancelled and payment {payment.payment_id} remains captured; {amount} {order.currency} is refundable.",
+            )
+        )
     else:
         return Investigation(IssueFinding.UNDETERMINED, evidence, error="Unsupported issue type.")
 
