@@ -46,7 +46,7 @@ workflow = [
     "langgraph-checkpoint-postgres>=3.0,<4.0",
 ]
 worker = [
-    "redis>=5,<6",
+    "redis>=5,<9",
 ]
 dev = [
     "bandit>=1.9,<2.0",
